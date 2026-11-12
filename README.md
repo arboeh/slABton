@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/arboeh/slABton/actions/workflows/ci.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/ci.yml)
 [![HACS](https://github.com/arboeh/slABton/actions/workflows/hacs.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/hacs.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![License: MPL 2.0](https://img.shields.io/badge/license-MPL%202.0-blue.svg)](LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 
 Slider button bar card for Home Assistant: a bar with a movable handle button.
@@ -343,4 +343,4 @@ card lock; circle and 3/4 circle; multiple bars and handles; select dropdown; an
 
 ## License
 
-MIT
+[Mozilla Public License 2.0](LICENSE) (MPL-2.0)

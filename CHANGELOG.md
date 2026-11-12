@@ -5,6 +5,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Changed
+
+- License changed from MIT to MPL 2.0 (`LICENSE`, `package.json`, READMEs).
+
 ## [0.2.0] - 2026-11-12
 
 ### Added

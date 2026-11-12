@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/arboeh/slABton/actions/workflows/ci.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/ci.yml)
 [![HACS](https://github.com/arboeh/slABton/actions/workflows/hacs.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/hacs.yml)
-[![Lizenz: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Lizenz: MPL 2.0](https://img.shields.io/badge/license-MPL%202.0-blue.svg)](LICENSE)
 [![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 
 Slider-Button-Bar-Karte für Home Assistant: eine Bar mit verschiebbarem Griff-Button.
@@ -346,4 +346,4 @@ Lock der ganzen Karte; Kreis und 3/4-Kreis; mehrere Bars und Griffe; Select-Drop
 
 ## Lizenz
 
-MIT
+[Mozilla Public License 2.0](LICENSE) (MPL-2.0)
