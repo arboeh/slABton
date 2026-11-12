@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>slABton preview</title>
+  <style>
+    :root {
+      --primary-color: #03a9f4;
+      --primary-text-color: #212121;
+      --secondary-text-color: #727272;
+      --secondary-background-color: #e0e0e0;
+      --card-background-color: #fff;
+      --divider-color: rgba(0, 0, 0, 0.12);
+    }
+    body.dark {
+      --primary-text-color: #e1e1e1;
+      --secondary-text-color: #9b9b9b;
+      --secondary-background-color: #2c2c2c;
+      --card-background-color: #1c1c1c;
+      --divider-color: rgba(255, 255, 255, 0.12);
+      background: #111;
+    }
+    body { font-family: system-ui, sans-serif; margin: 16px; color: var(--primary-text-color); }
+    h1 { font-size: 18px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+    .cell { border-radius: 12px; background: var(--card-background-color); box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2); }
+    .cell small { display: block; padding: 8px 12px 0; color: var(--secondary-text-color); }
+    ha-card { display: block; }
+    ha-icon { display: inline-block; width: 1em; height: 1em; }
+    ha-icon::before { content: "\25CF"; }
+    button { margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <h1>slABton preview (mock hass)</h1>
+  <p>
+    Build first: <code>npm run build</code>. Open this file in a browser.
+    <button id="theme" type="button">Toggle dark</button>
+  </p>
+  <div class="grid" id="grid"></div>
+  <script>
+    // Minimal stand-ins for Home Assistant elements.
+    if (!customElements.get("ha-card")) customElements.define("ha-card", class extends HTMLElement {});
+    if (!customElements.get("ha-icon")) customElements.define("ha-icon", class extends HTMLElement {});
+  </script>
+  <script src="../dist/slabton.js"></script>
+  <script>
+    const states = {
+      "input_select.mode": { entity_id: "input_select.mode", state: "Auto", attributes: { options: ["Off", "Auto", "On", "Idle"] } },
+      "switch.pump": { entity_id: "switch.pump", state: "on", attributes: {} },
+      "lock.door": { entity_id: "lock.door", state: "locked", attributes: {} },
+      "sensor.temp": { entity_id: "sensor.temp", state: "21.4", attributes: {} },
+      "sensor.soc": { entity_id: "sensor.soc", state: "64", attributes: {} },
+    };
+    const hass = {
+      states,
+      callService(domain, service, data, target) {
+        console.info("callService", domain, service, data, target);
+        const id = target?.entity_id;
+        if (id && states[id]) {
+          const next = { ...states[id] };
+          if (service === "select_option") next.state = data.option;
+          if (service === "unlock") next.state = "unlocked";
+          if (service === "lock") next.state = "locked";
+          if (service === "turn_on") next.state = "on";
+          if (service === "turn_off") next.state = "off";
+          states[id] = next;
+          hass.states = { ...states };
+          document.querySelectorAll("slabton-card").forEach((card) => { card.hass = hass; });
+        }
+        return Promise.resolve();
+      },
+    };
+
+    const cards = [
+      ["state, horizontal", { entity: "input_select.mode", name: "Heating", icon: "mdi:radiator" }],
+      ["state, vertical", { entity: "input_select.mode", orientation: "vertical", handle_shape: "oval", name: "Vertical" }],
+      ["state, rtl, square", { entity: "input_select.mode", direction: "rtl", handle_shape: "square", name: "RTL" }],
+      ["header icon right", { entity: "input_select.mode", name: "Heating", icon: "mdi:radiator", header_icon_position: "right" }],
+      ["state, handle overhang", { entity: "input_select.mode", handle_overhang: true, name: "Overhang" }],
+      ["state, overhang, vertical", { entity: "input_select.mode", handle_overhang: true, orientation: "vertical", length: 200, name: "Overhang vertical" }],
+      ["value, overhang", { entity: "sensor.soc", preset: "soc", handle_overhang: true, name: "Battery" }],
+      ["state, switch position", { entity: "switch.pump", handle_position: "switch", name: "Pump" }],
+      ["lock, swipe", { entity: "lock.door", name: "Front door" }],
+      ["value, thermometer", { entity: "sensor.temp", preset: "thermometer", name: "Living room" }],
+      ["value, soc, vertical", { entity: "sensor.soc", preset: "soc", orientation: "vertical", name: "Battery" }],
+      ["switches start/mid/end", {
+        entity: "input_select.mode",
+        switches: {
+          start: { icon: "mdi:power", tap_action: { action: "none" } },
+          mid: { icon: "mdi:cog", tap_action: { action: "none" } },
+          end: { icon: "mdi:fire", tap_action: { action: "none" } },
+        },
+      }],
+      ["shimmer animation", { entity: "sensor.temp", preset: "thermometer", animation: "shimmer" }],
+    ];
+
+    const grid = document.getElementById("grid");
+    for (const [label, config] of cards) {
+      const cell = document.createElement("div");
+      cell.className = "cell";
+      cell.innerHTML = `<small>${label}</small>`;
+      const card = document.createElement("slabton-card");
+      card.setConfig({ type: "custom:slabton-card", ...config });
+      card.hass = hass;
+      cell.appendChild(card);
+      grid.appendChild(cell);
+    }
+    document.getElementById("theme").addEventListener("click", () => document.body.classList.toggle("dark"));
+  </script>
+</body>
+</html>

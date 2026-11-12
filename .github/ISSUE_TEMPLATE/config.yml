@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Home Assistant Community
+    url: https://community.home-assistant.io/
+    about: For general questions, visit the Home Assistant Community Forum
+  - name: Documentation
+    url: https://github.com/arboeh/slABton?tab=readme-ov-file
+    about: Read the documentation before opening an issue
+  - name: Changelog
+    url: https://github.com/arboeh/slABton/blob/main/CHANGELOG.md
+    about: Check recent changes and bug fixes
