@@ -3,6 +3,40 @@
 All notable changes to this project are documented here.
 Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [SemVer](https://semver.org/).
 
+## [Unreleased]
+
+## [0.2.0] - 2026-11-12
+
+### Added
+
+- Mode `counter` for `counter.*`: bar between `minimum` / `maximum` (override with `counter.min` / `counter.max`),
+  tap `counter.increment`, double tap `counter.decrement`.
+- Mode `timer` for Home Assistant `timer.*` (tap start / pause, hold cancel) and for a countdown to an
+  `input_datetime` (with date) or `input_date` (`timer.span`, `timer.time_zone`).
+- Pulse when a timer runs out or the target is reached (`timer.pulse`, `timer.pulse_seconds`); a tap ends it;
+  static highlight with reduced motion.
+- Mode `clock`: digital clock without an entity, time zone, 12 / 24 h, seconds, bar = progress of the day.
+  `clock.display: analog` is reserved.
+- `bar:` block: bar value from a separate numeric entity with its own `min`, `max`, `unit`, `decimals`, `preset`.
+  The flat options stay as an alias; `bar:` wins on conflict (warning).
+- `bar_text` and `timer.info` with fixed placeholders (`{name}`, `{state}`, `{value}`, `{remaining}`, `{remaining_text}`,
+  `{days}`, `{hours}`, `{minutes}`, `{seconds}`, `{elapsed}`, `{target}`, `{time}`). No templates, shown as plain text.
+- Translations (English, German) for the editor and new texts; language from `hass.locale`.
+- Local one-second tick for timer and clock, only while the card is connected and the tab is visible.
+- Reserved names `thresholds`, `scale`, `shape`, `control`: warned about and ignored.
+- Editor fields for the new modes, `bar:` and `bar_text`.
+
+### Changed
+
+- `counter.*` and `timer.*` entities now default to the modes `counter` and `timer` (they used to fall into `state`).
+  Set `mode: state` to keep the old behavior.
+- Handle content defaults to `text` in the modes `counter`, `timer` and `clock` (as in `value`).
+
+### Fixed
+
+- `package.json` had a syntax error and duplicate `jsdom` / `vitest` entries after a Dependabot merge;
+  versions now match `package-lock.json` (`jsdom` ^31, `vitest` ^5).
+
 ## [0.1.0]
 
 ### Added
