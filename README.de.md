@@ -21,6 +21,7 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Timer: Home-Assistant-`timer.*` oder Countdown auf ein `input_datetime` / `input_date`, Pulsieren bei Ablauf, Zeitzonen
 - Text in der Bar (`bar_text`) mit einfachen Platzhaltern, ohne Templates
 - Bar-Wert aus einer eigenen Entity (`bar:`)
+- Schriftgröße und Farbe der Texte (`text:`)
 - Texte auf Deutsch und Englisch, Sprache folgt Home Assistant
 - Aktionen Klick, Doppelklick, Halten
 - Icon je Zustand, Positionszahl oder Text im Griff
@@ -88,6 +89,7 @@ alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein a
 | `styles` | keine | Map mit CSS-Variablen, siehe [Styling](#styling) |
 | `tap_action`, `double_tap_action`, `hold_action` | nach Modus | HA-Aktionen plus `cycle`, `cycle_back` |
 | `switches` | keine | `start`, `mid`, `end`, je mit `entity`, `icon`, `name`, Aktionen |
+| `text` | Standardwerte | Schriftgröße und Farbe je Textbereich, siehe [Textdarstellung](#textdarstellung) |
 
 `call-service` (mit `service` / `service_data`) wird als veralteter Alias von `perform-action` akzeptiert und kann in einer späteren Version entfallen.
 
@@ -302,6 +304,43 @@ den der Modus nicht anbietet, bleibt stehen und erzeugt eine Warnung; ein angebo
 
 Texte sind auf 200 Zeichen begrenzt.
 
+### Textdarstellung
+
+Der Block `text:` setzt Schriftgröße und Farbe von vier Bereichen. Ohne ihn ändert sich nichts.
+
+```yaml
+type: custom:slabton-card
+entity: timer.sauna
+name: Sauna
+bar_text: "noch {remaining_text}"
+timer:
+  info: "Ende {target}"
+text:
+  header: { font_size: 16, color: "#ff9800", icon_color: "#2196f3" }
+  bar:    { font_size: 12, color: var(--secondary-text-color) }
+  info:   { font_size: 11, color: grey }
+  button: { font_size: 18, color: white }
+```
+
+| Bereich | Option | Standard | Wirkt auf |
+| --- | --- | --- | --- |
+| `header` | `font_size` | 14 px | Header-Text (Titel) |
+| `header` | `color` | Textfarbe | Nur der Header-Text; das Icon bleibt unverändert |
+| `header` | `icon_color` | Textfarbe | Nur das Header-Icon |
+| `bar` | `font_size` | 13 px | `bar_text` |
+| `bar` | `color` | Textfarbe | `bar_text` |
+| `info` | `font_size` | 13 px | `timer.info` (Zusatztext des Timers) |
+| `info` | `color` | Textfarbe | `timer.info` |
+| `button` | `font_size` | 14 px | Griff-Text (`handle_content: text`, `position`) |
+| `button` | `color` | Textfarbe | Gesamter Griffinhalt, auch das Griff-Icon |
+
+- `font_size`: Zahl von 8 bis 48 (px) oder Dezimaltext wie `"12"`. Andere Werte werden mit Konsolenwarnung ignoriert.
+- `color`: jede CSS-Farbe, die `styles:` akzeptiert. Unsichere Werte werden mit Konsolenwarnung ignoriert.
+- `icon_color` gibt es nur im Bereich `header`. Andere unbekannte Schlüssel werden mit Warnung ignoriert.
+- Rangfolge: `text:` schlägt `styles:`, `styles:` schlägt den Standardwert. Ungültige Werte stoppen die Karte nicht; die übrigen Werte gelten weiter.
+- `button.font_size` setzt nur den Griff-Text; das Griff-Icon folgt `handle_size`. `button.color` färbt auch das Icon.
+- Große Schrift wird abgeschnitten: Bar-Text, Timer-Info und Griff-Text haben `overflow: hidden`. Das Ergebnis im Dashboard prüfen.
+
 ## Sprachen
 
 Texte (Editor-Beschriftungen, Timer-Status, Einheiten) erscheinen auf Deutsch oder Englisch, nach der
@@ -326,6 +365,11 @@ styles:
 ```
 
 Werte werden geprüft; unsichere Werte werden mit Konsolenwarnung ignoriert.
+
+Der Block [`text:`](#textdarstellung) setzt diese Variablen. `styles:` kann sie ebenfalls setzen, ein Wert aus `text:` gewinnt aber gegen `styles:`:
+`--slabton-header-size`, `--slabton-header-color`, `--slabton-header-icon-color`,
+`--slabton-bar-text-size`, `--slabton-bar-text-color`, `--slabton-info-size`, `--slabton-info-color`,
+`--slabton-button-size`, `--slabton-button-color`. Standardgrößen: Header 14 px, Bar 13 px, Info 13 px, Griff 14 px.
 
 ## Entwicklung
 

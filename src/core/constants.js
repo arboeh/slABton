@@ -55,6 +55,34 @@ export const GRID = Object.freeze({
 });
 export const CARD_SIZE = Object.freeze({ horizontal: 2, vertical: 4 });
 
+/**
+ * The `text:` block: every area with its options and the CSS variable each one
+ * sets. Options with a `unit` are sizes; their values are limited to
+ * MIN/MAX_FONT_SIZE. Single source for config, styles and editor.
+ */
+export const TEXT_OPTIONS = Object.freeze({
+  header: Object.freeze({
+    font_size: Object.freeze({ css: "--slabton-header-size", unit: "px" }),
+    color: Object.freeze({ css: "--slabton-header-color" }),
+    icon_color: Object.freeze({ css: "--slabton-header-icon-color" }),
+  }),
+  bar: Object.freeze({
+    font_size: Object.freeze({ css: "--slabton-bar-text-size", unit: "px" }),
+    color: Object.freeze({ css: "--slabton-bar-text-color" }),
+  }),
+  info: Object.freeze({
+    font_size: Object.freeze({ css: "--slabton-info-size", unit: "px" }),
+    color: Object.freeze({ css: "--slabton-info-color" }),
+  }),
+  button: Object.freeze({
+    font_size: Object.freeze({ css: "--slabton-button-size", unit: "px" }),
+    color: Object.freeze({ css: "--slabton-button-color" }),
+  }),
+});
+export const TEXT_AREAS = Object.freeze(Object.keys(TEXT_OPTIONS));
+export const MIN_FONT_SIZE = 8;
+export const MAX_FONT_SIZE = 48;
+
 /** Handle and bar geometry. */
 export const OVAL_RATIO = 1.6;
 export const DEFAULT_VERTICAL_LENGTH = 160;

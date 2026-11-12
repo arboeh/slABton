@@ -74,14 +74,48 @@ describe("buildSchema", () => {
 
   it("translates section titles", () => {
     const titles = (lang) => buildSchema({ entity: "switch.a" }, lang).filter((i) => i.type === "expandable").map((i) => i.title);
-    expect(titles("en")).toEqual(["Bar value", "Layout", "Colors", "Actions"]);
-    expect(titles("de")).toEqual(["Balkenwert", "Layout", "Farben", "Aktionen"]);
+    expect(titles("en")).toEqual(["Bar value", "Layout", "Colors", "Appearance", "Actions"]);
+    expect(titles("de")).toEqual(["Balkenwert", "Layout", "Farben", "Darstellung", "Aktionen"]);
+  });
+
+  it("offers font size and color per text area, the icon color only in the header", () => {
+    const appearance = buildSchema({ entity: "switch.a" }).find((item) => item.name === "text");
+    expect(appearance.type).toBe("expandable");
+    expect(appearance.schema.map((item) => item.name)).toEqual(["header", "bar", "info", "button"]);
+    const fields = (area) => appearance.schema.find((item) => item.name === area).schema.map((f) => f.name);
+    expect(fields("header")).toEqual(["font_size", "color", "icon_color"]);
+    for (const area of ["bar", "info", "button"]) expect(fields(area)).toEqual(["font_size", "color"]);
+  });
+
+  it("limits the font size like the config does", () => {
+    const appearance = buildSchema({ entity: "switch.a" }).find((item) => item.name === "text");
+    const size = appearance.schema[0].schema.find((f) => f.name === "font_size");
+    expect(size.selector.number).toMatchObject({ min: 8, max: 48 });
+  });
+
+  it("offers the appearance section in every mode", () => {
+    for (const config of [{ entity: "lock.a" }, { entity: "sensor.a" }, { entity: "timer.a" }, { mode: "clock" }]) {
+      expect(buildSchema(config).some((item) => item.name === "text")).toBe(true);
+    }
   });
 });
 
 describe("cleanConfig", () => {
   it("drops cleared values but keeps false and 0", () => {
     expect(cleanConfig({ a: undefined, b: null, c: "", d: 0, e: false, f: "x" })).toEqual({ d: 0, e: false, f: "x" });
+  });
+
+  it("drops cleared text fields and the maps they leave empty", () => {
+    expect(cleanConfig({
+      entity: "switch.a",
+      text: { header: { font_size: 16, color: "" }, bar: { font_size: undefined, color: null }, info: {}, button: { color: "red" } },
+    })).toEqual({ entity: "switch.a", text: { header: { font_size: 16 }, button: { color: "red" } } });
+    expect(cleanConfig({ entity: "switch.a", text: { header: { color: "" }, bar: {} } })).toEqual({ entity: "switch.a" });
+  });
+
+  it("leaves other nested values untouched", () => {
+    const data = { tap_action: { action: "perform-action", data: {} }, styles: { x: "" } };
+    expect(cleanConfig(data)).toEqual(data);
   });
 });
 
@@ -140,6 +174,33 @@ describe("SlabtonCardEditor", () => {
     expect(form.computeLabel({ name: "unknown", title: "Titel" })).toBe("Titel");
     expect(form.computeLabel({ name: "", title: "Farben" })).toBe("Farben");
     expect(names(form.schema)).toContain("bar_text");
+  });
+
+  it("labels the appearance sections and fields in both languages", () => {
+    if (!customElements.get("ha-form")) customElements.define("ha-form", class extends HTMLElement {});
+    const labelsOf = (language) => {
+      const editor = document.createElement("slabton-card-editor");
+      editor.hass = { states: {}, locale: { language } };
+      editor.setConfig({ entity: "timer.a" });
+      const form = editor.shadowRoot.querySelector("ha-form");
+      const appearance = form.schema.find((item) => item.name === "text");
+      const areas = appearance.schema;
+      return {
+        section: form.computeLabel(appearance),
+        areas: areas.map((item) => form.computeLabel(item)),
+        fields: areas[0].schema.map((f) => form.computeLabel(f)),
+      };
+    };
+    expect(labelsOf("en")).toEqual({
+      section: "Appearance",
+      areas: ["Header", "Bar text", "Timer info", "Handle text"],
+      fields: ["Font size in px", "Color", "Icon color"],
+    });
+    expect(labelsOf("de")).toEqual({
+      section: "Darstellung",
+      areas: ["Kopfzeile", "Balkentext", "Timer-Info", "Griff-Text"],
+      fields: ["Schriftgröße in px", "Farbe", "Symbolfarbe"],
+    });
   });
 
   it("forwards hass updates to the form", () => {

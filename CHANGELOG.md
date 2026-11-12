@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- `text:` block for the card texts: font size and color per area `header`, `bar` (bar text), `info` (timer
+  extra text) and `button` (handle text); `header` also has `icon_color` for the header icon. Defaults unchanged
+  (14 / 13 / 13 / 14 px). Sizes from 8 to 48 px, invalid values are ignored with a console warning.
+- Visual editor section "Appearance" / "Darstellung" for the `text:` block.
+- CSS variables `--slabton-header-size`, `--slabton-header-color`, `--slabton-header-icon-color`,
+  `--slabton-bar-text-size`, `--slabton-bar-text-color`, `--slabton-info-size`, `--slabton-info-color`,
+  `--slabton-button-size`, `--slabton-button-color`.
+- English and German texts for the new editor fields.
+
 ### Changed
 
 - License changed from MIT to MPL 2.0 (`LICENSE`, `package.json`, READMEs).

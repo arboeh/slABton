@@ -67,5 +67,13 @@
   "editor.section.counter": "Zähler",
   "editor.section.timer": "Timer",
   "editor.section.clock": "Uhr",
+  "editor.section.text": "Darstellung",
+  "editor.section.text_header": "Kopfzeile",
+  "editor.section.text_bar": "Balkentext",
+  "editor.section.text_info": "Timer-Info",
+  "editor.section.text_button": "Griff-Text",
+  "editor.font_size": "Schriftgröße in px",
+  "editor.color": "Farbe",
+  "editor.icon_color": "Symbolfarbe",
   "editor.no_form": "Der visuelle Editor braucht die Formular-Komponente von Home Assistant. Nutze stattdessen den YAML-Editor."
 }

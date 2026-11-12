@@ -10,9 +10,9 @@ import {
   ARM_SERVICES, CLOCK_DISPLAYS_OFFERED, DIRECTIONS, HANDLE_CONTENTS, HANDLE_POSITIONS, HANDLE_SHAPES, HEADER_ICON_POSITIONS,
   HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, inferMode,
 } from "../core/config.js";
-import { ANIMATIONS, MODE, MODES } from "../core/constants.js";
+import { ANIMATIONS, MAX_FONT_SIZE, MIN_FONT_SIZE, MODE, MODES, TEXT_AREAS, TEXT_OPTIONS } from "../core/constants.js";
 import { DEFAULT_LANGUAGE, hasTranslation, resolveLanguage, t } from "../core/i18n.js";
-import { warn } from "../core/util.js";
+import { isPlainObject, warn } from "../core/util.js";
 
 const select = (options) => ({
   select: { mode: "dropdown", options: options.map((value) => ({ value, label: value })) },
@@ -101,6 +101,24 @@ function barFields() {
   ];
 }
 
+/** Schema field of one `text:` option: sizes get a number box, colors a text field. */
+const textOptionField = ([name, option]) => ({
+  name,
+  selector: option.unit ? number(MIN_FONT_SIZE, MAX_FONT_SIZE) : text(),
+});
+
+/**
+ * One nested section per text area, built from TEXT_OPTIONS. The labels come
+ * from `labelKey`: the area names ("info", "bar") would otherwise pick up the
+ * labels of the top-level fields of the same name.
+ */
+function textFields(lang) {
+  return TEXT_AREAS.map((area) => ({
+    ...section(area, t(lang, `editor.section.text_${area}`), Object.entries(TEXT_OPTIONS[area]).map(textOptionField)),
+    labelKey: `editor.section.text_${area}`,
+  }));
+}
+
 /** ha-form schema for the given (raw) config. */
 export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
   const domain = typeof config.entity === "string" ? config.entity.split(".")[0] : "";
@@ -126,6 +144,7 @@ export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
       { name: "border_width", selector: number(0, 20) },
       { name: "border_radius", selector: number(0, 999) },
     ]),
+    section("text", t(lang, "editor.section.text"), textFields(lang)),
     section("", t(lang, "editor.section.actions"), [
       { name: "tap_action", selector: { ui_action: {} } },
       { name: "double_tap_action", selector: { ui_action: {} } },
@@ -134,11 +153,32 @@ export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
   ];
 }
 
+/** Top-level blocks whose cleared fields are dropped at every depth (so no `header: {}` stays behind). */
+const NESTED_CLEAN_KEYS = ["text"];
+
+const isCleared = (value) => value === undefined || value === null || value === "";
+
+/** Copy of `value` without cleared fields and without maps that end up empty. */
+function pruneCleared(value) {
+  const out = {};
+  for (const [key, entry] of Object.entries(value)) {
+    const pruned = isPlainObject(entry) ? pruneCleared(entry) : entry;
+    if (isCleared(pruned) || (isPlainObject(pruned) && Object.keys(pruned).length === 0)) continue;
+    out[key] = pruned;
+  }
+  return out;
+}
+
 /** Drop keys the form cleared (undefined, null or empty string). */
 export function cleanConfig(data) {
   const out = {};
   for (const [key, value] of Object.entries(data ?? {})) {
-    if (value === undefined || value === null || value === "") continue;
+    if (isCleared(value)) continue;
+    if (NESTED_CLEAN_KEYS.includes(key) && isPlainObject(value)) {
+      const pruned = pruneCleared(value);
+      if (Object.keys(pruned).length > 0) out[key] = pruned;
+      continue;
+    }
     out[key] = value;
   }
   return out;

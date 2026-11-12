@@ -21,6 +21,7 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Timer: Home Assistant `timer.*` or countdown to an `input_datetime` / `input_date`, pulse on expiry, time zones
 - Text in the bar (`bar_text`) with simple placeholders, no templates
 - Bar value from a separate entity (`bar:`)
+- Font size and color of the texts (`text:`)
 - English and German texts, language follows Home Assistant
 - Tap, double tap and hold actions
 - Icon per state, position number or text in the handle
@@ -88,6 +89,7 @@ everything else gives `state`. `input_datetime` / `input_date` and `clock` need 
 | `styles` | none | Map of CSS variables, see [Styling](#styling) |
 | `tap_action`, `double_tap_action`, `hold_action` | by mode | HA actions plus `cycle`, `cycle_back` |
 | `switches` | none | `start`, `mid`, `end`, each with `entity`, `icon`, `name`, actions |
+| `text` | defaults | Font size and color per text area, see [Text appearance](#text-appearance) |
 
 `call-service` (with `service` / `service_data`) is accepted as a deprecated alias of `perform-action` and may be removed in a later version.
 
@@ -300,6 +302,43 @@ not offer stays as written and logs a warning; an offered name without a value s
 
 Texts are limited to 200 characters.
 
+### Text appearance
+
+The `text:` block sets font size and color of four areas. Without it nothing changes.
+
+```yaml
+type: custom:slabton-card
+entity: timer.sauna
+name: Sauna
+bar_text: "{remaining_text} left"
+timer:
+  info: "ends {target}"
+text:
+  header: { font_size: 16, color: "#ff9800", icon_color: "#2196f3" }
+  bar:    { font_size: 12, color: var(--secondary-text-color) }
+  info:   { font_size: 11, color: grey }
+  button: { font_size: 18, color: white }
+```
+
+| Area | Option | Default | Applies to |
+| --- | --- | --- | --- |
+| `header` | `font_size` | 14 px | Header text (title) |
+| `header` | `color` | text color | Header text only; the icon is not affected |
+| `header` | `icon_color` | text color | Header icon only |
+| `bar` | `font_size` | 13 px | `bar_text` |
+| `bar` | `color` | text color | `bar_text` |
+| `info` | `font_size` | 13 px | `timer.info` (timer extra text) |
+| `info` | `color` | text color | `timer.info` |
+| `button` | `font_size` | 14 px | Handle text (`handle_content: text`, `position`) |
+| `button` | `color` | text color | Whole handle content, including the handle icon |
+
+- `font_size`: number from 8 to 48 (px), or decimal text such as `"12"`. Other values are ignored with a console warning.
+- `color`: any CSS color accepted by `styles:`. Unsafe values are ignored with a console warning.
+- `icon_color` exists only in `header`. Other unknown keys are ignored with a warning.
+- Priority: `text:` beats `styles:`, `styles:` beats the default. Invalid values do not stop the card; the other values still apply.
+- `button.font_size` sets only the handle text; the handle icon follows `handle_size`. `button.color` also colors the icon.
+- Large sizes are cut off: bar text, timer info and handle text have `overflow: hidden`. Check the result on the dashboard.
+
 ## Languages
 
 Texts (editor labels, timer status, units) are English or German, taken from the Home Assistant
@@ -323,6 +362,11 @@ styles:
 ```
 
 Values are checked; unsafe values are ignored with a console warning.
+
+The [`text:` block](#text-appearance) sets these variables. `styles:` can set them too, but a `text:` value wins over `styles:`:
+`--slabton-header-size`, `--slabton-header-color`, `--slabton-header-icon-color`,
+`--slabton-bar-text-size`, `--slabton-bar-text-color`, `--slabton-info-size`, `--slabton-info-color`,
+`--slabton-button-size`, `--slabton-button-color`. Size defaults: header 14 px, bar 13 px, info 13 px, button 14 px.
 
 ## Development
 

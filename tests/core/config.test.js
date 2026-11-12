@@ -298,3 +298,94 @@ describe("reserved keys and texts", () => {
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/shortened/));
   });
 });
+
+describe("text block", () => {
+  const empty = {
+    header: { font_size: null, color: null, icon_color: null },
+    bar: { font_size: null, color: null },
+    info: { font_size: null, color: null },
+    button: { font_size: null, color: null },
+  };
+
+  it("defaults every value to null without text:", () => {
+    expect(normalizeConfig(base).text).toEqual(empty);
+    expect(normalizeConfig({ ...base, text: {} }).text).toEqual(empty);
+  });
+
+  it("keeps valid values per area", () => {
+    const c = normalizeConfig({
+      ...base,
+      text: {
+        header: { font_size: 16, color: "#ff9800", icon_color: "#2196f3" },
+        bar: { font_size: "12", color: "var(--secondary-text-color)" },
+        info: { font_size: 11, color: "grey" },
+        button: { font_size: 18, color: "white" },
+      },
+    });
+    expect(c.text).toEqual({
+      header: { font_size: 16, color: "#ff9800", icon_color: "#2196f3" },
+      bar: { font_size: 12, color: "var(--secondary-text-color)" },
+      info: { font_size: 11, color: "grey" },
+      button: { font_size: 18, color: "white" },
+    });
+  });
+
+  it("does not mutate the input", () => {
+    const raw = { ...base, text: { header: { font_size: 16 } } };
+    normalizeConfig(raw);
+    expect(raw.text).toEqual({ header: { font_size: 16 } });
+  });
+
+  it("treats cleared values as not set without a warning", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const c = normalizeConfig({ ...base, text: { header: { font_size: "", color: null }, bar: null } });
+    expect(c.text).toEqual(empty);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("rejects text and areas that are not maps", () => {
+    expect(() => normalizeConfig({ ...base, text: "big" })).toThrow(/text must be a map/);
+    expect(() => normalizeConfig({ ...base, text: [] })).toThrow(/text must be a map/);
+    expect(() => normalizeConfig({ ...base, text: { header: 16 } })).toThrow(/text\.header must be a map/);
+  });
+
+  it("warns about unknown areas and keys and ignores them", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const c = normalizeConfig({ ...base, text: { footer: { color: "red" }, bar: { weight: 700, color: "red" } } });
+    expect(c.text.footer).toBeUndefined();
+    expect(c.text.bar).toEqual({ font_size: null, color: "red" });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.footer/));
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.bar\.weight/));
+  });
+
+  it("rejects icon_color outside the header", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const c = normalizeConfig({ ...base, text: { bar: { icon_color: "red" } } });
+    expect(c.text.bar).toEqual({ font_size: null, color: null });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.bar\.icon_color/));
+  });
+
+  it.each([["abc"], [0], [-3], [7], [49], [NaN], [{}], [true], ["0x10"], ["1e1"], ["-12"], ["12px"]])("ignores font_size %j with a warning", (value) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const c = normalizeConfig({ ...base, text: { header: { font_size: value, color: "red" } } });
+    expect(c.text.header).toEqual({ font_size: null, color: "red", icon_color: null });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.header\.font_size/));
+  });
+
+  it("accepts the limits 8 and 48", () => {
+    const c = normalizeConfig({ ...base, text: { info: { font_size: 8 }, button: { font_size: 48 } } });
+    expect(c.text.info.font_size).toBe(8);
+    expect(c.text.button.font_size).toBe(48);
+  });
+
+  it.each([["red;}"], ["url(http://x)"], ["javascript:alert(1)"], ["red\"x"], [12]])(
+    "ignores unsafe color %j with a warning",
+    (value) => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const c = normalizeConfig({ ...base, text: { header: { color: value, icon_color: value, font_size: 20 } } });
+      expect(c.text.header).toEqual({ font_size: 20, color: null, icon_color: null });
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.header\.color/));
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.header\.icon_color/));
+    },
+  );
+});

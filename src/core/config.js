@@ -7,7 +7,7 @@
 
 import {
   ACTION, ACTION_TYPES, ANIMATIONS, DEFAULT_ANIMATION, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES,
-  OFF_VALUES, READ_ONLY_MODES, TOGGLE_DOMAINS,
+  MAX_FONT_SIZE, MIN_FONT_SIZE, OFF_VALUES, READ_ONLY_MODES, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS,
 } from "./constants.js";
 import { unknownPlaceholders } from "./placeholders.js";
 import { isValidTimeZone } from "./time.js";
@@ -286,6 +286,61 @@ function normalizeText(value, key, mode) {
   return text;
 }
 
+/** Decimal text only: rejects "0x10", "1e1" and similar that `Number()` would accept. */
+const PLAIN_NUMBER_RE = /^\d+(\.\d+)?$/;
+
+const isBlank = (value) => value == null || value === "";
+
+/** Numeric value of a font size; NaN when it is neither a number nor a plain decimal text. */
+function parseFontSize(value) {
+  if (typeof value === "number") return value;
+  if (typeof value === "string" && PLAIN_NUMBER_RE.test(value.trim())) return Number(value);
+  return NaN;
+}
+
+/** Font size in px within the accepted limits, or null (warns about an unusable value). */
+function textFontSize(value, key) {
+  if (isBlank(value)) return null;
+  const n = parseFontSize(value);
+  if (n >= MIN_FONT_SIZE && n <= MAX_FONT_SIZE) return n;
+  warn(`${key} must be a number from ${MIN_FONT_SIZE} to ${MAX_FONT_SIZE} and was ignored`);
+  return null;
+}
+
+/** CSS color or null (warns about an unsafe value). */
+function textColor(value, key) {
+  if (isBlank(value)) return null;
+  const css = safeCss(value, null);
+  if (css == null) warn(`ignored unsafe ${key}`);
+  return css;
+}
+
+function normalizeTextArea(raw, area) {
+  const options = TEXT_OPTIONS[area];
+  if (raw != null && !isPlainObject(raw)) throw new Error(`slabton-card: text.${area} must be a map`);
+  const source = raw ?? {};
+  const keys = Object.keys(options);
+  for (const key of Object.keys(source)) {
+    if (!keys.includes(key)) warn(`text.${area}.${key} is not a known option and was ignored`);
+  }
+  const out = {};
+  for (const key of keys) {
+    const path = `text.${area}.${key}`;
+    out[key] = options[key].unit ? textFontSize(source[key], path) : textColor(source[key], path);
+  }
+  return out;
+}
+
+/** The `text:` block: font size and color per area (header, bar, info, button); null = not set. */
+function normalizeTextStyle(raw) {
+  if (raw != null && !isPlainObject(raw)) throw new Error("slabton-card: text must be a map");
+  const source = raw ?? {};
+  for (const area of Object.keys(source)) {
+    if (!TEXT_AREAS.includes(area)) warn(`text.${area} is not a known area and was ignored`);
+  }
+  return Object.fromEntries(TEXT_AREAS.map((area) => [area, normalizeTextArea(source[area], area)]));
+}
+
 function normalizeTimeZone(value, key) {
   if (value == null || value === "") return null;
   if (!isValidTimeZone(value)) throw new Error(`slabton-card: ${key} "${String(value)}" is not a known time zone`);
@@ -386,5 +441,6 @@ export function normalizeConfig(raw) {
     preset,
     ...normalizeRange(source, presetDefaults),
     switches: normalizeSwitches(raw.switches),
+    text: normalizeTextStyle(raw.text),
   };
 }

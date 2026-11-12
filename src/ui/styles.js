@@ -6,7 +6,7 @@
 
 import { animationCss } from "./animations.js";
 import {
-  DEFAULT_VERTICAL_LENGTH, OVAL_RATIO, PILL_RADIUS, SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO,
+  DEFAULT_VERTICAL_LENGTH, OVAL_RATIO, PILL_RADIUS, SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO, TEXT_OPTIONS,
 } from "../core/constants.js";
 
 /** Handle size across and along the bar axis, in px. */
@@ -14,6 +14,19 @@ export function handleDimensions(config) {
   const cross = config.handle_size;
   const along = config.handle_shape === "oval" ? Math.round(cross * OVAL_RATIO) : cross;
   return { cross, along };
+}
+
+/** Variables for the configured `text:` options only; unset options keep the CSS default. */
+function textVars(text) {
+  const vars = {};
+  for (const [area, options] of Object.entries(TEXT_OPTIONS)) {
+    for (const [option, { css, unit }] of Object.entries(options)) {
+      const value = text?.[area]?.[option];
+      if (value == null) continue;
+      vars[css] = unit ? `${value}${unit}` : value;
+    }
+  }
+  return vars;
 }
 
 /** CSS custom properties derived from the config (name -> value). */
@@ -42,7 +55,8 @@ export function buildVars(config) {
   if (config.handle_color) vars["--slabton-handle-color"] = config.handle_color;
   if (config.text_color) vars["--slabton-text-color"] = config.text_color;
   if (config.border_color) vars["--slabton-border-color"] = config.border_color;
-  return { ...vars, ...config.styles };
+  // `text:` comes after `styles:` so that it wins: text option > styles > default.
+  return { ...vars, ...config.styles, ...textVars(config.text) };
 }
 
 /**
@@ -67,11 +81,11 @@ export function buildCss() {
          (centre = pad + hl/2 + p * travel, so the edge reduces to p * 100%). */
       --slabton-ext: calc(var(--slabton-p, 0) * 100%);
     }
-    .header { display: flex; align-items: center; gap: 8px; font-size: 14px; font-weight: 500; }
-    .header ha-icon { --mdc-icon-size: 20px; flex: none; }
+    .header { display: flex; align-items: center; gap: 8px; font-size: var(--slabton-header-size, 14px); font-weight: 500; }
+    .header ha-icon { --mdc-icon-size: 20px; flex: none; color: var(--slabton-header-icon-color, inherit); }
     .header.icon-right { flex-direction: row-reverse; }
     .header.icon-right .title { flex: 1; min-width: 0; }
-    .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--slabton-header-color, inherit); }
     .stage { display: flex; justify-content: center; }
     .o-h .stage { padding: 0 var(--slabton-overhang, 0px); }
     .o-v .stage { padding: var(--slabton-overhang, 0px) 0; }
@@ -98,8 +112,15 @@ export function buildCss() {
     .bar-text, .info {
       position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
       overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none;
-      font-size: 13px; font-weight: 500;
-      color: var(--slabton-text-color, var(--primary-text-color, #212121));
+      font-weight: 500;
+    }
+    .bar-text {
+      font-size: var(--slabton-bar-text-size, 13px);
+      color: var(--slabton-bar-text-color, var(--slabton-text-color, var(--primary-text-color, #212121)));
+    }
+    .info {
+      font-size: var(--slabton-info-size, 13px);
+      color: var(--slabton-info-color, var(--slabton-text-color, var(--primary-text-color, #212121)));
     }
     .bar-text[hidden], .info[hidden] { display: none; }
     .o-h .bar-text { inset: 0; padding: 0 calc(var(--slabton-hl) + 12px); }
@@ -122,10 +143,10 @@ export function buildCss() {
       position: absolute; pointer-events: auto; box-sizing: border-box;
       display: flex; align-items: center; justify-content: center; overflow: hidden;
       background: var(--slabton-handle-color, var(--card-background-color, #fff));
-      color: var(--slabton-text-color, var(--primary-text-color, #212121));
+      color: var(--slabton-button-color, var(--slabton-text-color, var(--primary-text-color, #212121)));
       border-radius: var(--slabton-handle-radius);
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-      cursor: grab; user-select: none; -webkit-user-select: none; font-size: 14px; font-weight: 600;
+      cursor: grab; user-select: none; -webkit-user-select: none; font-size: var(--slabton-button-size, 14px); font-weight: 600;
     }
     .o-h .handle { left: 0; top: 50%; margin-top: calc(var(--slabton-hc) / -2); width: var(--slabton-hl); height: var(--slabton-hc); touch-action: pan-y; }
     .o-v .handle { top: 0; left: 50%; margin-left: calc(var(--slabton-hc) / -2); height: var(--slabton-hl); width: var(--slabton-hc); touch-action: pan-x; }
