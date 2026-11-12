@@ -21,8 +21,21 @@ export const IGNORED_HA_ACTIONS = Object.freeze(["default", "assist", "fire-dom-
 
 export const ACTION_TYPES = Object.freeze(Object.values(ACTION));
 
-export const MODE = Object.freeze({ STATE: "state", LOCK: "lock", VALUE: "value" });
+export const MODE = Object.freeze({
+  STATE: "state",
+  LOCK: "lock",
+  VALUE: "value",
+  COUNTER: "counter",
+  TIMER: "timer",
+  CLOCK: "clock",
+});
 export const MODES = Object.freeze(Object.values(MODE));
+
+/** Modes that only display information (the handle cannot be dragged). */
+export const READ_ONLY_MODES = Object.freeze([MODE.VALUE, MODE.COUNTER, MODE.TIMER, MODE.CLOCK]);
+
+/** Interval of the local clock tick (timer and clock modes), in ms. */
+export const TICK_MS = 1000;
 
 /** Domains whose on/off state is switched with turn_on / turn_off. */
 export const TOGGLE_DOMAINS = Object.freeze(["switch", "input_boolean", "light", "fan", "automation", "siren", "humidifier"]);

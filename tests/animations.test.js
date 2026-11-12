@@ -28,4 +28,16 @@ describe("animations", () => {
   it("disables motion for reduced-motion users", () => {
     expect(animationCss()).toMatch(/prefers-reduced-motion: reduce[\s\S]*animation: none !important/);
   });
+
+  it("pulses the bar on expiry with opacity and box-shadow only, keeping a static highlight without motion", () => {
+    const css = animationCss();
+    const rule = /\.root\.expired \.bar \{([^}]*)\}/.exec(css)[1];
+    expect(rule).toContain("box-shadow");
+    expect(rule).toContain("animation: slabton-expire");
+    const keyframes = /@keyframes slabton-expire \{([\s\S]*?)\n {4}\}/.exec(css)[1];
+    expect(keyframes).toMatch(/opacity/);
+    expect(keyframes).not.toMatch(/\b(width|height|top|left|margin|padding|font-size)\b/);
+    // The reduced-motion rule removes the animation, the box-shadow in the rule above stays.
+    expect(css.indexOf("@keyframes slabton-expire")).toBeLessThan(css.indexOf("prefers-reduced-motion"));
+  });
 });

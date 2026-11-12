@@ -15,12 +15,18 @@ function parse(stateObj) {
   return Number(raw);
 }
 
-export function view(config, stateObj) {
+/** Fraction (0..1), formatted text and validity of a numeric entity against the configured range. */
+export function measure(config, stateObj) {
   const value = parse(stateObj);
   const valid = Number.isFinite(value) && !isUnavailable(stateObj);
   const frac = valid ? clamp((value - config.min) / (config.max - config.min), 0, 1) : 0;
   const unit = config.unit ?? stateObj?.attributes?.unit_of_measurement ?? null;
   const text = valid ? formatValue(value, config.decimals, unit) : "–";
+  return { valid, frac, text, value };
+}
+
+export function view(config, stateObj) {
+  const { valid, frac, text } = measure(config, stateObj);
   return {
     pos: resolveHandlePosition(config, frac, frac > 0),
     fillPos: frac,

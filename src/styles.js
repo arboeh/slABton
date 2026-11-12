@@ -94,6 +94,21 @@ export function buildCss() {
     .o-v:not(.rev) .fill { clip-path: inset(calc(100% - var(--slabton-ext)) 0 0 0); }
     .o-v.rev .fill { clip-path: inset(0 0 calc(100% - var(--slabton-ext)) 0); }
 
+    /* Text in the bar (bar_text) and the timer's extra info; plain text only. */
+    .bar-text, .info {
+      position: absolute; box-sizing: border-box; display: flex; align-items: center; justify-content: center;
+      overflow: hidden; white-space: nowrap; text-overflow: ellipsis; pointer-events: none;
+      font-size: 13px; font-weight: 500;
+      color: var(--slabton-text-color, var(--primary-text-color, #212121));
+    }
+    .bar-text[hidden], .info[hidden] { display: none; }
+    .o-h .bar-text { inset: 0; padding: 0 calc(var(--slabton-hl) + 12px); }
+    .o-v .bar-text { inset: 0; padding: calc(var(--slabton-hl) + 12px) 0; writing-mode: vertical-rl; }
+    .o-h .info { top: 0; bottom: 0; left: 0; max-width: 40%; padding: 0 12px; }
+    .o-h .info.info-right { left: auto; right: 0; }
+    .o-v .stage.has-info { flex-direction: column; align-items: center; gap: 6px; }
+    .o-v .info { position: static; max-width: 100%; }
+
     .rail, .switches { position: absolute; pointer-events: none; }
     .o-h .rail { left: var(--slabton-pad); top: 0; height: 100%; width: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
     .o-v .rail { top: var(--slabton-pad); left: 0; width: 100%; height: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }

@@ -63,4 +63,11 @@ describe("buildCss", () => {
     expect(css).toContain("prefers-reduced-motion");
     expect(css).toContain(".o-v .carrier");
   });
+
+  it("styles bar text and info without letting them capture the pointer", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.bar-text, \.info \{[^}]*pointer-events: none/);
+    expect(css).toContain(".o-v .stage.has-info");
+    expect(css).toContain(".o-h .info.info-right");
+  });
 });

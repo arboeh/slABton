@@ -40,6 +40,43 @@ describe("buildSchema", () => {
     expect(names(buildSchema({}))).toContain("entity");
     expect(names(buildSchema())).toContain("entity");
   });
+
+  it("shows counter, timer and clock blocks for their modes", () => {
+    const counter = buildSchema({ entity: "counter.a" });
+    expect(counter.find((item) => item.name === "counter").schema.map((f) => f.name)).toEqual(["min", "max"]);
+    const timer = buildSchema({ entity: "timer.a" });
+    expect(timer.find((item) => item.name === "timer").schema.map((f) => f.name)).toEqual(
+      ["pulse", "pulse_seconds", "info", "time_zone", "span"],
+    );
+    const clock = buildSchema({ mode: "clock" });
+    expect(clock.find((item) => item.name === "clock").schema.map((f) => f.name)).toEqual(
+      ["display", "hour_format", "seconds", "time_zone"],
+    );
+    expect(names(counter)).not.toContain("pulse");
+    expect(names(timer)).not.toContain("hour_format");
+  });
+
+  it("offers only the digital clock and does not require an entity for it", () => {
+    const clock = buildSchema({ mode: "clock" });
+    const display = clock.find((item) => item.name === "clock").schema.find((f) => f.name === "display");
+    expect(display.selector.select.options.map((o) => o.value)).toEqual(["digital"]);
+    expect(clock.find((item) => item.name === "entity").required).toBe(false);
+    expect(buildSchema({ entity: "timer.a" }).find((item) => item.name === "entity").required).toBe(true);
+  });
+
+  it("offers bar_text and the bar block in every mode", () => {
+    for (const config of [{ entity: "switch.a" }, { entity: "lock.a" }, { entity: "sensor.a" }]) {
+      const schema = buildSchema(config);
+      expect(names(schema)).toContain("bar_text");
+      expect(schema.find((item) => item.name === "bar").schema.find((f) => f.name === "entity")).toBeDefined();
+    }
+  });
+
+  it("translates section titles", () => {
+    const titles = (lang) => buildSchema({ entity: "switch.a" }, lang).filter((i) => i.type === "expandable").map((i) => i.title);
+    expect(titles("en")).toEqual(["Bar value", "Layout", "Colors", "Actions"]);
+    expect(titles("de")).toEqual(["Balkenwert", "Layout", "Farben", "Aktionen"]);
+  });
 });
 
 describe("cleanConfig", () => {
@@ -90,6 +127,19 @@ describe("SlabtonCardEditor", () => {
     expect(handler).toHaveBeenCalledTimes(1);
     expect(handler.mock.calls[0][0].detail.config).toEqual({ type: "custom:slabton-card", entity: "lock.door" });
     expect(names(form.schema)).toContain("swipe_threshold");
+  });
+
+  it("labels fields in the language of the user", () => {
+    if (!customElements.get("ha-form")) customElements.define("ha-form", class extends HTMLElement {});
+    const editor = document.createElement("slabton-card-editor");
+    editor.hass = { states: {}, locale: { language: "de" } };
+    editor.setConfig({ entity: "switch.a" });
+    const form = editor.shadowRoot.querySelector("ha-form");
+    expect(form.computeLabel({ name: "handle_shape" })).toBe("Griffform");
+    expect(form.computeLabel({ name: "entity", labelKey: "editor.entity_bar" })).toBe("Entität für den Balkenwert (optional)");
+    expect(form.computeLabel({ name: "unknown", title: "Titel" })).toBe("Titel");
+    expect(form.computeLabel({ name: "", title: "Farben" })).toBe("Farben");
+    expect(names(form.schema)).toContain("bar_text");
   });
 
   it("forwards hass updates to the form", () => {

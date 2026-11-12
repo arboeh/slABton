@@ -10,14 +10,18 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 
 [English version](README.md)
 
-> Stand: 0.1.0, noch nicht veröffentlicht. Das Repository hat noch keinen Remote.
+> Stand: Vorabversion, privates Repository (noch kein HACS-Release).
 
 ## Funktionen
 
 - Griffformen: rund (Standard), oval, eckig
 - Griffposition: `flex` (folgt dem Wert), `fixed`, `switch`, `start`, `mid`, `end`
 - Horizontal und vertikal, `ltr` und `rtl`
-- Modi: `state`, `lock`, `value` (Presets Thermometer, Energy, SoC)
+- Modi: `state`, `lock`, `value` (Presets Thermometer, Energy, SoC), `counter`, `timer`, `clock`
+- Timer: Home-Assistant-`timer.*` oder Countdown auf ein `input_datetime` / `input_date`, Pulsieren bei Ablauf, Zeitzonen
+- Text in der Bar (`bar_text`) mit einfachen Platzhaltern, ohne Templates
+- Bar-Wert aus einer eigenen Entity (`bar:`)
+- Texte auf Deutsch und Englisch, Sprache folgt Home Assistant
 - Aktionen Klick, Doppelklick, Halten
 - Icon je Zustand, Positionszahl oder Text im Griff
 - Optionale separate Schalter bei Start, Mitte, Ende
@@ -49,14 +53,20 @@ entity: input_select.heizung_modus
 ```
 
 Der Modus folgt der Entity-Domain: `lock` / `alarm_control_panel` ergeben `lock`,
-`sensor` / `number` / `input_number` ergeben `value`, alles andere `state`.
+`sensor` / `number` / `input_number` ergeben `value`, `counter` ergibt `counter`, `timer` ergibt `timer`,
+alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein ausdrückliches `mode:`.
+
+> Geändert in diesem Release: `counter.*`- und `timer.*`-Entities liefen bisher im Modus `state`.
+> Mit `mode: state` bleibt das alte Verhalten.
 
 ### Allgemeine Optionen
 
 | Option | Standard | Beschreibung |
 | --- | --- | --- |
-| `entity` | Pflicht | Entity-ID |
-| `mode` | nach Domain | `state`, `lock`, `value` |
+| `entity` | Pflicht (nicht bei `clock`) | Entity-ID |
+| `mode` | nach Domain | `state`, `lock`, `value`, `counter`, `timer`, `clock` |
+| `bar` | keiner | Bar-Wert getrennt vom Button, siehe [Bar-Wert](#bar-wert) |
+| `bar_text` | keiner | Text in der Bar mit [Platzhaltern](#platzhalter) |
 | `name` | keiner | Header-Text |
 | `icon` | nach Modus | Header- und Griff-Icon |
 | `header_position` | `top` | `top`, `bottom`, `none` |
@@ -70,7 +80,7 @@ Der Modus folgt der Entity-Domain: `lock` / `alarm_control_panel` ergeben `lock`
 | `handle_position` | `flex` | `flex`, `fixed`, `switch`, `start`, `mid`, `end` |
 | `fixed_position` | 50 | Position in % bei `fixed` |
 | `handle_overhang` | `false` | Handle-Mitte läuft von Rand zu Rand und ragt an beiden Enden heraus; Füllung ist bei 0 leer und bei 100 voll |
-| `handle_content` | `icon` (`text` im Wertmodus) | `icon`, `position`, `text`, `none` |
+| `handle_content` | `icon` (`text` bei `value`, `counter`, `timer`, `clock`) | `icon`, `position`, `text`, `none` |
 | `border_width` | 0 | Rand der Bar in px |
 | `border_radius` | automatisch | Eckenradius der Bar in px |
 | `animation` | `slide` | `none`, `slide`, `fade`, `pulse`, `shimmer` |
@@ -156,6 +166,153 @@ preset: thermometer
 | `unit` | Preset | Einheit |
 | `decimals` | Preset oder 1 | Nachkommastellen |
 
+### Modus `counter`
+
+Zeigt eine `counter.*`-Entity. Die Bar füllt sich zwischen Minimum und Maximum.
+Tippen zählt um eins hoch, Doppeltippen um eins runter (`counter.increment` / `counter.decrement`).
+Ein Zurücksetzen gibt es nicht als Standard; wer es will, setzt
+`hold_action: {action: perform-action, perform_action: counter.reset, target: {entity_id: counter.gaeste}}`.
+
+```yaml
+type: custom:slabton-card
+entity: counter.gaeste
+name: Gäste
+bar_text: "{value} von 10"
+counter:
+  max: 10
+```
+
+| Option | Standard | Beschreibung |
+| --- | --- | --- |
+| `counter.min`, `counter.max` | siehe unten | Bereich der Bar |
+
+Reihenfolge des Bereichs: `counter.min/max`, dann `bar.min/max` (oder flaches `min` / `max`), dann die
+Entity-Attribute `minimum` / `maximum`, dann 0 / 100. Den Zähler durch Ziehen zu setzen wird noch nicht unterstützt.
+
+### Modus `timer`
+
+Zwei Quellen:
+
+- **`timer.*`** (Home-Assistant-Timer, gilt geräteübergreifend). Die Bar leert sich von der vollen Dauer bis null.
+  Tippen startet oder pausiert einen laufenden Timer. Halten bricht ab.
+- **`input_datetime.*` mit Datum oder `input_date.*`** (`mode: timer` setzen): Countdown auf diesen Zeitpunkt.
+  Die Bar ist ab `timer.span` Tagen Restzeit voll und leert sich bis zum Ziel. Tippen öffnet More-Info.
+  Ein `input_datetime` nur mit Uhrzeit wird nicht unterstützt (Anzeige `–`, Warnung in der Konsole).
+
+```yaml
+type: custom:slabton-card
+entity: timer.sauna
+name: Sauna
+bar_text: "noch {remaining_text}"
+timer:
+  info: "Ende {target}"
+```
+
+Countdown auf ein Datum:
+
+```yaml
+type: custom:slabton-card
+entity: input_datetime.schuetzenfest
+mode: timer
+name: Schützenfest
+bar_text: "noch {remaining_text} bis Schützenfest"
+timer:
+  time_zone: Europe/Berlin
+  span: 60
+```
+
+| Option | Standard | Beschreibung |
+| --- | --- | --- |
+| `timer.pulse` | `true` | Bar pulsiert, wenn der Timer abläuft oder das Ziel erreicht ist |
+| `timer.pulse_seconds` | 10 | Wie lange es pulsiert; `0` = bis zum Tippen auf die Karte |
+| `timer.info` | keiner | Zusatztext mit [Platzhaltern](#platzhalter): neben dem Griff (horizontal), über der Bar (vertikal) |
+| `timer.time_zone` | Home Assistant | Zeitzone, in der `input_datetime` / `input_date` gelesen wird (IANA-Name) |
+| `timer.span` | 30 | Countdown auf ein Datum: Tage Restzeit, ab denen die Bar voll ist |
+
+Das Pulsieren startet nur, wenn die Karte den Ablauf mitbekommt (oder Home Assistant das Ende meldet).
+Ein vorzeitig abgebrochener Timer und das Öffnen des Dashboards nach dem Ende pulsieren nicht. Ein Tippen
+während des Pulsierens beendet nur das Pulsieren. Bei reduzierter Bewegung gibt es statt der Animation eine
+feste Hervorhebung.
+Die Anzeige tickt einmal pro Sekunde im Browser, nur solange die Karte sichtbar und der Tab im Vordergrund ist;
+der Tick ruft keinen Service auf. Endzeiten von Timern stammen von der Serveruhr: weicht die Browseruhr ab,
+weicht die Anzeige um diese Differenz ab.
+
+Sommerzeit: Eine Uhrzeit, die es nicht gibt (Umstellung im Frühjahr), wird hinter die Lücke geschoben; eine,
+die es zweimal gibt (Herbst), meint die spätere. Ein unbekannter Zeitzonenname ist ein Konfigurationsfehler.
+
+### Modus `clock`
+
+Digitale Uhr, keine Entity nötig. Der Griff zeigt die Uhrzeit, die Bar füllt sich mit dem Tagesfortschritt.
+
+```yaml
+type: custom:slabton-card
+mode: clock
+name: Berlin
+clock:
+  time_zone: Europe/Berlin
+  hour_format: 24
+  seconds: true
+```
+
+| Option | Standard | Beschreibung |
+| --- | --- | --- |
+| `clock.display` | `digital` | `analog` ist für eine spätere Version reserviert und wird mit Warnung als `digital` gezeigt |
+| `clock.time_zone` | Home Assistant | IANA-Name, z. B. `America/New_York` |
+| `clock.hour_format` | `auto` | `auto` (Standard der Sprache), `12`, `24` |
+| `clock.seconds` | `false` | Sekunden anzeigen |
+
+### Bar-Wert
+
+Standardmäßig zeigt die Bar dieselbe Entity wie der Button. Der Block `bar:` trennt beides: die Bar zeigt
+eine numerische Entity, der Griff bleibt bei `entity`.
+
+```yaml
+type: custom:slabton-card
+entity: timer.sauna
+bar:
+  entity: sensor.sauna_temperatur
+  min: 20
+  max: 100
+  unit: "°C"
+  decimals: 0
+bar_text: "{value}"
+```
+
+`bar` kennt `entity`, `min`, `max`, `unit`, `decimals`, `preset`. Die flachen Optionen (`min`, `max`, `unit`,
+`decimals`, `preset` auf oberster Ebene) bleiben Alias für `bar.*`; sind beide gesetzt, gewinnt `bar:` und
+es gibt eine Warnung. Ohne `bar.entity` folgt die Bar wie bisher `entity`. `{value}` ist dann der Bar-Wert.
+
+### Platzhalter
+
+`bar_text` und `timer.info` nehmen Text mit Platzhaltern in einfachen geschweiften Klammern. Das ist **keine**
+Template-Sprache: kein Jinja, keine Ausdrücke, kein HTML. Der Text erscheint immer als reiner Text. Ein Name,
+den der Modus nicht anbietet, bleibt stehen und erzeugt eine Warnung; ein angebotener Name ohne Wert zeigt `–`.
+
+| Platzhalter | Modi | Bedeutung |
+| --- | --- | --- |
+| `{name}` | alle | `name`, sonst der Anzeigename der Entity |
+| `{state}` | alle | Zustand der Entity; bei Timern ein übersetzter Status (Bereit, Läuft, Pausiert, Abgelaufen) |
+| `{value}` | alle | Angezeigter Wert (Zählerstand, Bar-Wert, Restzeit, Uhrzeit) |
+| `{remaining}` | timer | `4:59`, `1:05:00`, ab einem Tag `3 d` |
+| `{remaining_text}` | timer | Größte Einheit, übersetzt: `3 Tage`, `2 Stunden`, `5 Minuten` |
+| `{days}`, `{hours}`, `{minutes}`, `{seconds}` | timer | Bestandteile der Restzeit (keine Summen) |
+| `{elapsed}` | timer | HA-Timer: verstrichene Zeit |
+| `{target}` | timer | Endzeit, lokalisiertes Datum (und Uhrzeit) |
+| `{time}` | clock | Uhrzeit |
+
+Texte sind auf 200 Zeichen begrenzt.
+
+## Sprachen
+
+Texte (Editor-Beschriftungen, Timer-Status, Einheiten) erscheinen auf Deutsch oder Englisch, nach der
+Home-Assistant-Sprache des Benutzers. Andere Sprachen fallen auf Englisch zurück. Konfigurationsfehler
+und Konsolenwarnungen bleiben Englisch.
+
+## Reservierte Namen
+
+`thresholds`, `scale`, `shape` und `control` sind für spätere Versionen reserviert. Sie werden akzeptiert,
+ignoriert und mit Warnung protokolliert. Mehrere Bars oder Buttons in einer Karte (`bars:`) sind nicht Teil des Schemas.
+
 ## Styling
 
 Layout und Farben laufen über CSS-Variablen an der Karte. Setzen per `styles:` (Schlüssel ohne
@@ -184,8 +341,8 @@ npm run build
 
 ## Roadmap
 
-Geplant als eigene Folgevorgänge: Modi `counter`, `timer`, `clock`; Thresholds mit Farbwechsel;
-Lock der ganzen Karte; Kreis und 3/4-Kreis; mehrere Bars und Griffe; Designs Analog und Digital.
+Geplant als eigene Folgevorgänge: Zähler durch Ziehen setzen; Thresholds mit Farbwechsel;
+Lock der ganzen Karte; Kreis und 3/4-Kreis; mehrere Bars und Griffe; Select-Dropdown; Analoguhr; andere Kalender.
 
 ## Lizenz
 

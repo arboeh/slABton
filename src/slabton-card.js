@@ -2,21 +2,28 @@
  * slABton card - slider button bar for Home Assistant.
  *
  * A bar with a movable handle button. Modes: `state` (multi-state click /
- * drag), `lock` (swipe to lock/unlock) and `value` (read-only display).
+ * drag), `lock` (swipe to lock/unlock), `value` (read-only display),
+ * `counter`, `timer` and `clock`. Timer and clock tick locally once per
+ * second, only while the card is connected and the page is visible.
  * Plain custom element, no runtime dependencies. All config values are
  * validated (config.js) before they reach the DOM, CSS or a service call.
  */
 
 import { VERSION } from "./version.js";
 import { normalizeConfig } from "./config.js";
-import { ACTION, CARD_SIZE, GRID, MODE, hasAction } from "./constants.js";
+import { ACTION, CARD_SIZE, GRID, MODE, TICK_MS, hasAction } from "./constants.js";
+import { resolveLanguage, resolveLocale } from "./i18n.js";
 import { createInteraction } from "./interaction.js";
+import * as clockMode from "./modes/clock.js";
+import * as counterMode from "./modes/counter.js";
 import * as lockMode from "./modes/lock.js";
 import * as stateMode from "./modes/state.js";
+import * as timerMode from "./modes/timer.js";
 import * as valueMode from "./modes/value.js";
+import { renderTemplate } from "./placeholders.js";
 import { renderCard, updateSwitches, updateView } from "./render.js";
 import { applyVars, buildCss, handleDimensions } from "./styles.js";
-import { safeUrl } from "./util.js";
+import { safeUrl, warn } from "./util.js";
 import { SlabtonCardEditor } from "./editor.js";
 
 export const CARD_TAG = "slabton-card";
@@ -24,7 +31,19 @@ export const EDITOR_TAG = "slabton-card-editor";
 export const MIN_CALL_INTERVAL_MS = 250;
 export const PENDING_TIMEOUT_MS = 3000;
 
-const MODES = { [MODE.STATE]: stateMode, [MODE.LOCK]: lockMode, [MODE.VALUE]: valueMode };
+const MODES = {
+  [MODE.STATE]: stateMode,
+  [MODE.LOCK]: lockMode,
+  [MODE.VALUE]: valueMode,
+  [MODE.COUNTER]: counterMode,
+  [MODE.TIMER]: timerMode,
+  [MODE.CLOCK]: clockMode,
+};
+const NOTICES = {
+  time_only: "timer: an input_datetime without a date cannot be used as a countdown target (use has_date or input_date)",
+  unsupported_entity: "timer mode supports timer.*, input_datetime.* and input_date.* entities",
+  invalid_range: "counter: the maximum must be greater than the minimum (check counter.min / counter.max or the entity attributes)",
+};
 const STUB_DOMAINS = ["input_select", "select", "switch", "input_boolean", "light"];
 
 export class SlabtonCard extends HTMLElement {
@@ -42,6 +61,12 @@ export class SlabtonCard extends HTMLElement {
     this._dragPos = null;
     this._dragStartPos = 0;
     this._lastCall = { key: "", at: 0 };
+    this._tick = null;
+    this._timing = null;
+    this._expiredUntil = 0;
+    this._firedFor = null;
+    this._noticed = new Set();
+    this._onVisibility = () => this._handleVisibility();
   }
 
   static getConfigElement() {
@@ -84,15 +109,68 @@ export class SlabtonCard extends HTMLElement {
     return { ...(this._config?.orientation === "vertical" ? GRID.vertical : GRID.horizontal) };
   }
 
+  connectedCallback() {
+    document.addEventListener("visibilitychange", this._onVisibility);
+    if (this._config && this._refs) this._update();
+  }
+
   disconnectedCallback() {
+    document.removeEventListener("visibilitychange", this._onVisibility);
     this._clearPending();
+    this._stopTick();
+  }
+
+  // --- clock tick ---------------------------------------------------------
+
+  /** Run the 1 s tick only while it is needed, the card is on screen and the page is visible. */
+  _syncTick(view) {
+    const wanted = this.isConnected && !document.hidden
+      && (this._mode.needsTick?.(view) === true || this._expiredUntil > 0);
+    if (wanted && this._tick === null) this._tick = setInterval(() => this._update(), TICK_MS);
+    else if (!wanted) this._stopTick();
+  }
+
+  _stopTick() {
+    if (this._tick !== null) clearInterval(this._tick);
+    this._tick = null;
+  }
+
+  _handleVisibility() {
+    if (document.hidden) this._stopTick();
+    else this._update();
+  }
+
+  // --- timer expiry (pulse) -----------------------------------------------
+
+  /** Compare the new timer sample with the last one; start or end the pulse. */
+  _trackExpiry(timing, now) {
+    const { pulse, pulse_seconds: seconds } = this._config.timer;
+    if (this._expiredUntil && now >= this._expiredUntil) this._expiredUntil = 0;
+    // Each end time pulses once, even when Home Assistant reports the end late.
+    const endsAt = this._timing?.finishesAt ?? null;
+    if (pulse && !this._expiredUntil && endsAt !== this._firedFor && timerMode.detectExpiry(this._timing, timing, now)) {
+      this._firedFor = endsAt;
+      this._expiredUntil = seconds > 0 ? now + seconds * 1000 : Infinity;
+    } else if (timing?.active && (timing.finishesAt == null || timing.upcoming)) {
+      this._expiredUntil = 0; // running again
+    }
+    this._timing = timing;
+  }
+
+  /** A tap ends the pulse and does nothing else. Returns true when a pulse was running. */
+  _dismissExpired() {
+    if (!this._expiredUntil) return false;
+    this._expiredUntil = 0;
+    this._timing = null;
+    this._update();
+    return true;
   }
 
   // --- state helpers ------------------------------------------------------
 
   _entities() {
     const switches = Object.values(this._config.switches).map((s) => s.entity);
-    return [this._config.entity, ...switches].filter(Boolean);
+    return [this._config.entity, this._config.bar_entity, ...switches].filter(Boolean);
   }
 
   _relevantChanged(previous, next) {
@@ -129,16 +207,65 @@ export class SlabtonCard extends HTMLElement {
     this._pendingTimer = null;
   }
 
-  _view() {
-    return this._mode.view(this._config, this._stateObj(), this._pendingValue() ?? undefined);
+  _context(now) {
+    const hass = this._hass;
+    return {
+      now,
+      lang: resolveLanguage(hass),
+      locale: resolveLocale(hass),
+      hassTimeZone: hass?.config?.time_zone ?? null,
+      expired: false,
+    };
+  }
+
+  /**
+   * Mode view plus the parts the card adds: separate bar entity, texts, pulse state.
+   * Pure read unless `track` is set; only `_update()` advances the expiry tracking.
+   */
+  _view(now = Date.now(), track = false) {
+    const config = this._config;
+    const stateObj = this._stateObj();
+    const ctx = this._context(now);
+    if (track && this._mode.timing) this._trackExpiry(this._mode.timing(config, stateObj, ctx), now);
+    ctx.expired = this._expiredUntil > 0;
+    const view = this._mode.view(config, stateObj, this._pendingValue() ?? undefined, ctx);
+    return this._decorate(view, stateObj, ctx);
+  }
+
+  _decorate(view, stateObj, ctx) {
+    const config = this._config;
+    const bar = config.bar_entity ? valueMode.measure(config, this._hass?.states?.[config.bar_entity]) : null;
+    const values = {
+      name: config.name ?? stateObj?.attributes?.friendly_name ?? "",
+      state: stateObj?.state ?? "",
+      value: view.text,
+      ...view.values,
+      ...(bar ? { value: bar.text } : {}),
+    };
+    this._notify(view.notice);
+    return {
+      ...view,
+      fillPos: bar ? bar.frac : view.fillPos,
+      expired: ctx.expired,
+      barText: config.bar_text ? renderTemplate(config.bar_text, values, config.mode) : null,
+      info: config.timer.info ? renderTemplate(config.timer.info, values, config.mode) : null,
+    };
+  }
+
+  /** Log a mode notice once per config. */
+  _notify(notice) {
+    if (!notice || this._noticed.has(notice)) return;
+    this._noticed.add(notice);
+    warn(NOTICES[notice] ?? notice);
   }
 
   _update() {
     if (!this._config || !this._refs) return;
     this._expirePending();
-    const view = this._view();
+    const view = this._view(Date.now(), true);
     updateView(this._refs, this._config, view, { dragPos: this._dragPos });
     updateSwitches(this._refs, this._config, this._hass);
+    this._syncTick(view);
   }
 
   // --- interaction --------------------------------------------------------
@@ -147,11 +274,16 @@ export class SlabtonCard extends HTMLElement {
     for (const interaction of this._interactions) interaction.destroy();
     this._interactions = [];
     this._clearPending();
+    this._stopTick();
     this._dragPos = null;
+    this._timing = null;
+    this._expiredUntil = 0;
+    this._firedFor = null;
+    this._noticed.clear();
   }
 
   _actionFor(kind) {
-    return this._config[kind] ?? this._mode.defaultActions(this._config)[kind];
+    return this._config[kind] ?? this._mode.defaultActions(this._config, this._stateObj())[kind];
   }
 
   _bind() {
@@ -168,7 +300,9 @@ export class SlabtonCard extends HTMLElement {
       isDraggable: () => this._mode.isDraggable(config, this._stateObj()),
       hasDoubleTap: () => hasAction(this._actionFor("double_tap_action")),
       hasHold: () => hasAction(this._actionFor("hold_action")),
-      onTap: () => this._runAction(this._actionFor("tap_action")),
+      onTap: () => {
+        if (!this._dismissExpired()) this._runAction(this._actionFor("tap_action"));
+      },
       onDoubleTap: () => this._runAction(this._actionFor("double_tap_action")),
       onHold: () => this._runAction(this._actionFor("hold_action")),
       onDragStart: () => {

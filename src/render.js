@@ -6,7 +6,7 @@
 
 import { animationClass, playsOnChange, restartAnimation } from "./animations.js";
 import { SWITCH_SLOTS } from "./config.js";
-import { MODE } from "./constants.js";
+import { MODE, READ_ONLY_MODES } from "./constants.js";
 import { axisFraction, escapeHtml } from "./util.js";
 
 const SWITCH_POS = { start: 0, mid: 0.5, end: 1 };
@@ -39,8 +39,15 @@ export function rootClasses(config) {
     animationClass(config.animation),
   ];
   if (config.direction === "rtl") classes.push("rev");
-  if (!config.drag || config.mode === MODE.VALUE) classes.push("nodrag");
+  if (!config.drag || READ_ONLY_MODES.includes(config.mode)) classes.push("nodrag");
   return classes.join(" ");
+}
+
+/** Text elements are filled with textContent only, never with markup. */
+function setText(el, text) {
+  const value = text ?? "";
+  el.hidden = value === "";
+  el.textContent = value;
 }
 
 /** Build the card DOM inside `shadow` and return element references. */
@@ -48,14 +55,21 @@ export function renderCard(shadow, config, css) {
   const header = headerHtml(config);
   const top = config.header_position !== "bottom" ? header : "";
   const bottom = config.header_position === "bottom" ? header : "";
+  const horizontal = config.orientation === "horizontal";
+  const hasInfo = config.mode === MODE.TIMER && Boolean(config.timer.info);
+  const info = hasInfo ? '<div class="info" hidden></div>' : "";
+  const barText = config.bar_text ? '<div class="bar-text" hidden></div>' : "";
   shadow.innerHTML = `
     <style>${css}</style>
     <ha-card>
       <div class="${rootClasses(config)}">
         ${top}
-        <div class="stage">
+        <div class="stage${hasInfo ? " has-info" : ""}">
+          ${horizontal ? "" : info}
           <div class="bar">
             <div class="fill-clip"><div class="fill"></div></div>
+            ${barText}
+            ${horizontal ? info : ""}
             ${switchesHtml(config)}
             <div class="rail"><div class="carrier">
               <div class="handle" tabindex="0">
@@ -73,7 +87,6 @@ export function renderCard(shadow, config, css) {
   for (const button of shadow.querySelectorAll(".sw")) {
     const slot = button.dataset.slot;
     switches[slot] = button;
-    const horizontal = config.orientation === "horizontal";
     button.style.setProperty(
       "--slabton-sw-e",
       String(axisFraction(SWITCH_POS[slot], horizontal, config.direction === "rtl")),
@@ -91,6 +104,8 @@ export function renderCard(shadow, config, css) {
     content: q(".content"),
     icon: q(".h-icon"),
     text: q(".h-text"),
+    barText: q(".bar-text"),
+    info: q(".info"),
     switches,
     signature: null,
   };
@@ -108,7 +123,7 @@ function setRole(handle, config, view) {
     handle.setAttribute("aria-orientation", config.orientation);
   }
   if (view.ariaText != null) handle.setAttribute("aria-valuetext", String(view.ariaText));
-  handle.setAttribute("aria-label", config.name ?? config.entity);
+  handle.setAttribute("aria-label", config.name ?? config.entity ?? "slABton");
   handle.setAttribute("aria-disabled", String(view.unavailable));
   handle.setAttribute("tabindex", view.unavailable ? "-1" : "0");
 }
@@ -140,14 +155,24 @@ export function updateView(refs, config, view, options = {}) {
   const fillPos = dragging ? options.dragPos : view.fillPos;
 
   root.style.setProperty("--slabton-p", String(fillPos));
-  root.style.setProperty("--slabton-e", String(axisFraction(handlePos, horizontal, reversed)));
+  const edge = axisFraction(handlePos, horizontal, reversed);
+  root.style.setProperty("--slabton-e", String(edge));
   if (view.color) root.style.setProperty("--slabton-active-color", view.color);
   else root.style.removeProperty("--slabton-active-color");
   root.classList.toggle("unavailable", Boolean(view.unavailable));
+  root.classList.toggle("expired", Boolean(view.expired));
+
+  if (refs.barText) setText(refs.barText, view.barText);
+  if (refs.info) {
+    setText(refs.info, view.info);
+    refs.info.classList.toggle("info-right", edge < 0.5);
+  }
 
   setRole(handle, config, view);
 
-  const signature = `${view.icon}|${view.text}|${view.positionText}`;
+  // Timer and clock text changes every second; only the icon (state) change replays an animation.
+  const ticks = config.mode === MODE.TIMER || config.mode === MODE.CLOCK;
+  const signature = ticks ? `${view.icon}` : `${view.icon}|${view.text}|${view.positionText}`;
   const changed = refs.signature !== null && refs.signature !== signature;
   setContent(refs, config, view);
   refs.signature = signature;

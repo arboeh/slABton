@@ -5,11 +5,12 @@ export function makeState(entityId, state, attributes = {}) {
   return { entity_id: entityId, state, attributes };
 }
 
-/** Minimal hass mock with a callService spy. */
-export function createHass(states = {}) {
+/** Minimal hass mock with a callService spy; `extra` adds fields such as `locale` or `config`. */
+export function createHass(states = {}, extra = {}) {
   return {
     states: { ...states },
     callService: vi.fn(() => Promise.resolve()),
+    ...extra,
   };
 }
 

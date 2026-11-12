@@ -52,14 +52,53 @@
       "lock.door": { entity_id: "lock.door", state: "locked", attributes: {} },
       "sensor.temp": { entity_id: "sensor.temp", state: "21.4", attributes: {} },
       "sensor.soc": { entity_id: "sensor.soc", state: "64", attributes: {} },
+      "counter.guests": { entity_id: "counter.guests", state: "3", attributes: { minimum: 0, maximum: 10 } },
+      "timer.sauna": {
+        entity_id: "timer.sauna",
+        state: "active",
+        attributes: { duration: "0:10:00", remaining: "0:10:00", finishes_at: new Date(Date.now() + 5 * 60000).toISOString() },
+      },
+      "timer.short": {
+        entity_id: "timer.short",
+        state: "active",
+        attributes: { duration: "0:00:20", remaining: "0:00:20", finishes_at: new Date(Date.now() + 8000).toISOString() },
+      },
+      // Mock time zone is UTC, so the target is written in UTC: 3 days and 1 hour from now.
+      "input_datetime.fest": {
+        entity_id: "input_datetime.fest",
+        state: new Date(Date.now() + 3 * 86400000 + 3600000).toISOString().slice(0, 19).replace("T", " "),
+        attributes: { has_date: true, has_time: true },
+      },
     };
     const hass = {
       states,
+      config: { time_zone: "UTC" },
+      locale: { language: navigator.language || "en" },
       callService(domain, service, data, target) {
         console.info("callService", domain, service, data, target);
         const id = target?.entity_id;
         if (id && states[id]) {
           const next = { ...states[id] };
+          if (domain === "counter") next.state = String(Number(next.state) + (service === "increment" ? 1 : service === "decrement" ? -1 : 0));
+          if (domain === "timer") {
+            const attrs = { ...next.attributes };
+            const seconds = attrs.duration.split(":").reduce((sum, part) => sum * 60 + Number(part), 0);
+            if (service === "start") {
+              next.state = "active";
+              attrs.finishes_at = new Date(Date.now() + seconds * 1000).toISOString();
+              attrs.remaining = attrs.duration;
+            } else if (service === "pause") {
+              const left = Math.max(0, Math.round((Date.parse(attrs.finishes_at) - Date.now()) / 1000));
+              next.state = "paused";
+              attrs.remaining = [Math.floor(left / 3600), Math.floor(left / 60) % 60, left % 60].map((n, i) => (i ? String(n).padStart(2, "0") : n)).join(":");
+              delete attrs.finishes_at;
+            } else if (service === "cancel") {
+              next.state = "idle";
+              attrs.remaining = attrs.duration;
+              delete attrs.finishes_at;
+            }
+            next.attributes = attrs;
+          }
           if (service === "select_option") next.state = data.option;
           if (service === "unlock") next.state = "unlocked";
           if (service === "lock") next.state = "locked";
@@ -94,6 +133,22 @@
         },
       }],
       ["shimmer animation", { entity: "sensor.temp", preset: "thermometer", animation: "shimmer" }],
+      ["counter (tap +1, double tap -1)", { entity: "counter.guests", name: "Guests", bar_text: "{value} of 10" }],
+      ["timer (tap pause/start, hold cancel)", {
+        entity: "timer.sauna", name: "Sauna", bar_text: "{remaining_text} left", timer: { info: "{state}" },
+      }],
+      ["timer, pulse on expiry (tap to dismiss)", { entity: "timer.short", name: "Egg timer", timer: { pulse_seconds: 0 } }],
+      ["timer, countdown to input_datetime", {
+        entity: "input_datetime.fest", mode: "timer", name: "Festival", bar_text: "{remaining_text} to go", timer: { info: "{target}", span: 7 },
+      }],
+      ["timer, vertical, with info", {
+        entity: "timer.sauna", orientation: "vertical", length: 200, name: "Sauna", timer: { info: "{remaining}" },
+      }],
+      ["clock (Berlin, seconds)", { mode: "clock", name: "Berlin", clock: { time_zone: "Europe/Berlin", hour_format: "24", seconds: true } }],
+      ["clock (New York, 12 h)", { mode: "clock", name: "New York", clock: { time_zone: "America/New_York", hour_format: "12" } }],
+      ["bar from another entity", {
+        entity: "timer.sauna", name: "Sauna", bar: { entity: "sensor.temp", min: 0, max: 40, unit: "°C", decimals: 1 }, bar_text: "{value}",
+      }],
     ];
 
     const grid = document.getElementById("grid");

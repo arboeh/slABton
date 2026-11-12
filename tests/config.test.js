@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { DEFAULTS, inferMode, normalizeConfig } from "../src/config.js";
+import { DEFAULTS, MAX_TEXT_LENGTH, RESERVED_KEYS, inferMode, normalizeConfig } from "../src/config.js";
 
 afterEach(() => vi.restoreAllMocks());
 
@@ -36,7 +36,7 @@ describe("validation", () => {
 
   it("rejects unknown enum values with the allowed list", () => {
     expect(() => normalizeConfig({ ...base, handle_shape: "star" })).toThrow(/handle_shape "star".*round, oval, square/);
-    expect(() => normalizeConfig({ ...base, mode: "clock" })).toThrow(/invalid mode/);
+    expect(() => normalizeConfig({ ...base, mode: "banana" })).toThrow(/invalid mode/);
     expect(() => normalizeConfig({ ...base, animation: "spin" })).toThrow(/invalid animation/);
   });
 
@@ -72,6 +72,9 @@ describe("mode inference", () => {
     ["input_number", "value"],
     ["select", "state"],
     ["switch", "state"],
+    ["counter", "counter"],
+    ["timer", "timer"],
+    ["input_datetime", "state"],
   ])("%s -> %s", (domain, mode) => {
     expect(inferMode(domain)).toBe(mode);
     expect(normalizeConfig({ entity: `${domain}.x` }).mode).toBe(mode);
@@ -179,5 +182,119 @@ describe("styles and switches", () => {
 
   it("rejects invalid switch entities", () => {
     expect(() => normalizeConfig({ ...base, switches: { start: { entity: "bad" } } })).toThrow(/switches.start.entity/);
+  });
+});
+
+describe("bar block", () => {
+  it("keeps flat options working and leaves the bar coupled to the entity", () => {
+    const c = normalizeConfig({ entity: "sensor.t", min: 5, max: 50, unit: "V", decimals: 2 });
+    expect(c).toMatchObject({ min: 5, max: 50, unit: "V", decimals: 2, bar_entity: null });
+    expect(c.range_set).toEqual({ min: true, max: true });
+  });
+
+  it("reads range options and the entity from bar:", () => {
+    const c = normalizeConfig({
+      entity: "timer.sauna",
+      bar: { entity: "sensor.sauna_temp", min: 20, max: 100, unit: "°C", decimals: 0, preset: "thermometer" },
+    });
+    expect(c).toMatchObject({ bar_entity: "sensor.sauna_temp", min: 20, max: 100, unit: "°C", decimals: 0, preset: "thermometer" });
+  });
+
+  it("lets bar: win over flat options and warns about the conflict", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const c = normalizeConfig({ entity: "sensor.t", max: 10, bar: { max: 20 } });
+    expect(c.max).toBe(20);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toMatch(/bar\.max/);
+    warn.mockClear();
+    normalizeConfig({ entity: "sensor.t", max: 20, bar: { max: 20 } });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("validates bar:", () => {
+    expect(() => normalizeConfig({ entity: "sensor.t", bar: "x" })).toThrow(/bar must be a map/);
+    expect(() => normalizeConfig({ entity: "sensor.t", bar: { entity: "nodot" } })).toThrow(/bar\.entity/);
+    expect(() => normalizeConfig({ entity: "sensor.t", bar: { min: 5, max: 5 } })).toThrow(/max must be greater/);
+  });
+});
+
+describe("new modes", () => {
+  it("allows the clock without an entity but nothing else", () => {
+    const c = normalizeConfig({ mode: "clock" });
+    expect(c.entity).toBeNull();
+    expect(c.mode).toBe("clock");
+    expect(() => normalizeConfig({ mode: "timer" })).toThrow(/entity is required/);
+  });
+
+  it("defaults the handle to text for counter, timer and clock", () => {
+    expect(normalizeConfig({ entity: "counter.a" }).handle_content).toBe("text");
+    expect(normalizeConfig({ entity: "timer.a" }).handle_content).toBe("text");
+    expect(normalizeConfig({ mode: "clock" }).handle_content).toBe("text");
+  });
+
+  it("normalizes the counter block", () => {
+    expect(normalizeConfig({ entity: "counter.a" }).counter).toEqual({ min: null, max: null });
+    expect(normalizeConfig({ entity: "counter.a", counter: { min: 1, max: 9 } }).counter).toEqual({ min: 1, max: 9 });
+    expect(() => normalizeConfig({ entity: "counter.a", counter: { min: 9, max: 1 } })).toThrow(/counter\.max/);
+    expect(() => normalizeConfig({ entity: "counter.a", counter: "x" })).toThrow(/counter must be a map/);
+  });
+
+  it("normalizes the timer block with defaults", () => {
+    expect(normalizeConfig({ entity: "timer.a" }).timer).toEqual({
+      pulse: true, pulse_seconds: 10, info: null, time_zone: null, span: 30,
+    });
+    const c = normalizeConfig({
+      entity: "input_datetime.t",
+      mode: "timer",
+      timer: { pulse: false, pulse_seconds: 0, info: "Ende {target}", time_zone: "Europe/Berlin", span: 7 },
+    });
+    expect(c.timer).toEqual({ pulse: false, pulse_seconds: 0, info: "Ende {target}", time_zone: "Europe/Berlin", span: 7 });
+  });
+
+  it("rejects unknown time zones", () => {
+    expect(() => normalizeConfig({ entity: "timer.a", timer: { time_zone: "Mars/Olympus" } })).toThrow(/timer\.time_zone/);
+    expect(() => normalizeConfig({ mode: "clock", clock: { time_zone: "nope" } })).toThrow(/clock\.time_zone/);
+  });
+
+  it("normalizes the clock block and reserves analog", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ mode: "clock" }).clock).toEqual({
+      display: "digital", time_zone: null, hour_format: "auto", seconds: false,
+    });
+    const c = normalizeConfig({ mode: "clock", clock: { display: "analog", hour_format: 12, seconds: true, time_zone: "UTC" } });
+    expect(c.clock).toEqual({ display: "digital", time_zone: "UTC", hour_format: "12", seconds: true });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/analog.*reserved/));
+    expect(() => normalizeConfig({ mode: "clock", clock: { hour_format: "13" } })).toThrow(/clock\.hour_format/);
+    expect(() => normalizeConfig({ mode: "clock", clock: { display: "x" } })).toThrow(/clock\.display/);
+  });
+
+  it("warns about blocks of other modes", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    normalizeConfig({ entity: "timer.a", counter: { min: 1 } });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/counter: block is ignored/));
+  });
+});
+
+describe("reserved keys and texts", () => {
+  it("warns once per reserved key and ignores it", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const c = normalizeConfig({ ...base, thresholds: [], scale: {}, shape: "circle", control: "select" });
+    expect(RESERVED_KEYS).toEqual(["thresholds", "scale", "shape", "control"]);
+    expect(warn).toHaveBeenCalledTimes(4);
+    for (const key of RESERVED_KEYS) expect(c[key]).toBeUndefined();
+  });
+
+  it("keeps bar_text and warns about placeholders the mode does not know", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ entity: "timer.a", bar_text: "noch {remaining_text}" }).bar_text).toBe("noch {remaining_text}");
+    expect(warn).not.toHaveBeenCalled();
+    normalizeConfig({ entity: "counter.a", bar_text: "{remaining}" });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/\{remaining\}.*counter/));
+  });
+
+  it("shortens very long texts", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ ...base, bar_text: "x".repeat(500) }).bar_text).toHaveLength(MAX_TEXT_LENGTH);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/shortened/));
   });
 });

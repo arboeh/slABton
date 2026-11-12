@@ -8,8 +8,10 @@
 import { ANIMATIONS, DEFAULT_ANIMATION } from "./animations.js";
 import {
   ACTION, ACTION_TYPES, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES,
-  OFF_VALUES, TOGGLE_DOMAINS,
+  OFF_VALUES, READ_ONLY_MODES, TOGGLE_DOMAINS,
 } from "./constants.js";
+import { unknownPlaceholders } from "./placeholders.js";
+import { isValidTimeZone } from "./time.js";
 import { isPlainObject, pickEnum, safeCss, str, toNumber, warn } from "./util.js";
 
 export { ACTION_TYPES, IGNORED_HA_ACTIONS, MODES };
@@ -23,6 +25,18 @@ export const HEADER_ICON_POSITIONS = ["left", "right"];
 export const SWITCH_SLOTS = ["start", "mid", "end"];
 export const ARM_SERVICES = ["alarm_arm_away", "alarm_arm_home", "alarm_arm_night", "alarm_arm_vacation"];
 export const PRESET_NAMES = ["none", "thermometer", "energy", "soc"];
+export const CLOCK_DISPLAYS = ["digital", "analog"];
+export const HOUR_FORMATS = ["auto", "12", "24"];
+
+/** Names reserved for later releases: accepted, warned about once and ignored. */
+export const RESERVED_KEYS = Object.freeze(["thresholds", "scale", "shape", "control"]);
+
+/** Longest accepted `bar_text` / `timer.info`. */
+export const MAX_TEXT_LENGTH = 200;
+
+/** Keys of the `bar:` block that alias the flat top-level range options. */
+const BAR_ALIAS_KEYS = ["min", "max", "unit", "decimals", "preset"];
+const OPTIONAL_BLOCKS = [MODE.COUNTER, MODE.TIMER, MODE.CLOCK];
 
 /** Defaults for the value-mode presets (plain defaults, overridable). */
 export const PRESETS = {
@@ -55,6 +69,8 @@ const STYLE_KEY_RE = /^(--slabton-[a-z0-9-]+|[a-z0-9][a-z0-9-]*)$/;
 export function inferMode(domain) {
   if (domain === "lock" || domain === "alarm_control_panel") return MODE.LOCK;
   if (domain === "sensor" || domain === "number" || domain === "input_number") return MODE.VALUE;
+  if (domain === "counter") return MODE.COUNTER;
+  if (domain === "timer") return MODE.TIMER;
   return MODE.STATE;
 }
 
@@ -195,7 +211,9 @@ function normalizeLayout(raw, mode) {
     handle_position: pickEnum(raw.handle_position, HANDLE_POSITIONS, DEFAULTS.handle_position, "handle_position"),
     fixed_position: toNumber(raw.fixed_position, DEFAULTS.fixed_position, 0, 100),
     handle_overhang: raw.handle_overhang === true,
-    handle_content: pickEnum(raw.handle_content, HANDLE_CONTENTS, mode === MODE.VALUE ? "text" : "icon", "handle_content"),
+    handle_content: pickEnum(
+      raw.handle_content, HANDLE_CONTENTS, READ_ONLY_MODES.includes(mode) ? "text" : "icon", "handle_content",
+    ),
   };
 }
 
@@ -219,9 +237,104 @@ function normalizeRange(raw, presetDefaults) {
   return {
     min,
     max,
+    // Which bounds the user set explicitly (the counter mode prefers entity attributes over defaults).
+    range_set: { min: toNumber(raw.min, null, -1e9, 1e9) != null, max: toNumber(raw.max, null, -1e9, 1e9) != null },
     unit: str(raw.unit) ?? presetDefaults.unit ?? null,
     decimals: toNumber(raw.decimals, presetDefaults.decimals ?? 1, 0, 6),
   };
+}
+
+/**
+ * Resolve the `bar:` block. Flat range options stay as an alias; `bar:` wins
+ * on conflict (with a warning). Returns the merged option source and the
+ * optional separate bar entity (null = the bar follows `entity`).
+ */
+function resolveBar(raw) {
+  if (raw.bar == null) return { source: raw, barEntity: null };
+  if (!isPlainObject(raw.bar)) throw new Error("slabton-card: bar must be a map");
+  const source = { ...raw };
+  for (const key of BAR_ALIAS_KEYS) {
+    const value = raw.bar[key];
+    if (value == null || value === "") continue;
+    const flat = raw[key];
+    if (flat != null && flat !== "" && flat !== value) warn(`bar.${key} overrides the top-level ${key}`);
+    source[key] = value;
+  }
+  const barEntity = raw.bar.entity == null || raw.bar.entity === "" ? null : checkEntity(raw.bar.entity, "bar.entity");
+  return { source, barEntity };
+}
+
+/** A config block (`counter:`, `timer:`, `clock:`): missing -> {}, anything but a map -> error. */
+function blockOf(raw, key) {
+  if (raw[key] == null) return {};
+  if (!isPlainObject(raw[key])) throw new Error(`slabton-card: ${key} must be a map`);
+  return raw[key];
+}
+
+/** Text with placeholders, trimmed and capped; warns about names the mode does not know. */
+function normalizeText(value, key, mode) {
+  let text = str(value);
+  if (text == null) return null;
+  if (text.length > MAX_TEXT_LENGTH) {
+    warn(`${key} was shortened to ${MAX_TEXT_LENGTH} characters`);
+    text = text.slice(0, MAX_TEXT_LENGTH);
+  }
+  for (const name of unknownPlaceholders(text, mode)) {
+    warn(`${key}: placeholder {${name}} is not available in mode "${mode}" and is shown as written`);
+  }
+  return text;
+}
+
+function normalizeTimeZone(value, key) {
+  if (value == null || value === "") return null;
+  if (!isValidTimeZone(value)) throw new Error(`slabton-card: ${key} "${String(value)}" is not a known time zone`);
+  return value.trim();
+}
+
+const COUNTER_DEFAULTS = Object.freeze({ min: null, max: null });
+const TIMER_DEFAULTS = Object.freeze({ pulse: true, pulse_seconds: 10, info: null, time_zone: null, span: 30 });
+const CLOCK_DEFAULTS = Object.freeze({ display: "digital", time_zone: null, hour_format: "auto", seconds: false });
+
+/** Only `min` and `max` override the counter entity's own range. */
+function normalizeCounter(raw) {
+  const block = blockOf(raw, MODE.COUNTER);
+  const min = toNumber(block.min, null, -1e9, 1e9);
+  const max = toNumber(block.max, null, -1e9, 1e9);
+  if (min != null && max != null && max <= min) throw new Error("slabton-card: counter.max must be greater than counter.min");
+  return { min, max };
+}
+
+function normalizeTimer(raw) {
+  const block = blockOf(raw, MODE.TIMER);
+  return {
+    pulse: block.pulse !== false,
+    pulse_seconds: toNumber(block.pulse_seconds, TIMER_DEFAULTS.pulse_seconds, 0, 3600),
+    info: normalizeText(block.info, "timer.info", MODE.TIMER),
+    time_zone: normalizeTimeZone(block.time_zone, "timer.time_zone"),
+    span: toNumber(block.span, TIMER_DEFAULTS.span, 0.01, 3650),
+  };
+}
+
+function normalizeClock(raw) {
+  const block = blockOf(raw, MODE.CLOCK);
+  const display = pickEnum(block.display, CLOCK_DISPLAYS, CLOCK_DEFAULTS.display, "clock.display");
+  if (display === "analog") warn('clock.display "analog" is reserved for a later release; showing the digital clock');
+  return {
+    display: "digital",
+    time_zone: normalizeTimeZone(block.time_zone, "clock.time_zone"),
+    hour_format: pickEnum(block.hour_format == null ? null : String(block.hour_format), HOUR_FORMATS, CLOCK_DEFAULTS.hour_format, "clock.hour_format"),
+    seconds: block.seconds === true,
+  };
+}
+
+/** Warn about reserved keys and about mode blocks that the active mode ignores. */
+function warnUnusedKeys(raw, mode) {
+  for (const key of RESERVED_KEYS) {
+    if (raw[key] != null) warn(`${key} is reserved for a later release and is ignored`);
+  }
+  for (const block of OPTIONAL_BLOCKS) {
+    if (raw[block] != null && block !== mode) warn(`${block}: block is ignored in mode "${mode}"`);
+  }
 }
 
 /** Options of the lock mode. */
@@ -236,23 +349,32 @@ function normalizeLock(raw) {
 
 export function normalizeConfig(raw) {
   if (!isPlainObject(raw)) throw new Error("slabton-card: invalid configuration");
-  if (raw.entity == null || raw.entity === "") throw new Error("slabton-card: entity is required");
-  const entity = checkEntity(raw.entity, "entity");
-  const domain = entity.split(".")[0];
+  const hasEntity = raw.entity != null && raw.entity !== "";
+  // The clock needs no entity; every other mode does.
+  if (!hasEntity && raw.mode !== MODE.CLOCK) throw new Error("slabton-card: entity is required");
+  const entity = hasEntity ? checkEntity(raw.entity, "entity") : null;
+  const domain = entity ? entity.split(".")[0] : "";
 
   const mode = pickEnum(raw.mode, MODES, inferMode(domain), "mode");
-  const preset = pickEnum(raw.preset, PRESET_NAMES, "none", "preset");
+  const { source, barEntity } = resolveBar(raw);
+  const preset = pickEnum(source.preset, PRESET_NAMES, "none", "preset");
   const presetDefaults = PRESETS[preset] ?? {};
   const states = normalizeStates(raw.states);
   if (mode === MODE.STATE) warnUnreachableStates(states, domain);
+  warnUnusedKeys(raw, mode);
 
-  // `thresholds` is reserved for a later release and intentionally ignored.
+  // `thresholds`, `scale`, `shape` and `control` are reserved (RESERVED_KEYS) and intentionally ignored.
   return {
     type: typeof raw.type === "string" ? raw.type : "custom:slabton-card",
     entity,
     mode,
     name: str(raw.name),
     icon: str(raw.icon) ?? presetDefaults.icon ?? null,
+    bar_entity: barEntity,
+    bar_text: normalizeText(raw.bar_text, "bar_text", mode),
+    counter: mode === MODE.COUNTER ? normalizeCounter(raw) : { ...COUNTER_DEFAULTS },
+    timer: mode === MODE.TIMER ? normalizeTimer(raw) : { ...TIMER_DEFAULTS },
+    clock: mode === MODE.CLOCK ? normalizeClock(raw) : { ...CLOCK_DEFAULTS },
     ...normalizeLayout(raw, mode),
     ...normalizeLook(raw),
     ...normalizeTriggers(raw),
@@ -261,7 +383,7 @@ export function normalizeConfig(raw) {
     drag: raw.drag !== false,
     ...normalizeLock(raw),
     preset,
-    ...normalizeRange(raw, presetDefaults),
+    ...normalizeRange(source, presetDefaults),
     switches: normalizeSwitches(raw.switches),
   };
 }

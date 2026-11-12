@@ -150,6 +150,90 @@ describe("updateView", () => {
   });
 });
 
+describe("bar text, info and expiry", () => {
+  const view = (extra = {}) => ({
+    pos: 0, fillPos: 0, icon: "mdi:timer", text: "5:00", positionText: "0", color: null,
+    unavailable: false, ariaNow: 0, ariaText: "5:00", ...extra,
+  });
+
+  it("renders no text elements unless configured", () => {
+    const { shadow, refs } = setup();
+    expect(refs.barText).toBeNull();
+    expect(refs.info).toBeNull();
+    expect(shadow.querySelector(".bar-text")).toBeNull();
+  });
+
+  it("puts bar_text between the fill and the handle and hides it when empty", () => {
+    const { config, shadow, refs } = setup({ entity: "timer.a", bar_text: "x" });
+    expect(shadow.querySelector(".bar > .bar-text")).toBe(refs.barText);
+    expect(refs.barText.previousElementSibling.classList.contains("fill-clip")).toBe(true);
+    expect(refs.barText.hidden).toBe(true);
+    updateView(refs, config, view({ barText: "noch 3 Tage" }));
+    expect(refs.barText.textContent).toBe("noch 3 Tage");
+    expect(refs.barText.hidden).toBe(false);
+    updateView(refs, config, view({ barText: null }));
+    expect(refs.barText.hidden).toBe(true);
+    expect(refs.barText.textContent).toBe("");
+  });
+
+  it("shows texts as plain text, never as markup", () => {
+    const { config, shadow, refs } = setup({ entity: "timer.a", bar_text: "x", timer: { info: "y" } });
+    const payload = '<img src=x onerror="alert(1)">';
+    updateView(refs, config, view({ barText: payload, info: payload }));
+    expect(refs.barText.textContent).toBe(payload);
+    expect(refs.info.textContent).toBe(payload);
+    expect(shadow.querySelector("img")).toBeNull();
+  });
+
+  it("places the info inside the bar when horizontal and above it when vertical", () => {
+    const horizontal = setup({ entity: "timer.a", timer: { info: "i" } });
+    expect(horizontal.shadow.querySelector(".bar > .info")).toBe(horizontal.refs.info);
+    expect(horizontal.shadow.querySelector(".stage").classList.contains("has-info")).toBe(true);
+
+    const vertical = setup({ entity: "timer.a", orientation: "vertical", timer: { info: "i" } });
+    const stage = vertical.shadow.querySelector(".stage");
+    expect(vertical.shadow.querySelector(".bar > .info")).toBeNull();
+    expect(stage.firstElementChild).toBe(vertical.refs.info);
+    expect(vertical.refs.info.nextElementSibling.classList.contains("bar")).toBe(true);
+  });
+
+  it("moves the info to the side with more room", () => {
+    const { config, refs } = setup({ entity: "timer.a", timer: { info: "i" } });
+    updateView(refs, config, view({ pos: 0, info: "Ende" }));
+    expect(refs.info.textContent).toBe("Ende");
+    expect(refs.info.classList.contains("info-right")).toBe(true);
+    updateView(refs, config, view({ pos: 1, info: "Ende" }));
+    expect(refs.info.classList.contains("info-right")).toBe(false);
+  });
+
+  it("toggles the expired class", () => {
+    const { config, refs } = setup();
+    updateView(refs, config, view({ expired: true }));
+    expect(refs.root.classList.contains("expired")).toBe(true);
+    updateView(refs, config, view());
+    expect(refs.root.classList.contains("expired")).toBe(false);
+  });
+
+  it("labels an entity-less clock and replays animations only on state changes in timer and clock", () => {
+    const clock = setup({ entity: undefined, mode: "clock", animation: "pulse" });
+    updateView(clock.refs, clock.config, view({ text: "12:00" }));
+    expect(clock.refs.handle.getAttribute("aria-label")).toBe("slABton");
+    updateView(clock.refs, clock.config, view({ text: "12:01" }));
+    expect(clock.refs.handle.classList.contains("changed")).toBe(false);
+    updateView(clock.refs, clock.config, view({ text: "12:01", icon: "mdi:other" }));
+    expect(clock.refs.handle.classList.contains("changed")).toBe(true);
+  });
+});
+
+describe("read-only modes", () => {
+  it("cannot be dragged", () => {
+    for (const extra of [{ entity: "counter.a" }, { entity: "timer.a" }, { mode: "clock" }]) {
+      const config = normalizeConfig(extra);
+      expect(rootClasses(config).split(" ")).toContain("nodrag");
+    }
+  });
+});
+
 describe("updateSwitches", () => {
   it("highlights switches whose entity is on", () => {
     const { config, refs } = setup({ switches: { start: { entity: "switch.a" }, end: { entity: "switch.b" } } });

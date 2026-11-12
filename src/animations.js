@@ -44,6 +44,14 @@ export function animationCss() {
       transform: translateY(100%);
       animation-name: slabton-shimmer-v;
     }
+    .root.expired .bar {
+      box-shadow: 0 0 0 2px var(--slabton-expired-color, var(--warning-color, #ffa600));
+      animation: slabton-expire 1s ease-in-out infinite;
+    }
+    @keyframes slabton-expire {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 2px var(--slabton-expired-color, var(--warning-color, #ffa600)); }
+      50% { opacity: 0.7; box-shadow: 0 0 14px 4px var(--slabton-expired-color, var(--warning-color, #ffa600)); }
+    }
     @keyframes slabton-fade { from { opacity: 0; } to { opacity: 1; } }
     @keyframes slabton-pulse { 0% { transform: scale(1); } 40% { transform: scale(1.18); } 100% { transform: scale(1); } }
     @keyframes slabton-shimmer { to { transform: translateX(100%); } }
