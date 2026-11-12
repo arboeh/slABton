@@ -339,6 +339,14 @@ npm run build
 `dist/slabton.js` ist die einzige Release-Datei. `npm run check-version` vergleicht
 `package.json` und `src/version.js`.
 
+Aufbau: `src/core/` greift nicht auf das DOM zu (Konfiguration, Konstanten, Zeit, Platzhalter, i18n, Puls
+und die Modi in `modes/`). `src/ui/` enthält Karte, Render, Styles, Interaktion, Editor und Animationen.
+`core` importiert nie aus `ui`. Die Tests spiegeln den Aufbau in `tests/core` und `tests/ui`.
+
+Die Texte liegen in `src/core/locales/<Sprache>.json`. Neue Sprache: `en.json` kopieren, die Werte übersetzen,
+Schlüssel und `{Platzhalter}` behalten und die Datei in `src/core/i18n.js` eintragen.
+`tests/core/locales.test.js` prüft, dass jede Sprache dieselben Schlüssel und Platzhalter wie Englisch hat.
+
 ## Roadmap
 
 Geplant als eigene Folgevorgänge: Zähler durch Ziehen setzen; Thresholds mit Farbwechsel;

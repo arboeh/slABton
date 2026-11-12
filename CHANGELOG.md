@@ -8,6 +8,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 ### Changed
 
 - License changed from MIT to MPL 2.0 (`LICENSE`, `package.json`, READMEs).
+- Source split into `src/core` (no DOM: config, constants, time, placeholders, i18n, pulse, modes) and
+  `src/ui` (card, render, styles, interaction, editor, animations). No visible change.
+- Translations moved to `src/core/locales/en.json` and `de.json`, one file per language.
+- Timer pulse logic moved to `src/core/pulse.js`; `timer.sample()` split into smaller functions;
+  constants for timer status, source and notices; small clean-ups (time zone guess, clock display list,
+  numeric state parsing).
 
 ## [0.2.0] - 2026-11-12
 

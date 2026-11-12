@@ -4,7 +4,7 @@ import { readFileSync } from "node:fs";
 const pkg = JSON.parse(readFileSync(new URL("./package.json", import.meta.url), "utf8"));
 
 await build({
-  entryPoints: ["src/slabton-card.js"],
+  entryPoints: ["src/ui/slabton-card.js"],
   outfile: "dist/slabton.js",
   bundle: true,
   format: "iife",
