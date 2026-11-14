@@ -39,15 +39,90 @@ function scaleHtml(config) {
 /** Tick positions are rounded to four decimals: far below a pixel on any bar. */
 const TICK_PRECISION = 1e4;
 
+/** Position (0..1 along the handle-centre travel) of tick `index`, mirrored like the handle itself. */
+function tickEdge(config, index) {
+  const horizontal = config.orientation === "horizontal";
+  const edge = axisFraction(index / config.scale.ticks, horizontal, config.direction === "rtl");
+  return String(Math.round(edge * TICK_PRECISION) / TICK_PRECISION);
+}
+
 /** Put every tick at its share of the handle-centre travel, mirrored like the handle itself. */
 function placeTicks(shadow, config) {
   if (!config.scale) return;
-  const { ticks } = config.scale;
-  const horizontal = config.orientation === "horizontal";
   shadow.querySelectorAll(".scale .tick").forEach((tick, i) => {
-    const edge = axisFraction(i / ticks, horizontal, config.direction === "rtl");
-    tick.style.setProperty("--slabton-tick-e", String(Math.round(edge * TICK_PRECISION) / TICK_PRECISION));
+    tick.style.setProperty("--slabton-tick-e", tickEdge(config, i));
   });
+}
+
+/** Add the tick labels (`scale.labels`): plain text, on the same track as the ticks. */
+function placeLabels(shadow, config) {
+  const scale = shadow.querySelector(".scale");
+  const labels = config.scale?.labels;
+  if (!scale || !labels?.length) return;
+  for (const { index, text } of labels) {
+    const label = shadow.ownerDocument.createElement("span");
+    label.className = "tick-label";
+    label.textContent = text;
+    label.style.setProperty("--slabton-tick-e", tickEdge(config, index));
+    scale.appendChild(label);
+  }
+}
+
+// --- analog dial ------------------------------------------------------------
+// The SVG is built from constants and loop numbers only; no config string reaches the markup.
+
+const DIAL_HOURS = 12;
+const DEGREES_PER_HOUR = 30;
+const DIAL_NUMBER_HOURS = Object.freeze({ quarters: [12, 3, 6, 9], all: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] });
+/** Radius of the numbers with and without tick marks, in viewBox units (the dial spans -50..50). */
+const DIAL_NUMBERS_RADIUS = Object.freeze({ withTicks: 30, withoutTicks: 37 });
+const DIAL_PRECISION = 100;
+
+const isAnalog = (config) => config.clock.display === "analog";
+const roundDial = (n) => Math.round(n * DIAL_PRECISION) / DIAL_PRECISION;
+
+function dialTicksSvg() {
+  return Array.from({ length: DIAL_HOURS }, (_, hour) => {
+    const quarter = hour % 3 === 0;
+    return `<line class="dial-tick${quarter ? " quarter" : ""}" y1="-47" y2="${quarter ? -39 : -43}" transform="rotate(${hour * DEGREES_PER_HOUR})"/>`;
+  }).join("");
+}
+
+function dialNumbersSvg(numbers, radius) {
+  return (DIAL_NUMBER_HOURS[numbers] ?? []).map((hour) => {
+    const angle = ((hour % DIAL_HOURS) * DEGREES_PER_HOUR * Math.PI) / 180;
+    return `<text class="dial-num" x="${roundDial(radius * Math.sin(angle))}" y="${roundDial(-radius * Math.cos(angle))}">${hour}</text>`;
+  }).join("");
+}
+
+/** Dial of the analog clock: ticks, numbers, three hands (rotated by `updateDial`) and the hub. */
+function dialHtml(config) {
+  const { face, seconds } = config.clock;
+  const radius = face.ticks ? DIAL_NUMBERS_RADIUS.withTicks : DIAL_NUMBERS_RADIUS.withoutTicks;
+  const secondHand = seconds ? '<g class="hand hand-second"><line y1="9" y2="-38"/></g>' : "";
+  return '<svg class="dial" viewBox="-50 -50 100 100" aria-hidden="true" focusable="false">'
+    + `${face.ticks ? dialTicksSvg() : ""}${dialNumbersSvg(face.numbers, radius)}`
+    + '<g class="hand hand-hour"><line y1="4" y2="-24"/></g><g class="hand hand-minute"><line y1="4" y2="-35"/></g>'
+    + `${secondHand}<circle class="dial-hub" r="2.6"/></svg>`;
+}
+
+/** The hand elements of the dial (the seconds hand only exists with `clock.seconds`), or null for a digital clock. */
+function dialRefs(q, config) {
+  if (!isAnalog(config)) return null;
+  return { hour: q(".hand-hour"), minute: q(".hand-minute"), second: q(".hand-second") };
+}
+
+function rotateHand(hand, degrees) {
+  if (!hand || !Number.isFinite(degrees)) return;
+  hand.setAttribute("transform", `rotate(${roundDial(degrees)})`);
+}
+
+/** Turn the hands to the view's angles: only `transform` attributes change, never the structure. */
+function updateDial(dial, angles) {
+  if (!dial || !angles) return;
+  rotateHand(dial.hour, angles.hour);
+  rotateHand(dial.minute, angles.minute);
+  rotateHand(dial.second, angles.second);
 }
 
 export function rootClasses(config) {
@@ -95,7 +170,7 @@ export function renderCard(shadow, config, css) {
             ${switchesHtml(config)}
             <div class="rail"><div class="carrier">
               <div class="handle" tabindex="0">
-                <div class="content"><ha-icon class="h-icon"></ha-icon><span class="h-text" hidden></span></div>
+                <div class="content"><ha-icon class="h-icon"></ha-icon><span class="h-text" hidden></span>${isAnalog(config) ? dialHtml(config) : ""}</div>
               </div>
             </div></div>
           </div>
@@ -106,6 +181,7 @@ export function renderCard(shadow, config, css) {
 
   const q = (selector) => shadow.querySelector(selector);
   placeTicks(shadow, config);
+  placeLabels(shadow, config);
   const switches = {};
   for (const button of shadow.querySelectorAll(".sw")) {
     const slot = button.dataset.slot;
@@ -127,6 +203,7 @@ export function renderCard(shadow, config, css) {
     content: q(".content"),
     icon: q(".h-icon"),
     text: q(".h-text"),
+    dial: dialRefs(q, config),
     barText: q(".bar-text"),
     info: q(".info"),
     switches,
@@ -155,7 +232,8 @@ function setContent(refs, config, view) {
   const { icon, text } = refs;
   const kind = config.handle_content;
   const showIcon = kind === "icon" && Boolean(view.icon);
-  const label = kind === "position" ? view.positionText : kind === "text" ? view.text : "";
+  // The dial replaces the text of the handle.
+  const label = refs.dial ? "" : kind === "position" ? view.positionText : kind === "text" ? view.text : "";
   icon.hidden = !showIcon;
   if (showIcon) icon.setAttribute("icon", view.icon);
   text.hidden = label === "" || label == null;
@@ -198,6 +276,7 @@ export function updateView(refs, config, view, options = {}) {
   const signature = ticks ? `${view.icon}` : `${view.icon}|${view.text}|${view.positionText}`;
   const changed = refs.signature !== null && refs.signature !== signature;
   setContent(refs, config, view);
+  updateDial(refs.dial, view.dial);
   refs.signature = signature;
   if (changed && playsOnChange(config.animation)) {
     restartAnimation(config.animation === "fade" ? content : handle);

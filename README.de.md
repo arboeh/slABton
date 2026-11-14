@@ -18,10 +18,11 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Griffposition: `flex` (folgt dem Wert), `fixed`, `switch`, `start`, `mid`, `end`
 - Horizontal und vertikal, `ltr` und `rtl`
 - Modi: `state`, `lock`, `value` (Presets Thermometer, Energy, SoC), `counter`, `timer`, `clock`
+- Analoguhr: Zifferblatt mit Stunden-, Minuten- und Sekundenzeiger im Griff (`clock.display: analog`)
 - Timer: Home-Assistant-`timer.*` oder Countdown auf ein `input_datetime` / `input_date`, Pulsieren bei Ablauf, Zeitzonen
 - Text in der Bar (`bar_text`) mit einfachen Platzhaltern, ohne Templates
 - Bar-Wert aus einer eigenen Entity (`bar:`)
-- Skala in der Bar (`scale:`): Striche, Position, Größe, Farbe; stündliche Striche im Modus Uhr
+- Skala in der Bar (`scale:`): Striche, Position, Größe, Farbe, Beschriftung; stündliche Striche im Modus Uhr
 - Modus `value` bei `input_number` / `number`: Ziehen oder Pfeiltasten setzen den Wert (`step`, `drag: false`)
 - Schriftgröße und Farbe der Texte (`text:`)
 - Texte auf Deutsch und Englisch, Sprache folgt Home Assistant
@@ -251,7 +252,7 @@ die es zweimal gibt (Herbst), meint die spätere. Ein unbekannter Zeitzonenname 
 
 ### Modus `clock`
 
-Digitale Uhr, keine Entity nötig. Der Griff zeigt die Uhrzeit, die Bar füllt sich mit dem Tagesfortschritt.
+Uhr, keine Entity nötig. Der Griff zeigt die Uhrzeit digital oder als Zifferblatt (analog), die Bar füllt sich mit dem Tagesfortschritt.
 
 ```yaml
 type: custom:slabton-card
@@ -265,10 +266,28 @@ clock:
 
 | Option | Standard | Beschreibung |
 | --- | --- | --- |
-| `clock.display` | `digital` | `analog` ist für eine spätere Version reserviert und wird mit Warnung als `digital` gezeigt |
+| `clock.display` | `digital` | `digital` (Text) oder `analog` (Zifferblatt im Griff, siehe unten). `analog` braucht `handle_content: text` und `handle_size` von mindestens 32; sonst `digital` mit Warnung |
 | `clock.time_zone` | Home Assistant | IANA-Name, z. B. `America/New_York` |
 | `clock.hour_format` | `auto` | `auto` (Standard der Sprache), `12`, `24` |
-| `clock.seconds` | `false` | Sekunden anzeigen |
+| `clock.seconds` | `false` | Sekunden anzeigen; bei `analog` auch der Sekundenzeiger |
+| `clock.face.numbers` | `none` | `none`, `quarters` (12, 3, 6, 9) oder `all` (1 bis 12). Nur analog. Braucht `handle_size` 48 (`quarters`) bzw. 72 (`all`); ein kleinerer Griff fällt eine Stufe zurück, mit Warnung |
+| `clock.face.ticks` | `true` | Strichmarken am Rand des Zifferblatts. Nur analog |
+
+Analoguhr (`clock.display: analog`): der Griff zeigt ein Zifferblatt mit Stunden- und Minutenzeiger; `clock.seconds`
+fügt einen Sekundenzeiger hinzu. Die Zeiger springen einmal pro Sekunde (nur Änderung des `transform`, ohne Animation).
+Farben: siehe [Styling](#styling).
+
+```yaml
+type: custom:slabton-card
+mode: clock
+thickness: 56
+handle_size: 64
+clock:
+  display: analog
+  seconds: true
+  face:
+    numbers: quarters
+```
 
 ### Bar-Wert
 
@@ -313,7 +332,7 @@ Texte sind auf 200 Zeichen begrenzt.
 
 ### Textdarstellung
 
-Der Block `text:` setzt Schriftgröße und Farbe von vier Bereichen. Ohne ihn ändert sich nichts.
+Der Block `text:` setzt Schriftgröße und Farbe von fünf Bereichen. Ohne ihn ändert sich nichts.
 
 ```yaml
 type: custom:slabton-card
@@ -340,6 +359,8 @@ text:
 | `info` | `color` | Textfarbe | `timer.info` |
 | `button` | `font_size` | 14 px | Griff-Text (`handle_content: text`, `position`) |
 | `button` | `color` | Textfarbe | Gesamter Griffinhalt, auch das Griff-Icon |
+| `scale` | `font_size` | 10 px | Beschriftung an den Skala-Strichen (`scale.labels`) |
+| `scale` | `color` | Textfarbe | Beschriftung an den Skala-Strichen (`scale.labels`) |
 
 - `font_size`: Zahl von 8 bis 48 (px) oder Dezimaltext wie `"12"`. Andere Werte werden mit Konsolenwarnung ignoriert.
 - `color`: jede CSS-Farbe, die `styles:` akzeptiert. Unsichere Werte werden mit Konsolenwarnung ignoriert.
@@ -369,13 +390,16 @@ scale:
 | `position` | `bottom` (vertikal: `right`) | Rand quer zur Bar: `top` / `bottom` (horizontal) oder `left` / `right` (vertikal). `start`, `center`, `end` gehen auch: `start` ist oben bzw. links, `end` unten bzw. rechts |
 | `size` | 8 px | Strichlänge in px, 2 bis zur Bar-Dicke `thickness` |
 | `color` | Textfarbe mit 45 % | Jede CSS-Farbe, die `styles:` akzeptiert |
+| `labels` | `false` | Beschriftung an den Strichen. Uhr: Stunden 0, 6, 12, 18, 24. Wert und Zähler: Minimum und Maximum, nur bei festem Bereich (`min` und `max`, bzw. `counter`). Zustand: Namen der konfigurierten `states` (mindestens zwei). Mindestens 28 px Bar-Dicke; sonst keine Beschriftung, mit Warnung |
 
 - `scale: true` übernimmt alle Standardwerte. `scale: false` oder fehlender Block: aus.
 - Die Striche liegen auf dem Laufweg des Griffs: der Strich für Wert i/ticks steht genau unter dem Griff bei diesem Wert. `direction: rtl` spiegelt sie.
 - Uhr: ein Strich je Stunde (24). Mit `clock.hour_format: "12"` gibt es 12 Striche, je zwei Stunden. `auto` ergibt 24 Striche, auch bei 12-Stunden-Sprache. Ein ausdrückliches `ticks` gewinnt.
 - Ungültige Werte werden mit Konsolenwarnung ignoriert, es gilt der Standard. Unbekannte Schlüssel werden gewarnt und ignoriert.
 - Der Schlüssel `enabled` existiert nur als Schalter im Editor. In YAML wird er gewarnt und ignoriert.
-- Noch nicht enthalten: Beschriftungen und Zeiger für Stunde und Minute. Folgen in späteren Versionen.
+- Noch nicht enthalten: Stunden- und Minutenzeiger auf der Skala. Folgen in späteren Versionen. Die Zeiger der Analoguhr liegen im Griff (`clock.display: analog`).
+- Bekannte Grenzen von `scale.labels`: Mit eigenem `bar.entity` nutzen die Labels im Wertmodus die konfigurierten `min` und `max` (oder 0 und 100), nicht den Bereich des Bar-Entities; `min` und `max` selbst setzen. Zustandsnamen brauchen `states` in der Konfiguration (Optionen des Entities werden nicht genutzt). Lange Namen oder ein großes `scale.size` können sich auf dünnen Bars überlappen.
+- Visueller Editor, Analoguhr: Sobald ein Feld geändert wird, speichert der Editor `clock.face.ticks: true` (den Standardwert).
 - Visueller Editor: Abschnitt „Skala“ mit Schalter „Skala anzeigen“. Ausschalten entfernt alle Skala-Optionen; Einschalten startet mit den Standardwerten.
 
 ## Sprachen
@@ -409,6 +433,9 @@ Der Block [`text:`](#textdarstellung) setzt diese Variablen. `styles:` kann sie 
 `--slabton-button-size`, `--slabton-button-color`. Standardgrößen: Header 14 px, Bar 13 px, Info 13 px, Griff 14 px.
 
 Skala: `--slabton-scale-size` und `--slabton-scale-color` setzen `scale.size` und `scale.color`; `styles:` kann sie überschreiben.
+Skala-Beschriftung: `--slabton-scale-label-size` und `--slabton-scale-label-color` (gesetzt durch `text.scale`).
+Analoguhr: `--slabton-dial-color` (Striche und Ziffern), `--slabton-hands-color` (Stunden- und Minutenzeiger, Nabe)
+und `--slabton-second-hand-color` (Standard: Primärfarbe).
 
 ## Entwicklung
 
@@ -433,7 +460,7 @@ Schlüssel und `{Platzhalter}` behalten und die Datei in `src/core/i18n.js` eint
 ## Roadmap
 
 Geplant als eigene Folgevorgänge: Zähler durch Ziehen setzen; Thresholds mit Farbwechsel;
-Lock der ganzen Karte; Kreis und 3/4-Kreis; mehrere Bars und Griffe; Select-Dropdown; Analoguhr; Skalenbeschriftung und Zeiger; andere Kalender.
+Lock der ganzen Karte; Kreis und 3/4-Kreis; mehrere Bars und Griffe; Select-Dropdown; Stunden- und Minutenzeiger auf der Skala; andere Kalender.
 
 ## Lizenz
 

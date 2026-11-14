@@ -87,6 +87,10 @@ export const TEXT_OPTIONS = Object.freeze({
     font_size: Object.freeze({ css: "--slabton-button-size", unit: "px" }),
     color: Object.freeze({ css: "--slabton-button-color" }),
   }),
+  scale: Object.freeze({
+    font_size: Object.freeze({ css: "--slabton-scale-label-size", unit: "px" }),
+    color: Object.freeze({ css: "--slabton-scale-label-color" }),
+  }),
 });
 export const TEXT_AREAS = Object.freeze(Object.keys(TEXT_OPTIONS));
 export const MIN_FONT_SIZE = 8;
@@ -102,7 +106,11 @@ export const SCALE_ALIASES = Object.freeze({
   horizontal: Object.freeze({ top: "start", bottom: "end" }),
   vertical: Object.freeze({ left: "start", right: "end" }),
 });
-export const SCALE_OPTIONS = Object.freeze(["ticks", "position", "size", "color"]);
+export const SCALE_OPTIONS = Object.freeze(["ticks", "position", "size", "color", "labels"]);
+/** Smallest bar thickness (px) that has room for a tick plus its label. */
+export const MIN_LABEL_THICKNESS = 28;
+/** Clock scale labels: every n-th hour of the 24 h day (the bar always shows 24 h, whatever `hour_format` says). */
+export const CLOCK_LABEL_STEP = 6;
 export const DEFAULT_SCALE_POSITION = "end";
 /** Segments of a scale (ticks = segments + 1): default, limits and the clock's hours. */
 export const DEFAULT_SCALE_TICKS = 10;
@@ -113,6 +121,16 @@ export const CLOCK_SCALE_TICKS_12 = 12;
 /** Tick length in px: default and lower limit (the upper limit is the bar thickness). */
 export const DEFAULT_SCALE_SIZE = 8;
 export const MIN_SCALE_SIZE = 2;
+
+/**
+ * Analog clock face (`clock.face`). Numbers: none, the quarters (12, 3, 6, 9) or all hours.
+ * The handle needs a minimum cross size (`handle_size`, px) for the dial and for each numbers level.
+ */
+export const CLOCK_FACE_NUMBERS = Object.freeze(["none", "quarters", "all"]);
+export const CLOCK_FACE_OPTIONS = Object.freeze(["numbers", "ticks"]);
+export const MIN_ANALOG_HANDLE_SIZE = 32;
+export const MIN_DIAL_QUARTERS_SIZE = 48;
+export const MIN_DIAL_NUMBERS_SIZE = 72;
 
 /** Positions the `scale.position` option accepts for an orientation (editor list). */
 export function scalePositionsFor(orientation) {

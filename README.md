@@ -18,10 +18,11 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Handle position: `flex` (follows value), `fixed`, `switch`, `start`, `mid`, `end`
 - Horizontal and vertical, `ltr` and `rtl`
 - Modes: `state`, `lock`, `value` (presets thermometer, energy, soc), `counter`, `timer`, `clock`
+- Analog clock: dial with hour, minute and second hand in the handle (`clock.display: analog`)
 - Timer: Home Assistant `timer.*` or countdown to an `input_datetime` / `input_date`, pulse on expiry, time zones
 - Text in the bar (`bar_text`) with simple placeholders, no templates
 - Bar value from a separate entity (`bar:`)
-- Tick scale in the bar (`scale:`): ticks, position, size, color; hourly ticks in clock mode
+- Tick scale in the bar (`scale:`): ticks, position, size, color, labels; hourly ticks in clock mode
 - Value mode on `input_number` / `number`: drag or arrow keys set the value (`step`, `drag: false`)
 - Font size and color of the texts (`text:`)
 - English and German texts, language follows Home Assistant
@@ -249,7 +250,7 @@ that exists twice (autumn) means the later time. Unknown time zone names are a c
 
 ### Mode `clock`
 
-Digital clock, no entity needed. The handle shows the time, the bar fills with the progress of the day.
+Clock, no entity needed. The handle shows the time (digital) or a dial (analog), the bar fills with the progress of the day.
 
 ```yaml
 type: custom:slabton-card
@@ -263,10 +264,27 @@ clock:
 
 | Option | Default | Description |
 | --- | --- | --- |
-| `clock.display` | `digital` | `analog` is reserved for a later release and shown as `digital` with a warning |
+| `clock.display` | `digital` | `digital` (text) or `analog` (dial in the handle, see below). `analog` needs `handle_content: text` and `handle_size` of at least 32; otherwise `digital` with a warning |
 | `clock.time_zone` | Home Assistant | IANA name, e.g. `America/New_York` |
 | `clock.hour_format` | `auto` | `auto` (language default), `12`, `24` |
-| `clock.seconds` | `false` | Show seconds |
+| `clock.seconds` | `false` | Show seconds; with `analog` also the second hand |
+| `clock.face.numbers` | `none` | `none`, `quarters` (12, 3, 6, 9) or `all` (1 to 12). Analog only. Needs `handle_size` 48 (`quarters`) or 72 (`all`); a smaller handle steps down one level with a warning |
+| `clock.face.ticks` | `true` | Tick marks at the edge of the dial. Analog only |
+
+Analog dial: the handle shows a dial with hour and minute hands; `clock.seconds` adds a second hand. The hands
+jump once per second (only the `transform` changes, no animation). Colors: see [Styling](#styling).
+
+```yaml
+type: custom:slabton-card
+mode: clock
+thickness: 56
+handle_size: 64
+clock:
+  display: analog
+  seconds: true
+  face:
+    numbers: quarters
+```
 
 ### Bar value
 
@@ -311,7 +329,7 @@ Texts are limited to 200 characters.
 
 ### Text appearance
 
-The `text:` block sets font size and color of four areas. Without it nothing changes.
+The `text:` block sets font size and color of five areas. Without it nothing changes.
 
 ```yaml
 type: custom:slabton-card
@@ -338,6 +356,8 @@ text:
 | `info` | `color` | text color | `timer.info` |
 | `button` | `font_size` | 14 px | Handle text (`handle_content: text`, `position`) |
 | `button` | `color` | text color | Whole handle content, including the handle icon |
+| `scale` | `font_size` | 10 px | Labels at the scale ticks (`scale.labels`) |
+| `scale` | `color` | text color | Labels at the scale ticks (`scale.labels`) |
 
 - `font_size`: number from 8 to 48 (px), or decimal text such as `"12"`. Other values are ignored with a console warning.
 - `color`: any CSS color accepted by `styles:`. Unsafe values are ignored with a console warning.
@@ -367,13 +387,16 @@ scale:
 | `position` | `bottom` (vertical: `right`) | Edge across the bar: `top` / `bottom` (horizontal) or `left` / `right` (vertical). `start`, `center`, `end` also work: `start` is top or left, `end` bottom or right |
 | `size` | 8 px | Tick length in px, 2 up to the bar `thickness` |
 | `color` | text color at 45 % | Any CSS color that `styles:` accepts |
+| `labels` | `false` | Labels at the ticks. Clock: hours 0, 6, 12, 18, 24. Value and counter: minimum and maximum, only with a fixed range (`min` and `max`, or `counter`). State: names of the configured `states` (at least two). Needs a bar thickness of 28 px; otherwise no labels, with a warning |
 
 - `scale: true` takes all defaults. `scale: false` or a missing block means off.
 - Ticks sit on the handle's travel: the tick for value i/ticks is exactly under the handle at that value. `direction: rtl` mirrors them.
 - Clock: one tick per hour (24). With `clock.hour_format: "12"` there are 12 ticks, two hours apart. `auto` gives 24 ticks even in a 12-hour locale. An explicit `ticks` wins over both.
 - Invalid values are ignored with a console warning and the default applies. Unknown keys are warned about and ignored.
 - The key `enabled` exists only as the editor switch. In YAML it is warned about and ignored.
-- Not drawn yet: labels and hour / minute hands. Planned for later releases.
+- Not drawn yet: hour / minute hands on the scale. Planned for later releases. The analog clock's hands sit in the handle (`clock.display: analog`).
+- Known limits of `scale.labels`: with a separate `bar.entity` the labels of value mode use the configured `min` and `max` (or 0 and 100), not the range of the bar entity; set `min` and `max` yourself. State names need `states` in the config (options of the entity are not used). Long names or a large `scale.size` can overlap on thin bars.
+- Visual editor, analog clock: once any field is changed the editor stores `clock.face.ticks: true` (the default value).
 - Visual editor: section "Scale" with a "Show scale" switch. Switching it off removes all scale options; switching it on again starts with the defaults.
 
 ## Languages
@@ -406,6 +429,9 @@ The [`text:` block](#text-appearance) sets these variables. `styles:` can set th
 `--slabton-button-size`, `--slabton-button-color`. Size defaults: header 14 px, bar 13 px, info 13 px, button 14 px.
 
 Scale: `--slabton-scale-size` and `--slabton-scale-color` are set by `scale.size` and `scale.color`; `styles:` can override them.
+Scale labels: `--slabton-scale-label-size` and `--slabton-scale-label-color` (set by `text.scale`).
+Analog dial: `--slabton-dial-color` (ticks and numbers), `--slabton-hands-color` (hour and minute hand, hub) and
+`--slabton-second-hand-color` (default: primary color).
 
 ## Development
 
@@ -430,7 +456,7 @@ checks that every language has the same keys and placeholders as English.
 ## Roadmap
 
 Planned as separate follow-ups: setting a counter by dragging; thresholds with color change;
-card lock; circle and 3/4 circle; multiple bars and handles; select dropdown; analog clock; scale labels and hands; other calendars.
+card lock; circle and 3/4 circle; multiple bars and handles; select dropdown; hour and minute hands on the scale; other calendars.
 
 ## License
 

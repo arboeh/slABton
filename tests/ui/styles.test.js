@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { normalizeConfig } from "../../src/core/config.js";
 import { applyVars, buildCss, buildVars, handleDimensions, handleExtra } from "../../src/ui/styles.js";
 
@@ -92,6 +92,7 @@ const TEXT_VAR_NAMES = [
   "--slabton-bar-text-size", "--slabton-bar-text-color",
   "--slabton-info-size", "--slabton-info-color",
   "--slabton-button-size", "--slabton-button-color",
+  "--slabton-scale-label-size", "--slabton-scale-label-color",
 ];
 
 describe("buildVars text block", () => {
@@ -107,9 +108,12 @@ describe("buildVars text block", () => {
         bar: { font_size: 12, color: "var(--secondary-text-color)" },
         info: { font_size: 11, color: "grey" },
         button: { font_size: 18, color: "white" },
+        scale: { font_size: 9, color: "#888" },
       },
     }));
     expect(v).toMatchObject({
+      "--slabton-scale-label-size": "9px",
+      "--slabton-scale-label-color": "#888",
       "--slabton-header-size": "16px",
       "--slabton-header-color": "#ff9800",
       "--slabton-header-icon-color": "#2196f3",
@@ -183,6 +187,45 @@ describe("buildVars scale", () => {
     applyVars(host, cfg(), keys);
     expect(host.style.getPropertyValue("--slabton-scale-size")).toBe("");
     expect(host.style.getPropertyValue("--slabton-scale-color")).toBe("");
+  });
+});
+
+describe("dial variables from styles:", () => {
+  it("sets and overrides the dial colors through styles:", () => {
+    const v = buildVars(cfg({
+      styles: { "dial-color": "teal", "hands-color": "var(--primary-text-color)", "second-hand-color": "#f44336" },
+    }));
+    expect(v["--slabton-dial-color"]).toBe("teal");
+    expect(v["--slabton-hands-color"]).toBe("var(--primary-text-color)");
+    expect(v["--slabton-second-hand-color"]).toBe("#f44336");
+  });
+
+  it("sets none of them by default", () => {
+    const v = buildVars(cfg());
+    for (const name of ["--slabton-dial-color", "--slabton-hands-color", "--slabton-second-hand-color"]) {
+      expect(v[name], name).toBeUndefined();
+    }
+  });
+
+  it("drops unsafe values (S5)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const v = buildVars(cfg({
+      styles: { "dial-color": "red;}", "hands-color": "url(http://x/y.png)", "second-hand-color": "javascript:alert(1)" },
+    }));
+    for (const name of ["--slabton-dial-color", "--slabton-hands-color", "--slabton-second-hand-color"]) {
+      expect(v[name], name).toBeUndefined();
+    }
+    expect(warn).toHaveBeenCalledTimes(3);
+    warn.mockRestore();
+  });
+
+  it("lets the text: scale colors win over styles:", () => {
+    const v = buildVars(cfg({
+      styles: { "scale-label-color": "teal", "scale-label-size": "20px" },
+      text: { scale: { color: "red" } },
+    }));
+    expect(v["--slabton-scale-label-color"]).toBe("red");
+    expect(v["--slabton-scale-label-size"]).toBe("20px");
   });
 });
 
@@ -283,6 +326,47 @@ describe("buildCss", () => {
     const css = buildCss();
     expect(css).toContain("var(--slabton-scale-size, 8px)");
     expect(css).toMatch(/\.tick \{[^}]*background: var\(--slabton-scale-color, color-mix\(in srgb, var\(--slabton-text-color, var\(--primary-text-color, #212121\)\) 45%, transparent\)\)/);
+  });
+
+  it("places the tick labels on the tick track, on the side of the bar's middle", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.tick-label \{[^}]*position: absolute[^}]*pointer-events: none/);
+    expect(css).toMatch(/\.o-h \.tick-label \{[^}]*left: calc\(var\(--slabton-tick-e, 0\) \* 100%\)[^}]*translateX\(-50%\)/);
+    expect(css).toMatch(/\.o-v \.tick-label \{[^}]*top: calc\(var\(--slabton-tick-e, 0\) \* 100%\)[^}]*translateY\(-50%\)/);
+    const clear = "calc(var(--slabton-scale-size, 8px) + 3px)";
+    expect(css).toContain(`.o-h .sc-start .tick-label { top: ${clear}; }`);
+    expect(css).toContain(`.o-h .sc-end .tick-label { bottom: ${clear}; }`);
+    expect(css).toContain(`.o-v .sc-start .tick-label { left: ${clear}; }`);
+    expect(css).toContain(`.o-v .sc-end .tick-label { right: ${clear}; }`);
+    expect(css).toMatch(/\.o-h \.sc-center \.tick-label \{[^}]*top: 2px/);
+    expect(css).toMatch(/\.o-v \.sc-center \.tick-label \{[^}]*left: 3px/);
+  });
+
+  it("sizes and colors the tick labels from variables with theme fallbacks", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.tick-label \{[^}]*font-size: var\(--slabton-scale-label-size, 10px\)/);
+    expect(css).toMatch(new RegExp(
+      `\\.tick-label \\{[^}]*color: var\\(--slabton-scale-label-color, ${escapeRe("var(--slabton-text-color, var(--primary-text-color, #212121))")}\\)`,
+    ));
+  });
+
+  it("sizes the dial to the handle's cross size", () => {
+    expect(buildCss()).toMatch(/\.dial \{[^}]*width: var\(--slabton-hc\)[^}]*height: var\(--slabton-hc\)/);
+  });
+
+  it("colors the dial and the hands from variables with theme fallbacks", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.dial-tick \{[^}]*stroke: var\(--slabton-dial-color, currentColor\)/);
+    expect(css).toMatch(/\.dial-num \{[^}]*fill: var\(--slabton-dial-color, currentColor\)/);
+    expect(css).toMatch(/\.hand line \{[^}]*stroke: var\(--slabton-hands-color, currentColor\)/);
+    expect(css).toMatch(/\.dial-hub \{[^}]*fill: var\(--slabton-hands-color, currentColor\)/);
+    expect(css).toMatch(/\.hand-second line \{[^}]*stroke: var\(--slabton-second-hand-color, var\(--primary-color, #03a9f4\)\)/);
+  });
+
+  it("turns the hands through the transform attribute without a transition or layout animation", () => {
+    const css = buildCss();
+    const dial = css.slice(css.indexOf(".dial {"), css.indexOf(".dial-hub"));
+    expect(dial).not.toMatch(/transition|animation|transform/);
   });
 
   it("colors the header title and icon independently", () => {

@@ -70,12 +70,47 @@ describe("buildSchema", () => {
     expect(names(timer)).not.toContain("hour_format");
   });
 
-  it("offers only the digital clock and does not require an entity for it", () => {
+  it("offers the digital and the analog display and does not require an entity for the clock", () => {
     const clock = buildSchema({ mode: "clock" });
     const display = clock.find((item) => item.name === "clock").schema.find((f) => f.name === "display");
-    expect(display.selector.select.options.map((o) => o.value)).toEqual(["digital"]);
+    expect(display.selector.select.options.map((o) => o.value)).toEqual(["digital", "analog"]);
     expect(clock.find((item) => item.name === "entity").required).toBe(false);
     expect(buildSchema({ entity: "timer.a" }).find((item) => item.name === "entity").required).toBe(true);
+  });
+
+  describe("dial fields", () => {
+    const clockSection = (config) => buildSchema(config).find((item) => item.name === "clock");
+    const face = (config) => clockSection(config).schema.find((item) => item.name === "face");
+
+    it("show only for the analog display", () => {
+      expect(face({ mode: "clock" })).toBeUndefined();
+      expect(face({ mode: "clock", clock: {} })).toBeUndefined();
+      expect(face({ mode: "clock", clock: { display: "digital" } })).toBeUndefined();
+      expect(face({ mode: "clock", clock: "analog" })).toBeUndefined();
+      expect(face({ mode: "clock", clock: { display: "analog" } })).toBeDefined();
+    });
+
+    it("offer numbers and ticks in a nested section next to the other clock fields", () => {
+      const section = clockSection({ mode: "clock", clock: { display: "analog" } });
+      expect(section.schema.map((f) => f.name)).toEqual(["display", "face", "hour_format", "seconds", "time_zone"]);
+      const fields = face({ mode: "clock", clock: { display: "analog" } });
+      expect(fields.type).toBe("expandable");
+      expect(fields.schema.map((f) => f.name)).toEqual(["numbers", "ticks"]);
+      expect(fields.schema[0].selector.select.options.map((o) => o.value)).toEqual(["none", "quarters", "all"]);
+      expect(fields.schema[1].selector).toEqual({ boolean: {} });
+    });
+
+    it("never show in the other modes", () => {
+      const analogBlock = { clock: { display: "analog" } };
+      for (const config of [{ entity: "switch.a", ...analogBlock }, { entity: "timer.a", ...analogBlock }]) {
+        expect(names(buildSchema(config))).not.toContain("face");
+      }
+    });
+  });
+
+  it("offers the tick labels switch in the scale section", () => {
+    const fields = buildSchema({ entity: "sensor.a" }).find((item) => item.name === "scale").schema;
+    expect(fields.find((f) => f.name === "labels").selector).toEqual({ boolean: {} });
   });
 
   it("offers bar_text and the bar block in every mode", () => {
@@ -96,7 +131,7 @@ describe("buildSchema", () => {
     for (const config of [{ entity: "switch.a" }, { entity: "lock.a" }, { entity: "sensor.a" }, { entity: "timer.a" }, { mode: "clock" }]) {
       const scale = buildSchema(config).find((item) => item.name === "scale");
       expect(scale.type).toBe("expandable");
-      expect(scale.schema.map((f) => f.name)).toEqual(["enabled", "ticks", "position", "size", "color"]);
+      expect(scale.schema.map((f) => f.name)).toEqual(["enabled", "ticks", "position", "size", "color", "labels"]);
     }
   });
 
@@ -133,10 +168,10 @@ describe("buildSchema", () => {
   it("offers font size and color per text area, the icon color only in the header", () => {
     const appearance = buildSchema({ entity: "switch.a" }).find((item) => item.name === "text");
     expect(appearance.type).toBe("expandable");
-    expect(appearance.schema.map((item) => item.name)).toEqual(["header", "bar", "info", "button"]);
+    expect(appearance.schema.map((item) => item.name)).toEqual(["header", "bar", "info", "button", "scale"]);
     const fields = (area) => appearance.schema.find((item) => item.name === area).schema.map((f) => f.name);
     expect(fields("header")).toEqual(["font_size", "color", "icon_color"]);
-    for (const area of ["bar", "info", "button"]) expect(fields(area)).toEqual(["font_size", "color"]);
+    for (const area of ["bar", "info", "button", "scale"]) expect(fields(area)).toEqual(["font_size", "color"]);
   });
 
   it("limits the font size like the config does", () => {
@@ -169,6 +204,14 @@ describe("cleanConfig", () => {
     expect(cleanConfig({ entity: "switch.a", scale: { ticks: 8, position: "", size: undefined, color: null } }))
       .toEqual({ entity: "switch.a", scale: { ticks: 8 } });
     expect(cleanConfig({ entity: "switch.a", scale: { ticks: "", position: "" } })).toEqual({ entity: "switch.a" });
+  });
+
+  it("drops cleared clock fields, the empty face and an empty clock map", () => {
+    expect(cleanConfig({ mode: "clock", clock: { display: "analog", face: { numbers: "", ticks: undefined }, time_zone: "" } }))
+      .toEqual({ mode: "clock", clock: { display: "analog" } });
+    expect(cleanConfig({ mode: "clock", clock: { face: {} } })).toEqual({ mode: "clock" });
+    expect(cleanConfig({ mode: "clock", clock: { display: "analog", face: { numbers: "all", ticks: false }, seconds: false } }))
+      .toEqual({ mode: "clock", clock: { display: "analog", face: { numbers: "all", ticks: false }, seconds: false } });
   });
 
   it("leaves other nested values untouched", () => {
@@ -263,12 +306,12 @@ describe("SlabtonCardEditor", () => {
     };
     expect(labelsOf("en")).toEqual({
       section: "Appearance",
-      areas: ["Header", "Bar text", "Timer info", "Handle text"],
+      areas: ["Header", "Bar text", "Timer info", "Handle text", "Scale labels"],
       fields: ["Font size in px", "Color", "Icon color"],
     });
     expect(labelsOf("de")).toEqual({
       section: "Darstellung",
-      areas: ["Kopfzeile", "Balkentext", "Timer-Info", "Griff-Text"],
+      areas: ["Kopfzeile", "Balkentext", "Timer-Info", "Griff-Text", "Skala-Beschriftung"],
       fields: ["Schriftgröße in px", "Farbe", "Symbolfarbe"],
     });
   });
@@ -285,12 +328,58 @@ describe("SlabtonCardEditor", () => {
     };
     expect(labelsOf("en")).toEqual({
       section: "Scale",
-      fields: ["Show scale", "Segments (ticks = segments + 1)", "Position across the bar", "Tick length in px", "Tick color"],
+      fields: [
+        "Show scale", "Segments (ticks = segments + 1)", "Position across the bar", "Tick length in px", "Tick color",
+        "Show labels at the ticks",
+      ],
     });
     expect(labelsOf("de")).toEqual({
       section: "Skala",
-      fields: ["Skala anzeigen", "Segmente (Striche = Segmente + 1)", "Position quer zum Balken", "Strichlänge in px", "Strichfarbe"],
+      fields: [
+        "Skala anzeigen", "Segmente (Striche = Segmente + 1)", "Position quer zum Balken", "Strichlänge in px", "Strichfarbe",
+        "Beschriftung an den Strichen anzeigen",
+      ],
     });
+  });
+
+  it("labels the dial section and fields in both languages", () => {
+    if (!customElements.get("ha-form")) customElements.define("ha-form", class extends HTMLElement {});
+    const labelsOf = (language) => {
+      const editor = document.createElement("slabton-card-editor");
+      editor.hass = { states: {}, locale: { language } };
+      editor.setConfig({ mode: "clock", clock: { display: "analog" } });
+      const form = editor.shadowRoot.querySelector("ha-form");
+      const face = form.schema.find((item) => item.name === "clock").schema.find((item) => item.name === "face");
+      return { section: form.computeLabel(face), fields: face.schema.map((f) => form.computeLabel(f)) };
+    };
+    expect(labelsOf("en")).toEqual({ section: "Dial (analog)", fields: ["Numbers on the dial", "Tick marks on the dial"] });
+    expect(labelsOf("de")).toEqual({
+      section: "Zifferblatt (analog)", fields: ["Ziffern auf dem Zifferblatt", "Strichmarken auf dem Zifferblatt"],
+    });
+  });
+
+  it("drops an empty dial section the form sends back", () => {
+    const { send } = setup({ mode: "clock", clock: { display: "analog" } });
+    expect(send({ mode: "clock", clock: { display: "analog", face: {} } })).toEqual({ mode: "clock", clock: { display: "analog" } });
+  });
+
+  it("drops the dial section when the display goes back to digital, and an emptied clock map", () => {
+    const { send } = setup({ mode: "clock", clock: { display: "analog", face: { numbers: "all" } } });
+    expect(send({ mode: "clock", clock: { display: "digital", face: { numbers: "all" }, seconds: true } }))
+      .toEqual({ mode: "clock", clock: { display: "digital", seconds: true } });
+    expect(send({ mode: "clock", clock: { face: { numbers: "all" } } })).toEqual({ mode: "clock" });
+    expect(send({ mode: "clock", clock: { display: "analog", face: { numbers: "all" } } }))
+      .toEqual({ mode: "clock", clock: { display: "analog", face: { numbers: "all" } } });
+  });
+
+  it("shows the dial tick marks as on in the form while the option is not set", () => {
+    const { form, editor } = setup({ mode: "clock", clock: { display: "analog" } });
+    expect(form.data.clock.face).toEqual({ ticks: true });
+    editor.setConfig({ mode: "clock", clock: { display: "analog", face: { numbers: "all", ticks: false } } });
+    expect(form.data.clock.face).toEqual({ numbers: "all", ticks: false });
+    editor.setConfig({ mode: "clock", clock: { display: "digital" } });
+    expect(form.data.clock).toEqual({ display: "digital" });
+    expect(editor._config.clock).toEqual({ display: "digital" });
   });
 
   /** Editor with `config`, a spy on config-changed and a helper that sends form values. */

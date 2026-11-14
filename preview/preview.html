@@ -166,6 +166,47 @@
       ["clock with scale (12 h = 12 ticks)", {
         mode: "clock", name: "New York", clock: { time_zone: "America/New_York", hour_format: "12" }, scale: { position: "center" },
       }],
+      ["analog clock, 48 px handle (ticks)", {
+        mode: "clock", name: "Berlin", handle_size: 48, clock: { display: "analog", time_zone: "Europe/Berlin" },
+      }],
+      ["analog clock, 64 px, seconds, quarters", {
+        mode: "clock", name: "Berlin", thickness: 56, handle_size: 64,
+        clock: { display: "analog", time_zone: "Europe/Berlin", seconds: true, face: { numbers: "quarters" } },
+      }],
+      ["analog clock, 96 px, seconds, all numbers", {
+        mode: "clock", name: "New York", thickness: 64, handle_size: 96,
+        clock: { display: "analog", time_zone: "America/New_York", hour_format: "12", seconds: true, face: { numbers: "all" } },
+      }],
+      ["analog clock, 64 px, no ticks, numbers", {
+        mode: "clock", name: "No ticks", thickness: 56, handle_size: 64,
+        clock: { display: "analog", time_zone: "UTC", face: { numbers: "quarters", ticks: false } },
+      }],
+      ["analog clock, oval handle", {
+        mode: "clock", name: "Oval", thickness: 56, handle_size: 64, handle_shape: "oval", clock: { display: "analog", seconds: true },
+      }],
+      ["analog clock, vertical", {
+        mode: "clock", name: "Vertical", orientation: "vertical", length: 240, thickness: 64, handle_size: 64,
+        clock: { display: "analog", seconds: true, face: { numbers: "quarters" } },
+      }],
+      ["analog clock, colored via styles", {
+        mode: "clock", name: "Colors", thickness: 56, handle_size: 64, styles: { "dial-color": "#ff9800", "hands-color": "#2196f3", "second-hand-color": "#f44336" },
+        clock: { display: "analog", seconds: true, face: { numbers: "quarters" } },
+      }],
+      ["analog clock, handle too small (falls back to digital, warns)", {
+        mode: "clock", name: "Too small", handle_size: 24, clock: { display: "analog" },
+      }],
+      ["scale labels, clock 24 h", { mode: "clock", name: "Berlin", clock: { time_zone: "Europe/Berlin" }, scale: { labels: true } }],
+      ["scale labels, clock 12 h, top", {
+        mode: "clock", name: "New York", clock: { time_zone: "America/New_York", hour_format: "12" }, scale: { labels: true, position: "top" },
+      }],
+      ["scale labels, value (min / max)", { entity: "sensor.soc", preset: "soc", name: "Battery", scale: { ticks: 10, labels: true } }],
+      ["scale labels, thermometer, small colored font", {
+        entity: "sensor.temp", preset: "thermometer", name: "Living room", scale: { ticks: 5, labels: true },
+        text: { scale: { font_size: 9, color: "#ff9800" } },
+      }],
+      ["scale labels, vertical", {
+        entity: "sensor.soc", preset: "soc", orientation: "vertical", length: 200, scale: { ticks: 4, labels: true },
+      }],
       ["bar from another entity", {
         entity: "timer.sauna", name: "Sauna", bar: { entity: "sensor.temp", min: 0, max: 40, unit: "°C", decimals: 1 }, bar_text: "{value}",
       }],

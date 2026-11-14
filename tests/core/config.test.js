@@ -304,14 +304,13 @@ describe("new modes", () => {
     expect(() => normalizeConfig({ mode: "clock", clock: { time_zone: "nope" } })).toThrow(/clock\.time_zone/);
   });
 
-  it("normalizes the clock block and reserves analog", () => {
+  it("normalizes the clock block with the digital display as default", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(normalizeConfig({ mode: "clock" }).clock).toEqual({
-      display: "digital", time_zone: null, hour_format: "auto", seconds: false,
+      display: "digital", face: { numbers: "none", ticks: true }, time_zone: null, hour_format: "auto", seconds: false,
     });
-    const c = normalizeConfig({ mode: "clock", clock: { display: "analog", hour_format: 12, seconds: true, time_zone: "UTC" } });
-    expect(c.clock).toEqual({ display: "digital", time_zone: "UTC", hour_format: "12", seconds: true });
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/analog.*reserved/));
+    expect(normalizeConfig({ entity: "sensor.t" }).clock.face).toEqual({ numbers: "none", ticks: true });
+    expect(warn).not.toHaveBeenCalled();
     expect(() => normalizeConfig({ mode: "clock", clock: { hour_format: "13" } })).toThrow(/clock\.hour_format/);
     expect(() => normalizeConfig({ mode: "clock", clock: { display: "x" } })).toThrow(/clock\.display/);
   });
@@ -367,14 +366,14 @@ describe("scale block", () => {
   });
 
   it("uses defaults for scale: true and an empty map", () => {
-    const expected = { ticks: 10, position: "end", size: null, color: null };
+    const expected = { ticks: 10, position: "end", size: null, color: null, labels: null };
     expect(scaleOf({}, true)).toEqual(expected);
     expect(scaleOf({}, {})).toEqual(expected);
   });
 
   it("keeps valid values", () => {
     expect(scaleOf({}, { ticks: 4, position: "center", size: 6, color: "#888" })).toEqual({
-      ticks: 4, position: "center", size: 6, color: "#888",
+      ticks: 4, position: "center", size: 6, color: "#888", labels: null,
     });
     expect(scaleOf({}, { ticks: "20", size: "5" })).toMatchObject({ ticks: 20, size: 5 });
   });
@@ -429,8 +428,8 @@ describe("scale block", () => {
 
   it("does not warn about an empty position, ticks, size or color", () => {
     const warn = quiet();
-    expect(scaleOf({}, { position: "", ticks: "", size: null, color: "" })).toEqual({
-      ticks: 10, position: "end", size: null, color: null,
+    expect(scaleOf({}, { position: "", ticks: "", size: null, color: "", labels: "" })).toEqual({
+      ticks: 10, position: "end", size: null, color: null, labels: null,
     });
     expect(warn).not.toHaveBeenCalled();
   });
@@ -483,9 +482,195 @@ describe("scale block", () => {
 
   it("warns about unknown options and ignores them", () => {
     const warn = quiet();
-    const scale = scaleOf({}, { ticks: 5, labels: true });
-    expect(scale).toEqual({ ticks: 5, position: "end", size: null, color: null });
-    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.labels/));
+    const scale = scaleOf({}, { ticks: 5, glow: true });
+    expect(scale).toEqual({ ticks: 5, position: "end", size: null, color: null, labels: null });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.glow/));
+  });
+});
+
+describe("scale labels", () => {
+  const quiet = () => vi.spyOn(console, "warn").mockImplementation(() => {});
+  const labelsOf = (config, scale = { labels: true }) => normalizeConfig({ ...config, scale }).scale.labels;
+  const texts = (labels) => labels.map((l) => `${l.index}:${l.text}`);
+
+  it("are off by default and with labels: false", () => {
+    const warn = quiet();
+    expect(labelsOf({ entity: "sensor.t" }, true)).toBeNull();
+    expect(labelsOf({ entity: "sensor.t" }, { labels: false })).toBeNull();
+    expect(labelsOf({ mode: "clock" }, { ticks: 6 })).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("label every sixth hour on a 24 h clock scale", () => {
+    expect(texts(labelsOf({ mode: "clock" }))).toEqual(["0:0", "6:6", "12:12", "18:18", "24:24"]);
+    expect(texts(labelsOf({ mode: "clock", clock: { hour_format: "24" } }))).toEqual(["0:0", "6:6", "12:12", "18:18", "24:24"]);
+  });
+
+  it("label the hours of the 24 h day on a 12 h clock scale too (12 ticks, two hours apart)", () => {
+    expect(texts(labelsOf({ mode: "clock", clock: { hour_format: "12" } }))).toEqual(["0:0", "3:6", "6:12", "9:18", "12:24"]);
+  });
+
+  it("follow an explicit tick count on a clock scale", () => {
+    expect(texts(labelsOf({ mode: "clock" }, { ticks: 4, labels: true }))).toEqual(["0:0", "1:6", "2:12", "3:18", "4:24"]);
+    expect(texts(labelsOf({ mode: "clock" }, { ticks: 8, labels: true }))).toEqual(["0:0", "2:6", "4:12", "6:18", "8:24"]);
+  });
+
+  it("show the range limits in value mode with the decimals, without unit", () => {
+    expect(texts(labelsOf({ entity: "sensor.t", preset: "thermometer" }))).toEqual(["0:-10.0", "10:40.0"]);
+    expect(texts(labelsOf({ entity: "sensor.t", min: 0, max: 5000, unit: "W", decimals: 0 }, { ticks: 4, labels: true }))).toEqual(["0:0", "4:5000"]);
+  });
+
+  it("show the limits of a settable entity only when min and max are configured", () => {
+    const warn = quiet();
+    expect(texts(labelsOf({ entity: "input_number.v", min: 5, max: 25, decimals: 0 }))).toEqual(["0:5", "10:25"]);
+    expect(labelsOf({ entity: "input_number.v" })).toBeNull();
+    expect(labelsOf({ entity: "number.v", min: 5 })).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.labels needs a fixed range/));
+  });
+
+  it("show the limits of a counter from counter: or min/max, else warn", () => {
+    const warn = quiet();
+    expect(texts(labelsOf({ entity: "counter.c", counter: { min: 0, max: 10 } }))).toEqual(["0:0", "10:10"]);
+    expect(texts(labelsOf({ entity: "counter.c", min: 1, max: 9 }))).toEqual(["0:1", "10:9"]);
+    expect(texts(labelsOf({ entity: "counter.c", min: 1, counter: { max: 7 } }))).toEqual(["0:1", "10:7"]);
+    expect(labelsOf({ entity: "counter.c" })).toBeNull();
+    expect(labelsOf({ entity: "counter.c", counter: { min: 0 } })).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it("name the configured states at the handle position of each state", () => {
+    const warn = quiet();
+    const states = [{ value: "Off" }, { value: "Auto", label: "Automatik" }, { value: "On" }, { value: "Idle" }];
+    const config = { entity: "input_select.s", mode: "state", states };
+    // 4 states on the default 10 ticks: the labels lie between ticks, exactly where the handle stops.
+    expect(texts(labelsOf(config))).toEqual(["0:Off", "3.3333333333333335:Automatik", "6.666666666666667:On", "10:Idle"]);
+    expect(texts(labelsOf(config, { ticks: 3, labels: true }))).toEqual(["0:Off", "1:Automatik", "2:On", "3:Idle"]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("need at least two configured states in mode state: warn and ignore", () => {
+    const warn = quiet();
+    expect(labelsOf({ entity: "input_select.s", mode: "state" })).toBeNull();
+    expect(labelsOf({ entity: "input_select.s", mode: "state", states: [{ value: "a" }] })).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.labels needs at least two configured states/));
+  });
+
+  it.each([["lock.a"], ["timer.a"]])("are not available for %s: warn and ignore", (entity) => {
+    const warn = quiet();
+    expect(labelsOf({ entity })).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.labels is not available in mode/));
+  });
+
+  it("report the mode before the thickness: a mode without labels never gets the thickness warning", () => {
+    const warn = quiet();
+    expect(labelsOf({ entity: "lock.a", thickness: 20 })).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.labels is not available in mode "lock"/));
+  });
+
+  it("need a bar thickness of at least 28 px", () => {
+    const warn = quiet();
+    expect(labelsOf({ mode: "clock", thickness: 28 })).not.toBeNull();
+    expect(labelsOf({ mode: "clock", thickness: 27 })).toBeNull();
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.labels needs a bar thickness of at least 28 \(is 27\)/));
+  });
+
+  it("warn about a value that is not a boolean", () => {
+    const warn = quiet();
+    expect(labelsOf({ mode: "clock" }, { labels: "yes" })).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.labels must be true or false/));
+  });
+});
+
+describe("analog clock", () => {
+  const quiet = () => vi.spyOn(console, "warn").mockImplementation(() => {});
+  const clockOf = (extra = {}, clock = {}) => normalizeConfig({ mode: "clock", ...extra, clock: { display: "analog", ...clock } }).clock;
+
+  it("is accepted with the dial defaults", () => {
+    const warn = quiet();
+    expect(clockOf({}, { hour_format: 12, seconds: true, time_zone: "UTC" })).toEqual({
+      display: "analog", face: { numbers: "none", ticks: true }, time_zone: "UTC", hour_format: "12", seconds: true,
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("keeps the face options", () => {
+    quiet();
+    expect(clockOf({ handle_size: 80 }, { face: { numbers: "all", ticks: false } }).face).toEqual({ numbers: "all", ticks: false });
+    expect(clockOf({ handle_size: 48 }, { face: { numbers: "quarters" } }).face).toEqual({ numbers: "quarters", ticks: true });
+  });
+
+  it("accepts the minimum handle size and falls back to digital below it, with a warning", () => {
+    const warn = quiet();
+    expect(clockOf({ handle_size: 32 }).display).toBe("analog");
+    expect(warn).not.toHaveBeenCalled();
+    expect(clockOf({ handle_size: 31 }).display).toBe("digital");
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/analog.*handle_size 31 is below the minimum of 32.*digital/));
+  });
+
+  it("falls back to digital when the handle does not show text", () => {
+    const warn = quiet();
+    for (const handle_content of ["icon", "position", "none"]) {
+      expect(clockOf({ handle_content }).display).toBe("digital");
+    }
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/handle_content is "icon"/));
+  });
+
+  it("resets the face to the defaults after a fallback", () => {
+    quiet();
+    expect(clockOf({ handle_size: 20 }, { face: { numbers: "all", ticks: false } }).face).toEqual({ numbers: "none", ticks: true });
+  });
+
+  it("steps the numbers down for a small handle, one warning per step", () => {
+    const warn = quiet();
+    expect(clockOf({ handle_size: 72 }, { face: { numbers: "all" } }).face.numbers).toBe("all");
+    expect(warn).not.toHaveBeenCalled();
+    expect(clockOf({ handle_size: 71 }, { face: { numbers: "all" } }).face.numbers).toBe("quarters");
+    expect(warn).toHaveBeenCalledTimes(1);
+    warn.mockClear();
+    expect(clockOf({ handle_size: 47 }, { face: { numbers: "all" } }).face.numbers).toBe("none");
+    expect(warn).toHaveBeenCalledTimes(2);
+    warn.mockClear();
+    expect(clockOf({ handle_size: 47 }, { face: { numbers: "quarters" } }).face.numbers).toBe("none");
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/clock\.face\.numbers "quarters" needs a handle_size of at least 48/));
+  });
+
+  it("rejects an unknown numbers level and a face that is not a map", () => {
+    expect(() => clockOf({}, { face: { numbers: "some" } })).toThrow(/clock\.face\.numbers "some".*none, quarters, all/);
+    expect(() => clockOf({}, { face: "all" })).toThrow(/clock\.face must be a map/);
+  });
+
+  it("warns when face.ticks is not a boolean and keeps the default", () => {
+    const warn = quiet();
+    expect(clockOf({}, { face: { ticks: "false" } }).face.ticks).toBe(true);
+    expect(clockOf({}, { face: { ticks: 0 } }).face.ticks).toBe(true);
+    expect(clockOf({}, { face: { ticks: false } }).face.ticks).toBe(false);
+    expect(clockOf({}, { face: { ticks: true } }).face.ticks).toBe(true);
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/clock\.face\.ticks must be true or false/));
+  });
+
+  it("warns about unknown face options and ignores them", () => {
+    const warn = quiet();
+    expect(clockOf({}, { face: { glow: true } }).face).toEqual({ numbers: "none", ticks: true });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/clock\.face\.glow/));
+  });
+
+  it("warns about a face on a digital clock and ignores it", () => {
+    const warn = quiet();
+    const c = normalizeConfig({ mode: "clock", clock: { face: { numbers: "all" } } }).clock;
+    expect(c.display).toBe("digital");
+    expect(c.face).toEqual({ numbers: "none", ticks: true });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/clock\.face is only used with clock\.display "analog"/));
+  });
+
+  it("does not mutate the shared defaults", () => {
+    const first = normalizeConfig({ entity: "sensor.t" }).clock;
+    first.face.numbers = "all";
+    expect(normalizeConfig({ entity: "sensor.t" }).clock.face.numbers).toBe("none");
   });
 });
 
@@ -495,6 +680,7 @@ describe("text block", () => {
     bar: { font_size: null, color: null },
     info: { font_size: null, color: null },
     button: { font_size: null, color: null },
+    scale: { font_size: null, color: null },
   };
 
   it("defaults every value to null without text:", () => {
@@ -510,6 +696,7 @@ describe("text block", () => {
         bar: { font_size: "12", color: "var(--secondary-text-color)" },
         info: { font_size: 11, color: "grey" },
         button: { font_size: 18, color: "white" },
+        scale: { font_size: 9, color: "#888" },
       },
     });
     expect(c.text).toEqual({
@@ -517,6 +704,7 @@ describe("text block", () => {
       bar: { font_size: 12, color: "var(--secondary-text-color)" },
       info: { font_size: 11, color: "grey" },
       button: { font_size: 18, color: "white" },
+      scale: { font_size: 9, color: "#888" },
     });
   });
 

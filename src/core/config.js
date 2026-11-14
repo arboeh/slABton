@@ -6,9 +6,11 @@
  */
 
 import {
-  ACTION, ACTION_TYPES, ANIMATIONS, CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, DEFAULT_ANIMATION, DEFAULT_SCALE_POSITION,
+  ACTION, ACTION_TYPES, ANIMATIONS, CLOCK_FACE_NUMBERS, CLOCK_FACE_OPTIONS, CLOCK_LABEL_STEP,
+  CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, DEFAULT_ANIMATION, DEFAULT_SCALE_POSITION,
   DEFAULT_SCALE_TICKS, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES, MAX_FONT_SIZE, MAX_SCALE_TICKS,
-  MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_THICKNESS, OFF_VALUES, READ_ONLY_MODES, SCALE_ALIASES, SCALE_AXIS_POSITIONS,
+  MAX_THICKNESS, MIN_ANALOG_HANDLE_SIZE, MIN_DIAL_NUMBERS_SIZE, MIN_DIAL_QUARTERS_SIZE, MIN_FONT_SIZE, MIN_LABEL_THICKNESS,
+  MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_THICKNESS, OFF_VALUES, READ_ONLY_MODES, SCALE_ALIASES, SCALE_AXIS_POSITIONS,
   SCALE_OPTIONS, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS, VALUE_SETTABLE_DOMAINS,
 } from "./constants.js";
 import { unknownPlaceholders } from "./placeholders.js";
@@ -27,8 +29,7 @@ export const SWITCH_SLOTS = ["start", "mid", "end"];
 export const ARM_SERVICES = ["alarm_arm_away", "alarm_arm_home", "alarm_arm_night", "alarm_arm_vacation"];
 export const PRESET_NAMES = ["none", "thermometer", "energy", "soc"];
 export const CLOCK_DISPLAYS = ["digital", "analog"];
-/** Displays the editor offers (`analog` is reserved for a later release). */
-export const CLOCK_DISPLAYS_OFFERED = ["digital"];
+export { CLOCK_FACE_NUMBERS };
 export const HOUR_FORMATS = ["auto", "12", "24"];
 
 /** Names reserved for later releases: accepted, warned about once and ignored. */
@@ -385,21 +386,106 @@ function scaleSize(value, thickness) {
 }
 
 /**
+ * Hour labels of a clock scale: every 6th hour of the day at the tick of that hour. The bar always spans
+ * the 24 h of the day, so `index` sits at hour `index * 24 / ticks`, in every `hour_format`.
+ */
+function clockLabels(ticks) {
+  const labels = [];
+  for (let index = 0; index <= ticks; index += 1) {
+    const hour = (index * CLOCK_SCALE_TICKS_24) / ticks;
+    if (Number.isInteger(hour) && hour % CLOCK_LABEL_STEP === 0) labels.push({ index, text: String(hour) });
+  }
+  return labels;
+}
+
+/**
+ * Range the config alone fixes, or null. An entity may bring its own range (attributes of an
+ * input_number / number, of a counter); then only explicitly configured limits are known.
+ */
+function fixedRange(mode, { domain, range, counter }) {
+  const both = range.range_set.min && range.range_set.max;
+  if (mode === MODE.VALUE) {
+    if (VALUE_SETTABLE_DOMAINS.includes(domain) && !both) return null;
+    return { min: range.min, max: range.max, decimals: range.decimals };
+  }
+  const min = counter.min ?? (range.range_set.min ? range.min : null);
+  const max = counter.max ?? (range.range_set.max ? range.max : null);
+  return min != null && max != null ? { min, max, decimals: 0 } : null;
+}
+
+/** Minimum at the first and maximum at the last tick (number with `decimals`, no unit). */
+function rangeLabels(ticks, mode, context) {
+  const limits = fixedRange(mode, context);
+  if (!limits) return null;
+  return [
+    { index: 0, text: limits.min.toFixed(limits.decimals) },
+    { index: ticks, text: limits.max.toFixed(limits.decimals) },
+  ];
+}
+
+/**
+ * One label per configured state, at the handle position of that state. `index` is the position on
+ * the tick scale and may lie between two ticks (e.g. 4 states on 10 ticks). Null without `states`:
+ * states derived from the entity are not known when the config is read.
+ */
+function stateLabels(ticks, states) {
+  if (states.length < 2) return null;
+  const last = states.length - 1;
+  return states.map((state, i) => ({ index: (i * ticks) / last, text: state.label ?? state.value }));
+}
+
+/** Modes whose scale can carry labels. */
+const LABEL_MODES = [MODE.CLOCK, MODE.VALUE, MODE.COUNTER, MODE.STATE];
+
+/**
+ * Tick labels as `[{ index, text }]`, or null (off, or not possible in this mode or bar; warns when requested).
+ * Clock: hours. Value and counter: minimum and maximum. State: the configured state names.
+ * The other modes have nothing to label.
+ */
+function scaleLabels(value, ticks, mode, context) {
+  if (isBlank(value) || value === false) return null;
+  if (value !== true) {
+    warn("scale.labels must be true or false and was ignored");
+    return null;
+  }
+  if (!LABEL_MODES.includes(mode)) {
+    warn(`scale.labels is not available in mode "${mode}" and was ignored`);
+    return null;
+  }
+  if (context.thickness < MIN_LABEL_THICKNESS) {
+    warn(`scale.labels needs a bar thickness of at least ${MIN_LABEL_THICKNESS} (is ${context.thickness}) and was ignored`);
+    return null;
+  }
+  if (mode === MODE.CLOCK) return clockLabels(ticks);
+  if (mode === MODE.STATE) {
+    const labels = stateLabels(ticks, context.states);
+    if (!labels) warn('scale.labels needs at least two configured states (set states) in mode "state" and was ignored');
+    return labels;
+  }
+  const labels = rangeLabels(ticks, mode, context);
+  if (!labels) warn(`scale.labels needs a fixed range (set min and max) in mode "${mode}" and was ignored`);
+  return labels;
+}
+
+/**
  * The `scale:` block (tick marks in the bar): `true` = defaults, missing/`false` = off (null).
  * Anything else than a boolean or a map is an error; invalid option values warn and fall back.
+ * `context`: clock, orientation, thickness, domain, range, counter and states of the resolved config.
  */
-function normalizeScale(raw, mode, clock, { orientation, thickness }) {
+function normalizeScale(raw, mode, context) {
   if (isBlank(raw) || raw === false) return null;
   if (raw !== true && !isPlainObject(raw)) throw new Error("slabton-card: scale must be true, false or a map");
   const source = raw === true ? {} : raw;
   for (const key of Object.keys(source)) {
     if (!SCALE_OPTIONS.includes(key)) warn(`scale.${key} is not a known option and was ignored`);
   }
+  const ticks = scaleTicks(source.ticks, mode, context.clock);
   return {
-    ticks: scaleTicks(source.ticks, mode, clock),
-    position: scalePosition(source.position, orientation),
-    size: scaleSize(source.size, thickness),
+    ticks,
+    position: scalePosition(source.position, context.orientation),
+    size: scaleSize(source.size, context.thickness),
     color: textColor(source.color, "scale.color"),
+    labels: scaleLabels(source.labels, ticks, mode, context),
   };
 }
 
@@ -411,7 +497,13 @@ function normalizeTimeZone(value, key) {
 
 const COUNTER_DEFAULTS = Object.freeze({ min: null, max: null });
 const TIMER_DEFAULTS = Object.freeze({ pulse: true, pulse_seconds: 10, info: null, time_zone: null, span: 30 });
-const CLOCK_DEFAULTS = Object.freeze({ display: "digital", time_zone: null, hour_format: "auto", seconds: false });
+const CLOCK_FACE_DEFAULTS = Object.freeze({ numbers: "none", ticks: true });
+const CLOCK_DEFAULTS = Object.freeze({
+  display: "digital", face: CLOCK_FACE_DEFAULTS, time_zone: null, hour_format: "auto", seconds: false,
+});
+/** Smallest `handle_size` per numbers level, and the level to fall back to when the handle is too small. */
+const NUMBERS_MIN_SIZE = Object.freeze({ all: MIN_DIAL_NUMBERS_SIZE, quarters: MIN_DIAL_QUARTERS_SIZE, none: 0 });
+const NUMBERS_LOWER = Object.freeze({ all: "quarters", quarters: "none" });
 
 /** Only `min` and `max` override the counter entity's own range. */
 function normalizeCounter(raw) {
@@ -433,12 +525,53 @@ function normalizeTimer(raw) {
   };
 }
 
-function normalizeClock(raw) {
+/** Why the handle cannot show a dial (text for the warning), or null. */
+function analogBlocker({ handle_content: content, handle_size: size }) {
+  if (content !== "text") return `handle_content is "${content}" (the dial replaces the text)`;
+  if (size < MIN_ANALOG_HANDLE_SIZE) return `handle_size ${size} is below the minimum of ${MIN_ANALOG_HANDLE_SIZE}`;
+  return null;
+}
+
+/** Numbers level that fits the handle: steps down (all -> quarters -> none) with a warning per step. */
+function fitNumbers(numbers, size) {
+  let level = numbers;
+  while (size < NUMBERS_MIN_SIZE[level]) {
+    warn(`clock.face.numbers "${level}" needs a handle_size of at least ${NUMBERS_MIN_SIZE[level]} (is ${size}); using "${NUMBERS_LOWER[level]}"`);
+    level = NUMBERS_LOWER[level];
+  }
+  return level;
+}
+
+/** The `clock.face` block (analog only): numbers and tick marks of the dial. */
+function normalizeFace(raw, handleSize) {
+  if (raw != null && !isPlainObject(raw)) throw new Error("slabton-card: clock.face must be a map");
+  const source = raw ?? {};
+  for (const key of Object.keys(source)) {
+    if (!CLOCK_FACE_OPTIONS.includes(key)) warn(`clock.face.${key} is not a known option and was ignored`);
+  }
+  const numbers = pickEnum(source.numbers, CLOCK_FACE_NUMBERS, CLOCK_FACE_DEFAULTS.numbers, "clock.face.numbers");
+  return { numbers: fitNumbers(numbers, handleSize), ticks: faceTicks(source.ticks) };
+}
+
+/** `clock.face.ticks`: true (default) or false; anything else warns and keeps the default. */
+function faceTicks(value) {
+  if (value == null) return CLOCK_FACE_DEFAULTS.ticks;
+  if (typeof value === "boolean") return value;
+  warn("clock.face.ticks must be true or false and was ignored");
+  return CLOCK_FACE_DEFAULTS.ticks;
+}
+
+/** `display: analog` needs a text handle of at least MIN_ANALOG_HANDLE_SIZE; otherwise it falls back to digital (warns). */
+function normalizeClock(raw, layout) {
   const block = blockOf(raw, MODE.CLOCK);
-  const display = pickEnum(block.display, CLOCK_DISPLAYS, CLOCK_DEFAULTS.display, "clock.display");
-  if (display === "analog") warn('clock.display "analog" is reserved for a later release; showing the digital clock');
+  const requested = pickEnum(block.display, CLOCK_DISPLAYS, CLOCK_DEFAULTS.display, "clock.display");
+  const blocker = requested === "analog" ? analogBlocker(layout) : null;
+  if (blocker) warn(`clock.display "analog" is not possible: ${blocker}; showing the digital clock`);
+  if (block.face != null && requested !== "analog") warn('clock.face is only used with clock.display "analog" and was ignored');
+  const display = blocker ? "digital" : requested;
   return {
-    display: "digital",
+    display,
+    face: display === "analog" ? normalizeFace(block.face, layout.handle_size) : { ...CLOCK_FACE_DEFAULTS },
     time_zone: normalizeTimeZone(block.time_zone, "clock.time_zone"),
     hour_format: pickEnum(block.hour_format == null ? null : String(block.hour_format), HOUR_FORMATS, CLOCK_DEFAULTS.hour_format, "clock.hour_format"),
     seconds: block.seconds === true,
@@ -481,7 +614,9 @@ export function normalizeConfig(raw) {
   if (mode === MODE.STATE) warnUnreachableStates(states, domain);
   warnUnusedKeys(raw, mode);
   const layout = normalizeLayout(raw, mode);
-  const clock = mode === MODE.CLOCK ? normalizeClock(raw) : { ...CLOCK_DEFAULTS };
+  const clock = mode === MODE.CLOCK ? normalizeClock(raw, layout) : { ...CLOCK_DEFAULTS, face: { ...CLOCK_FACE_DEFAULTS } };
+  const counter = mode === MODE.COUNTER ? normalizeCounter(raw) : { ...COUNTER_DEFAULTS };
+  const range = normalizeRange(source, presetDefaults);
 
   // `thresholds`, `shape` and `control` are reserved (RESERVED_KEYS) and intentionally ignored.
   return {
@@ -492,11 +627,11 @@ export function normalizeConfig(raw) {
     icon: str(raw.icon) ?? presetDefaults.icon ?? null,
     bar_entity: barEntity,
     bar_text: normalizeText(raw.bar_text, "bar_text", mode),
-    counter: mode === MODE.COUNTER ? normalizeCounter(raw) : { ...COUNTER_DEFAULTS },
+    counter,
     timer: mode === MODE.TIMER ? normalizeTimer(raw) : { ...TIMER_DEFAULTS },
     clock,
     ...layout,
-    scale: normalizeScale(raw.scale, mode, clock, layout),
+    scale: normalizeScale(raw.scale, mode, { clock, counter, range, domain, states, ...layout }),
     ...normalizeLook(raw),
     ...normalizeTriggers(raw),
     states,
@@ -504,7 +639,7 @@ export function normalizeConfig(raw) {
     drag: raw.drag !== false && (mode !== MODE.VALUE || VALUE_SETTABLE_DOMAINS.includes(domain)),
     ...normalizeLock(raw),
     preset,
-    ...normalizeRange(source, presetDefaults),
+    ...range,
     switches: normalizeSwitches(raw.switches),
     text: normalizeTextStyle(raw.text),
   };

@@ -7,7 +7,7 @@
  */
 
 import {
-  ARM_SERVICES, CLOCK_DISPLAYS_OFFERED, DEFAULTS, DIRECTIONS, HANDLE_CONTENTS, HANDLE_POSITIONS, HANDLE_SHAPES,
+  ARM_SERVICES, CLOCK_DISPLAYS, CLOCK_FACE_NUMBERS, DEFAULTS, DIRECTIONS, HANDLE_CONTENTS, HANDLE_POSITIONS, HANDLE_SHAPES,
   HEADER_ICON_POSITIONS, HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, inferMode,
 } from "../core/config.js";
 import {
@@ -27,8 +27,23 @@ const bool = () => ({ boolean: {} });
 /** Named expandable section: ha-form passes `data[name]` to its fields. */
 const section = (name, title, schema) => ({ type: "expandable", name, title, schema });
 
+/**
+ * Dial options of the analog clock (nested `clock.face` section, shown only for `display: analog`).
+ * `labelKey`: "numbers" and "ticks" would clash with other labels.
+ */
+function clockFaceFields(config, lang) {
+  if (!isPlainObject(config.clock) || config.clock.display !== "analog") return [];
+  return [{
+    ...section("face", t(lang, "editor.section.clock_face"), [
+      { name: "numbers", labelKey: "editor.clock_face_numbers", selector: select(CLOCK_FACE_NUMBERS) },
+      { name: "ticks", labelKey: "editor.clock_face_ticks", selector: bool() },
+    ]),
+    labelKey: "editor.section.clock_face",
+  }];
+}
+
 /** Fields that only apply to one mode. */
-function modeFields(mode, lang) {
+function modeFields(mode, lang, config) {
   return {
     [MODE.STATE]: [
       { name: "drag", selector: bool() },
@@ -66,7 +81,8 @@ function modeFields(mode, lang) {
     ],
     [MODE.CLOCK]: [
       section("clock", t(lang, "editor.section.clock"), [
-        { name: "display", selector: select(CLOCK_DISPLAYS_OFFERED) },
+        { name: "display", selector: select(CLOCK_DISPLAYS) },
+        ...clockFaceFields(config, lang),
         { name: "hour_format", selector: select(HOUR_FORMATS) },
         { name: "seconds", selector: bool() },
         { name: "time_zone", selector: text() },
@@ -138,6 +154,7 @@ function scaleFields(config) {
     { name: "position", labelKey: "editor.scale_position", selector: select(scalePositionsFor(config.orientation)) },
     { name: "size", labelKey: "editor.scale_size", selector: number(MIN_SCALE_SIZE, thicknessOf(config)) },
     { name: "color", labelKey: "editor.scale_color", selector: text() },
+    { name: "labels", labelKey: "editor.scale_labels", selector: bool() },
   ];
 }
 
@@ -153,7 +170,7 @@ export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
     { name: "icon", selector: { icon: {} } },
     { name: "header_position", selector: select(HEADER_POSITIONS) },
     { name: "header_icon_position", selector: select(HEADER_ICON_POSITIONS) },
-    ...modeFields(mode, lang),
+    ...modeFields(mode, lang, config),
     { name: "bar_text", selector: text() },
     section("bar", t(lang, "editor.section.bar"), barFields()),
     section("", t(lang, "editor.section.layout"), layoutFields(config)),
@@ -177,7 +194,7 @@ export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
 }
 
 /** Top-level blocks whose cleared fields are dropped at every depth (so no `header: {}` stays behind). */
-const NESTED_CLEAN_KEYS = ["text", "scale"];
+const NESTED_CLEAN_KEYS = ["text", "scale", "clock"];
 
 const isCleared = (value) => value === undefined || value === null || value === "";
 
@@ -212,10 +229,31 @@ export function cleanConfig(data) {
  * with the `enabled` switch (on for `true` and for a map); a missing or false scale has no section data.
  */
 function formData(config) {
-  const { scale, ...rest } = config;
+  const { scale, ...base } = config;
+  const rest = withFaceDefaults(base);
   if (scale === true) return { ...rest, scale: { enabled: true } };
   return isPlainObject(scale) ? { ...rest, scale: { ...scale, enabled: true } } : rest;
 }
+
+const isAnalog = (config) => isPlainObject(config.clock) && config.clock.display === "analog";
+
+/** An analog clock draws its tick marks unless told otherwise: show the switch on, not unset. */
+function withFaceDefaults(config) {
+  if (!isAnalog(config)) return config;
+  const face = isPlainObject(config.clock.face) ? config.clock.face : {};
+  return { ...config, clock: { ...config.clock, face: { ticks: true, ...face } } };
+}
+
+/** `clock.face` only means something for an analog clock; drop it when the display goes back to digital. */
+function withoutUnusedFace(config) {
+  if (isAnalog(config) || !isPlainObject(config.clock) || config.clock.face === undefined) return config;
+  const clock = omit(config.clock, "face");
+  const rest = omit(config, "clock");
+  return Object.keys(clock).length > 0 ? { ...rest, clock } : rest;
+}
+
+/** Copy of `map` without `key`. */
+const omit = (map, key) => Object.fromEntries(Object.entries(map).filter(([name]) => name !== key));
 
 /**
  * Scale to store after a form change: the option map, `true` (defaults) or undefined (off).
@@ -324,7 +362,7 @@ export class SlabtonCardEditor extends HTMLElement {
   _onChanged(event) {
     event.stopPropagation();
     const { scale: formScale, ...rest } = event.detail.value ?? {};
-    const cleaned = cleanConfig(rest);
+    const cleaned = withoutUnusedFace(cleanConfig(rest));
     const scale = scaleForOrientation(
       resolveScale(formScale, this._config.scale), orientationOf(this._config), orientationOf(cleaned),
     );

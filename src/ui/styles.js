@@ -86,6 +86,46 @@ export function applyVars(host, config, previousKeys = []) {
   return Object.keys(vars);
 }
 
+/**
+ * Labels at the scale ticks (`scale.labels`): on the track of the ticks, next to the tick on the side
+ * that faces the middle of the bar (centred scales: at the start edge).
+ */
+function scaleLabelCss() {
+  const clear = `calc(var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px) + 3px)`;
+  return `
+    .tick-label {
+      position: absolute; line-height: 1; white-space: nowrap; pointer-events: none;
+      font-size: var(--slabton-scale-label-size, 10px);
+      color: var(--slabton-scale-label-color, var(--slabton-text-color, var(--primary-text-color, #212121)));
+    }
+    .o-h .tick-label { left: calc(var(--slabton-tick-e, 0) * 100%); transform: translateX(-50%); }
+    .o-v .tick-label { top: calc(var(--slabton-tick-e, 0) * 100%); transform: translateY(-50%); }
+    .o-h .sc-start .tick-label { top: ${clear}; }
+    .o-h .sc-end .tick-label { bottom: ${clear}; }
+    .o-h .sc-center .tick-label { top: 2px; }
+    .o-v .sc-start .tick-label { left: ${clear}; }
+    .o-v .sc-end .tick-label { right: ${clear}; }
+    .o-v .sc-center .tick-label { left: 3px; }`;
+}
+
+/**
+ * Dial of the analog clock (inline SVG in the handle). Colors come from variables with theme fallbacks:
+ * `--slabton-dial-color` (ticks, numbers), `--slabton-hands-color`, `--slabton-second-hand-color`.
+ * The hands turn through their `transform` attribute; there is no transition (they jump once per second).
+ */
+function dialCss() {
+  return `
+    .dial { display: block; flex: none; width: var(--slabton-hc); height: var(--slabton-hc); }
+    .dial-tick { stroke: var(--slabton-dial-color, currentColor); stroke-width: 1.4; stroke-linecap: round; }
+    .dial-tick.quarter { stroke-width: 2.4; }
+    .dial-num { fill: var(--slabton-dial-color, currentColor); font-size: 11px; font-weight: 600; text-anchor: middle; dominant-baseline: central; }
+    .hand line { stroke: var(--slabton-hands-color, currentColor); stroke-linecap: round; }
+    .hand-hour line { stroke-width: 3.4; }
+    .hand-minute line { stroke-width: 2.4; }
+    .hand-second line { stroke: var(--slabton-second-hand-color, var(--primary-color, #03a9f4)); stroke-width: 1.2; }
+    .dial-hub { fill: var(--slabton-hands-color, currentColor); }`;
+}
+
 export function buildCss() {
   return `
     :host { display: block; }
@@ -163,6 +203,7 @@ export function buildCss() {
     .o-v .sc-start .tick { left: 0; }
     .o-v .sc-end .tick { right: 0; }
     .o-v .sc-center .tick { left: 50%; margin-left: calc(var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px) / -2); }
+    ${scaleLabelCss()}
     .carrier { position: absolute; inset: 0; }
     .o-h .carrier { transform: translateX(calc(var(--slabton-e, 0) * 100%)); }
     .o-v .carrier { transform: translateY(calc(var(--slabton-e, 0) * 100%)); }
@@ -184,6 +225,7 @@ export function buildCss() {
     .content[hidden], .h-icon[hidden], .h-text[hidden] { display: none; }
     .h-icon { --mdc-icon-size: calc(var(--slabton-hc) * 0.55); }
     .h-text { padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    ${dialCss()}
     .handle:focus-visible, .sw:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
 
     .sw {

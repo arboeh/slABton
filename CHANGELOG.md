@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-11-14
+
 ### Added
 
 - `text:` block for the card texts: font size and color per area `header`, `bar` (bar text), `info` (timer
@@ -26,9 +28,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   `clock.hour_format: "12"`).
 - Visual editor section "Scale" / "Skala" with a "Show scale" switch; English and German texts.
 - CSS variables `--slabton-scale-size` and `--slabton-scale-color`.
+- `clock.display: analog`: analog dial in the handle with hour and minute hands; `clock.seconds` adds the second hand.
+  Needs `handle_content: text` and `handle_size` of at least 32 px, otherwise the clock stays digital with a warning.
+- `clock.face` (analog only): `numbers` (`none` default, `quarters`, `all`) and `ticks` (`true` default). Numbers need
+  `handle_size` of at least 48 px (`quarters`) or 72 px (`all`); a smaller handle steps down one level with a warning.
+- `scale.labels: true`: labels at the scale ticks. Clock: hours 0, 6, 12, 18, 24. Value and counter: minimum and maximum
+  (needs a fixed range). State: names of the configured `states` (at least two). Needs a bar thickness of 28 px.
+- `text:` area `scale` (`font_size`, `color`) for the scale labels; CSS variables `--slabton-scale-label-size` and
+  `--slabton-scale-label-color`.
+- CSS variables `--slabton-dial-color`, `--slabton-hands-color`, `--slabton-second-hand-color` for the analog dial.
+- Visual editor: `analog` in the clock display, section "Dial" / "Zifferblatt (analog)", switch for scale labels.
 
 ### Changed
 
+- `clock.display: analog` is no longer reserved; it renders the dial (see Added).
 - License changed from MIT to MPL 2.0 (`LICENSE`, `package.json`, READMEs).
 - Source split into `src/core` (no DOM: config, constants, time, placeholders, i18n, pulse, modes) and
   `src/ui` (card, render, styles, interaction, editor, animations). No visible change.

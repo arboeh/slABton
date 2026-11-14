@@ -1,6 +1,6 @@
 {
   "name": "slabton-card",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "private": true,
   "type": "module",
   "description": "Slider button bar card for Home Assistant: a bar with a movable handle button for states, swipe-to-lock/unlock and value display",

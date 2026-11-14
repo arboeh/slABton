@@ -1,10 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import "../../src/ui/slabton-card.js";
 import { normalizeConfig } from "../../src/core/config.js";
 import { renderCard, rootClasses, updateSwitches, updateView } from "../../src/ui/render.js";
 import { buildCss } from "../../src/ui/styles.js";
 import * as stateMode from "../../src/core/modes/state.js";
 import * as lockMode from "../../src/core/modes/lock.js";
-import { makeState } from "../helpers/mock-hass.js";
+import { createHass, makeState } from "../helpers/mock-hass.js";
 
 function setup(extra = {}) {
   const config = normalizeConfig({ entity: "input_select.mode", ...extra });
@@ -127,6 +128,231 @@ describe("scale", () => {
     updateView(refs, config, stateMode.view(config, modeState));
     expect(shadow.querySelector(".scale")).toBe(before);
     expect(tickValues(shadow)).toEqual(["0", "0.5", "1"]);
+  });
+});
+
+describe("scale labels", () => {
+  const labelsOf = (shadow) => [...shadow.querySelectorAll(".scale .tick-label")];
+  const texts = (shadow) => labelsOf(shadow).map((label) => label.textContent);
+  const edges = (shadow) => labelsOf(shadow).map((label) => label.style.getPropertyValue("--slabton-tick-e"));
+
+  it("renders none without scale.labels", () => {
+    expect(labelsOf(setup({ entity: "sensor.t", scale: { ticks: 4 } }).shadow)).toHaveLength(0);
+    expect(labelsOf(setup({ entity: "sensor.t" }).shadow)).toHaveLength(0);
+  });
+
+  it("puts the minimum and maximum at the first and last tick in value mode", () => {
+    const { shadow } = setup({ entity: "sensor.soc", preset: "soc", scale: { ticks: 4, labels: true } });
+    expect(texts(shadow)).toEqual(["0", "100"]);
+    expect(edges(shadow)).toEqual(["0", "1"]);
+    expect(shadow.querySelectorAll(".scale .tick")).toHaveLength(5);
+  });
+
+  it("puts the hours of a 24 h clock scale on the matching ticks", () => {
+    const { shadow } = setup({ entity: undefined, mode: "clock", scale: { labels: true } });
+    expect(texts(shadow)).toEqual(["0", "6", "12", "18", "24"]);
+    expect(edges(shadow)).toEqual(["0", "0.25", "0.5", "0.75", "1"]);
+  });
+
+  it("labels a 12 h clock scale with the hours of the 24 h day, at the position of that hour", () => {
+    const { shadow } = setup({ entity: undefined, mode: "clock", clock: { hour_format: "12" }, scale: { labels: true } });
+    expect(texts(shadow)).toEqual(["0", "6", "12", "18", "24"]);
+    expect(edges(shadow)).toEqual(["0", "0.25", "0.5", "0.75", "1"]);
+  });
+
+  it("mirrors the labels like the ticks for rtl and vertical bars", () => {
+    const base = { entity: "sensor.soc", preset: "soc", scale: { ticks: 4, labels: true } };
+    expect(edges(setup({ ...base, direction: "rtl" }).shadow)).toEqual(["1", "0"]);
+    expect(edges(setup({ ...base, orientation: "vertical" }).shadow)).toEqual(["1", "0"]);
+  });
+
+  it("puts the state names where the handle stops, also between ticks and mirrored vertically", () => {
+    const states = [{ value: "Off" }, { value: "Auto" }, { value: "On" }, { value: "Idle" }];
+    const base = { entity: "input_select.s", mode: "state", states, orientation: "vertical", scale: { labels: true } };
+    const { shadow } = setup(base);
+    expect(texts(shadow)).toEqual(["Off", "Auto", "On", "Idle"]);
+    expect(edges(shadow)).toEqual(["1", "0.6667", "0.3333", "0"]);
+  });
+
+  it("renders no labels in modes without any and warns", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { shadow } = setup({ entity: "lock.a", scale: { labels: true } });
+    expect(labelsOf(shadow)).toHaveLength(0);
+    expect(shadow.querySelectorAll(".scale .tick").length).toBeGreaterThan(0);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.labels is not available/));
+    warn.mockRestore();
+  });
+
+  it("keeps the labels when the view updates and shows them as plain text", () => {
+    const { config, shadow, refs } = setup({ entity: "sensor.soc", preset: "soc", scale: { ticks: 2, labels: true } });
+    const before = labelsOf(shadow);
+    updateView(refs, config, {
+      pos: 0.5, fillPos: 0.5, icon: "mdi:gauge", text: "50", positionText: "50", color: null, unavailable: false, ariaNow: 50, ariaText: "50",
+    });
+    expect(labelsOf(shadow)).toHaveLength(2);
+    expect(labelsOf(shadow).every((label, i) => label === before[i])).toBe(true);
+    expect(labelsOf(shadow).every((label) => label.children.length === 0)).toBe(true);
+  });
+});
+
+describe("analog dial", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    delete document.hidden;
+    document.body.innerHTML = "";
+  });
+
+  const analog =(extra = {}, clock = {}) => setup({
+    entity: undefined, mode: "clock", clock: { display: "analog", time_zone: "UTC", ...clock }, ...extra,
+  });
+  const clockView = (extra = {}) => ({
+    pos: 0.5, fillPos: 0.5, icon: "mdi:clock-outline", text: "12:00", positionText: "50", color: null,
+    unavailable: false, ariaNow: 50, ariaText: "12:00", ...extra,
+  });
+  const numbers = (shadow) => [...shadow.querySelectorAll(".dial-num")].map((n) => n.textContent);
+
+  it("renders no dial for the digital clock or any other mode", () => {
+    for (const extra of [{ entity: undefined, mode: "clock" }, {}, { entity: "sensor.t" }]) {
+      const { shadow, refs } = setup(extra);
+      expect(shadow.querySelector(".dial")).toBeNull();
+      expect(refs.dial).toBeNull();
+    }
+  });
+
+  it("renders an aria-hidden SVG in the handle next to the icon and the text", () => {
+    const { shadow, refs } = analog();
+    const svg = shadow.querySelector(".content > svg.dial");
+    expect(svg).not.toBeNull();
+    expect(svg.getAttribute("aria-hidden")).toBe("true");
+    expect(svg.getAttribute("viewBox")).toBe("-50 -50 100 100");
+    expect(refs.icon.parentElement).toBe(refs.content);
+    expect(refs.text.parentElement).toBe(refs.content);
+  });
+
+  it("draws the hour and minute hands, the seconds hand only with clock.seconds", () => {
+    const without = analog();
+    expect(without.refs.dial.hour).not.toBeNull();
+    expect(without.refs.dial.minute).not.toBeNull();
+    expect(without.refs.dial.second).toBeNull();
+    expect(without.shadow.querySelector(".hand-second")).toBeNull();
+    const withSeconds = analog({}, { seconds: true });
+    expect(withSeconds.refs.dial.second).not.toBeNull();
+  });
+
+  it("draws 12 tick marks with 4 emphasised quarters, or none with ticks: false", () => {
+    const on = analog().shadow;
+    expect(on.querySelectorAll(".dial-tick")).toHaveLength(12);
+    expect(on.querySelectorAll(".dial-tick.quarter")).toHaveLength(4);
+    expect(analog({}, { face: { ticks: false } }).shadow.querySelectorAll(".dial-tick")).toHaveLength(0);
+  });
+
+  it("draws no numbers, the quarters or all twelve", () => {
+    expect(numbers(analog().shadow)).toEqual([]);
+    expect(numbers(analog({ handle_size: 60 }, { face: { numbers: "quarters" } }).shadow)).toEqual(["12", "3", "6", "9"]);
+    expect(numbers(analog({ handle_size: 80 }, { face: { numbers: "all" } }).shadow))
+      .toEqual(["1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12"]);
+  });
+
+  it("places the numbers around the dial: 12 on top, 3 right, 6 bottom, 9 left", () => {
+    const { shadow } = analog({ handle_size: 60 }, { face: { numbers: "quarters", ticks: false } });
+    const at = (hour) => {
+      const el = [...shadow.querySelectorAll(".dial-num")].find((n) => n.textContent === hour);
+      return [Number(el.getAttribute("x")), Number(el.getAttribute("y"))];
+    };
+    expect(at("12")).toEqual([0, -37]);
+    expect(at("3")).toEqual([37, 0]);
+    expect(at("6")).toEqual([0, 37]);
+    expect(at("9")).toEqual([-37, 0]);
+  });
+
+  it("builds the SVG from fixed elements only, without any configuration string", () => {
+    const { shadow } = analog({ name: "Küche", icon: "mdi:fire", handle_size: 80 }, {
+      time_zone: "Europe/Berlin", seconds: true, face: { numbers: "all" },
+    });
+    const svg = shadow.querySelector(".dial");
+    const tags = new Set([...svg.querySelectorAll("*")].map((el) => el.tagName.toLowerCase()));
+    expect([...tags].sort()).toEqual(["circle", "g", "line", "text"]);
+    for (const secret of ["Küche", "mdi:fire", "Berlin", "analog", "all"]) expect(svg.outerHTML).not.toContain(secret);
+  });
+
+  it("hides the handle text and icon and turns the hands from the view", () => {
+    const { config, refs } = analog({}, { seconds: true });
+    updateView(refs, config, clockView({ dial: { hour: 105, minute: 184.5, second: 270 } }));
+    expect(refs.text.hidden).toBe(true);
+    expect(refs.text.textContent).toBe("");
+    expect(refs.icon.hidden).toBe(true);
+    expect(refs.dial.hour.getAttribute("transform")).toBe("rotate(105)");
+    expect(refs.dial.minute.getAttribute("transform")).toBe("rotate(184.5)");
+    expect(refs.dial.second.getAttribute("transform")).toBe("rotate(270)");
+  });
+
+  it("rounds the angles to two decimals and ignores a missing seconds angle", () => {
+    const { config, refs } = analog({}, { seconds: true });
+    updateView(refs, config, clockView({ dial: { hour: 59.50000000000001, minute: 1 / 3, second: null } }));
+    expect(refs.dial.hour.getAttribute("transform")).toBe("rotate(59.5)");
+    expect(refs.dial.minute.getAttribute("transform")).toBe("rotate(0.33)");
+    expect(refs.dial.second.hasAttribute("transform")).toBe(false);
+  });
+
+  it("changes only the transform attributes between updates", () => {
+    const { config, shadow, refs } = analog({}, { seconds: true });
+    const handle = refs.handle;
+    const svg = shadow.querySelector(".dial");
+    const markup = svg.innerHTML.replace(/ transform="rotate\([\d.]+\)"/g, "");
+    updateView(refs, config, clockView({ dial: { hour: 0, minute: 0, second: 0 } }));
+    updateView(refs, config, clockView({ dial: { hour: 0, minute: 0.1, second: 6 } }));
+    expect(refs.dial.second.getAttribute("transform")).toBe("rotate(6)");
+    expect(shadow.querySelector(".handle")).toBe(handle);
+    expect(shadow.querySelector(".dial")).toBe(svg);
+    expect(svg.innerHTML.replace(/ transform="rotate\([\d.]+\)"/g, "")).toBe(markup);
+  });
+
+  it("does not replay the handle animation when only the hands move", () => {
+    const { config, refs } = analog({ animation: "pulse" });
+    updateView(refs, config, clockView({ dial: { hour: 0, minute: 0, second: null } }));
+    updateView(refs, config, clockView({ text: "12:01", dial: { hour: 0.5, minute: 6, second: null } }));
+    expect(refs.handle.classList.contains("changed")).toBe(false);
+  });
+
+  it("turns the hands every second without rebuilding the card", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(Date.UTC(2026, 0, 1, 15, 30, 45));
+    // Like card.test.js: the tick only runs while the page counts as visible.
+    Object.defineProperty(document, "hidden", { configurable: true, get: () => false });
+    const el = document.createElement("slabton-card");
+    el.setConfig({ type: "custom:slabton-card", mode: "clock", clock: { display: "analog", time_zone: "UTC", seconds: true } });
+    el.hass = createHass({}, { config: { time_zone: "UTC" } });
+    document.body.appendChild(el);
+    vi.advanceTimersByTime(0);
+
+    const root = el.shadowRoot;
+    const handle = root.querySelector(".handle");
+    const svg = root.querySelector(".dial");
+    const second = root.querySelector(".hand-second");
+    const minute = root.querySelector(".hand-minute");
+    expect(second.getAttribute("transform")).toBe("rotate(270)");
+    expect(minute.getAttribute("transform")).toBe("rotate(184.5)");
+
+    vi.advanceTimersByTime(1000);
+    expect(second.getAttribute("transform")).toBe("rotate(276)");
+    expect(minute.getAttribute("transform")).toBe("rotate(184.6)");
+    vi.advanceTimersByTime(15000);
+    expect(second.getAttribute("transform")).toBe("rotate(6)");
+
+    expect(root.querySelector(".handle")).toBe(handle);
+    expect(root.querySelector(".dial")).toBe(svg);
+    expect(root.querySelector(".hand-second")).toBe(second);
+    expect(root.querySelector(".h-text").hidden).toBe(true);
+  });
+
+  it("falls back to the digital text below the minimum handle size", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const { shadow, config, refs } = analog({ handle_size: 24 });
+    expect(config.clock.display).toBe("digital");
+    expect(shadow.querySelector(".dial")).toBeNull();
+    updateView(refs, config, clockView());
+    expect(refs.text.textContent).toBe("12:00");
+    warn.mockRestore();
   });
 });
 
