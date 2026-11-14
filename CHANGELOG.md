@@ -15,6 +15,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   `--slabton-bar-text-size`, `--slabton-bar-text-color`, `--slabton-info-size`, `--slabton-info-color`,
   `--slabton-button-size`, `--slabton-button-color`.
 - English and German texts for the new editor fields.
+- Mode `value` on `input_number` / `number` is draggable: drag the handle or press the arrow keys to set the value.
+  `<domain>.set_value` is called on release, and only when the value changes. Range from `min` / `max`, else the
+  entity's `min` / `max` attributes. Step from the new `step` option (also `bar.step`), else the entity's `step`
+  attribute, else stepless. `drag: false` turns it off. Sensors stay read-only.
+- Visual editor: `drag` switch and `step` field in value mode.
 
 ### Changed
 
@@ -25,6 +30,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 - Timer pulse logic moved to `src/core/pulse.js`; `timer.sample()` split into smaller functions;
   constants for timer status, source and notices; small clean-ups (time zone guess, clock display list,
   numeric state parsing).
+- Mode `value` is read-only only for `sensor`; `input_number` and `number` can be set (see Added).
+- Held arrow keys no longer repeat: one key press is one step, in all modes.
 
 ## [0.2.0] - 2026-11-12
 

@@ -21,6 +21,7 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Timer: Home-Assistant-`timer.*` oder Countdown auf ein `input_datetime` / `input_date`, Pulsieren bei Ablauf, Zeitzonen
 - Text in der Bar (`bar_text`) mit einfachen Platzhaltern, ohne Templates
 - Bar-Wert aus einer eigenen Entity (`bar:`)
+- Modus `value` bei `input_number` / `number`: Ziehen oder Pfeiltasten setzen den Wert (`step`, `drag: false`)
 - Schriftgröße und Farbe der Texte (`text:`)
 - Texte auf Deutsch und Englisch, Sprache folgt Home Assistant
 - Aktionen Klick, Doppelklick, Halten
@@ -152,7 +153,7 @@ Keine Alarmcodes in der Config ablegen. Siehe [SECURITY.md](SECURITY.md).
 
 ### Modus `value`
 
-Nur Anzeige. Die Bar füllt sich nach Wert, der Wert steht im Griff.
+Die Bar füllt sich nach Wert, der Wert steht im Griff. Bei `input_number` und `number` lässt sich der Griff ziehen oder mit den Pfeiltasten verschieben; die Karte ruft beim Loslassen `<domain>.set_value` auf, nicht während des Ziehens. `sensor` bleibt reine Anzeige.
 
 ```yaml
 type: custom:slabton-card
@@ -164,9 +165,13 @@ preset: thermometer
 | Option | Standard | Beschreibung |
 | --- | --- | --- |
 | `preset` | `none` | `thermometer` (-10 bis 40, °C), `energy` (0 bis 5000, W), `soc` (0 bis 100, %) |
-| `min`, `max` | Preset oder 0 / 100 | Wertebereich |
+| `min`, `max` | Preset oder 0 / 100 | Wertebereich. Ohne diese Werte nehmen `input_number` / `number` die Attribute `min` / `max` der Entity |
 | `unit` | Preset | Einheit |
 | `decimals` | Preset oder 1 | Nachkommastellen |
+| `step` | Attribut `step` der Entity | Schrittweite (auch `bar.step`); ohne Schrittweite wird der Wert nur auf `decimals` gerundet |
+| `drag` | `true` | Ziehen und Pfeiltasten bei `input_number` / `number`. `false` schaltet sie ab. Kein Ziehen bei `handle_position` außer `flex`, bei eigener `bar.entity` oder wenn max nicht größer als min ist |
+
+Pfeiltasten verschieben den Wert um einen Schritt (ohne Schrittweite: 1 % des Bereichs). Ein Bereich mit max nicht größer als min lässt die Bar leer, meldet eine Konsolenwarnung und deaktiviert das Ziehen.
 
 ### Modus `counter`
 
@@ -280,7 +285,7 @@ bar:
 bar_text: "{value}"
 ```
 
-`bar` kennt `entity`, `min`, `max`, `unit`, `decimals`, `preset`. Die flachen Optionen (`min`, `max`, `unit`,
+`bar` kennt `entity`, `min`, `max`, `unit`, `decimals`, `preset`, `step`. Die flachen Optionen (`min`, `max`, `unit`,
 `decimals`, `preset` auf oberster Ebene) bleiben Alias für `bar.*`; sind beide gesetzt, gewinnt `bar:` und
 es gibt eine Warnung. Ohne `bar.entity` folgt die Bar wie bisher `entity`. `{value}` ist dann der Bar-Wert.
 

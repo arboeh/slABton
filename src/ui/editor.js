@@ -17,7 +17,7 @@ import { isPlainObject, warn } from "../core/util.js";
 const select = (options) => ({
   select: { mode: "dropdown", options: options.map((value) => ({ value, label: value })) },
 });
-const number = (min, max) => ({ number: { min, max, mode: "box" } });
+const number = (min, max, step) => ({ number: { min, max, mode: "box", ...(step === undefined ? {} : { step }) } });
 const text = () => ({ text: {} });
 const bool = () => ({ boolean: {} });
 
@@ -36,10 +36,12 @@ function modeFields(mode, lang) {
       { name: "arm_service", selector: select(ARM_SERVICES) },
     ],
     [MODE.VALUE]: [
+      { name: "drag", selector: bool() },
       { name: "preset", selector: select(PRESET_NAMES) },
       { type: "grid", name: "", schema: [
         { name: "min", selector: number(-1e9, 1e9) },
         { name: "max", selector: number(-1e9, 1e9) },
+        { name: "step", selector: number(0, 1e9, "any") },
         { name: "unit", selector: text() },
         { name: "decimals", selector: number(0, 6) },
       ] },

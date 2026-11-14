@@ -218,6 +218,54 @@ describe("bar block", () => {
   });
 });
 
+describe("value mode: step and drag", () => {
+  it("has no step by default and accepts a positive number", () => {
+    expect(normalizeConfig({ entity: "input_number.v" }).step).toBeNull();
+    expect(normalizeConfig({ entity: "input_number.v", step: 5 }).step).toBe(5);
+    expect(normalizeConfig({ entity: "input_number.v", step: "0.5" }).step).toBe(0.5);
+  });
+
+  it("reads the step from bar: as an alias", () => {
+    expect(normalizeConfig({ entity: "input_number.v", bar: { step: 2 } }).step).toBe(2);
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ entity: "input_number.v", step: 1, bar: { step: 2 } }).step).toBe(2);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/bar\.step/));
+  });
+
+  it.each([[0], [-1], ["abc"]])("ignores the step %j with a warning", (value) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ entity: "input_number.v", step: value }).step).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/step/));
+  });
+
+  it("does not warn about an empty step", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ entity: "input_number.v", step: "" }).step).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("allows dragging for input_number and number, not for sensors", () => {
+    expect(normalizeConfig({ entity: "input_number.v" }).drag).toBe(true);
+    expect(normalizeConfig({ entity: "number.v" }).drag).toBe(true);
+    expect(normalizeConfig({ entity: "sensor.t" }).drag).toBe(false);
+    expect(normalizeConfig({ entity: "sensor.t", drag: true }).drag).toBe(false);
+    expect(normalizeConfig({ entity: "counter.c", mode: "value" }).drag).toBe(false);
+  });
+
+  it("switches dragging off with drag: false", () => {
+    expect(normalizeConfig({ entity: "input_number.v", drag: false }).drag).toBe(false);
+  });
+
+  it("leaves drag alone in the other modes", () => {
+    expect(normalizeConfig({ entity: "sensor.t", mode: "state" }).drag).toBe(true);
+    expect(normalizeConfig({ entity: "lock.a" }).drag).toBe(true);
+  });
+
+  it("still shows text in the handle for value mode", () => {
+    expect(normalizeConfig({ entity: "input_number.v" }).handle_content).toBe("text");
+  });
+});
+
 describe("new modes", () => {
   it("allows the clock without an entity but nothing else", () => {
     const c = normalizeConfig({ mode: "clock" });

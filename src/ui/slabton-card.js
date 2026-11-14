@@ -2,7 +2,8 @@
  * slABton card - slider button bar for Home Assistant.
  *
  * A bar with a movable handle button. Modes: `state` (multi-state click /
- * drag), `lock` (swipe to lock/unlock), `value` (read-only display),
+ * drag), `lock` (swipe to lock/unlock), `value` (number display; drag sets
+ * `input_number` / `number`),
  * `counter`, `timer` and `clock`. Timer and clock tick locally once per
  * second, only while the card is connected and the page is visible.
  * Plain custom element, no runtime dependencies. All config values are
@@ -44,6 +45,7 @@ const NOTICES = {
   [NOTICE.TIME_ONLY]: "timer: an input_datetime without a date cannot be used as a countdown target (use has_date or input_date)",
   [NOTICE.UNSUPPORTED_ENTITY]: "timer mode supports timer.*, input_datetime.* and input_date.* entities",
   [NOTICE.INVALID_RANGE]: "counter: the maximum must be greater than the minimum (check counter.min / counter.max or the entity attributes)",
+  [NOTICE.INVALID_VALUE_RANGE]: "value: the maximum must be greater than the minimum (check min / max or the entity attributes); the bar cannot be dragged",
 };
 const STUB_DOMAINS = ["input_select", "select", "switch", "input_boolean", "light"];
 
@@ -211,7 +213,7 @@ export class SlabtonCard extends HTMLElement {
   _view(now = Date.now()) {
     const config = this._config;
     const stateObj = this._stateObj();
-    const ctx = this._context(now, this._pulse.active);
+    const ctx = { ...this._context(now, this._pulse.active), dragPos: this._dragPos };
     const view = this._mode.view(config, stateObj, this._pendingValue() ?? undefined, ctx);
     return this._decorate(view, stateObj, ctx);
   }
@@ -341,6 +343,21 @@ export class SlabtonCard extends HTMLElement {
   /** Arrow keys. Lock mode ignores them on purpose: one stray key press must not (un)lock. */
   _step(direction) {
     if (this._mode.id === MODE.STATE) this._cycle(direction);
+    else if (this._mode.id === MODE.VALUE) this._stepValue(direction);
+  }
+
+  /** Value mode: one step up or down (only for settable entities, see `valueMode.isDraggable`). */
+  _stepValue(direction) {
+    const result = valueMode.stepRelease({
+      direction,
+      config: this._config,
+      stateObj: this._stateObj(),
+      pending: this._pendingValue() ?? undefined,
+    });
+    if (!result) return;
+    this._runAction(result.action);
+    this._setPending(result.pending);
+    this._update();
   }
 
   _cycle(step) {

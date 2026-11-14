@@ -21,6 +21,7 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Timer: Home Assistant `timer.*` or countdown to an `input_datetime` / `input_date`, pulse on expiry, time zones
 - Text in the bar (`bar_text`) with simple placeholders, no templates
 - Bar value from a separate entity (`bar:`)
+- Value mode on `input_number` / `number`: drag or arrow keys set the value (`step`, `drag: false`)
 - Font size and color of the texts (`text:`)
 - English and German texts, language follows Home Assistant
 - Tap, double tap and hold actions
@@ -152,7 +153,7 @@ Do not store alarm codes in the config. See [SECURITY.md](SECURITY.md).
 
 ### Mode `value`
 
-Read-only. The bar fills by value, the value shows in the handle.
+The bar fills by value, the value shows in the handle. For `input_number` and `number` the handle can be dragged or moved with the arrow keys; the card calls `<domain>.set_value` on release, not while dragging. `sensor` stays read-only.
 
 ```yaml
 type: custom:slabton-card
@@ -164,9 +165,13 @@ preset: thermometer
 | Option | Default | Description |
 | --- | --- | --- |
 | `preset` | `none` | `thermometer` (-10 to 40, °C), `energy` (0 to 5000, W), `soc` (0 to 100, %) |
-| `min`, `max` | preset or 0 / 100 | Value range |
+| `min`, `max` | preset or 0 / 100 | Value range. Without them, `input_number` / `number` use the entity's `min` / `max` attributes |
 | `unit` | preset | Unit text |
 | `decimals` | preset or 1 | Decimal places |
+| `step` | entity `step` attribute | Step size (also `bar.step`); without any step the value is only rounded to `decimals` |
+| `drag` | `true` | Dragging and arrow keys for `input_number` / `number`. `false` turns them off. No dragging with `handle_position` other than `flex`, with a separate `bar.entity`, or when max is not greater than min |
+
+Arrow keys move the value one step (without a step: 1 % of the range). A range with max not greater than min leaves the bar empty, logs a console warning and disables dragging.
 
 ### Mode `counter`
 
@@ -278,7 +283,7 @@ bar:
 bar_text: "{value}"
 ```
 
-`bar` accepts `entity`, `min`, `max`, `unit`, `decimals`, `preset`. The flat options (`min`, `max`, `unit`,
+`bar` accepts `entity`, `min`, `max`, `unit`, `decimals`, `preset`, `step`. The flat options (`min`, `max`, `unit`,
 `decimals`, `preset` at the top level) stay as an alias of `bar.*`; if both are set, `bar:` wins and a
 warning is logged. Without `bar.entity` the bar follows `entity` as before. `{value}` is then the bar value.
 

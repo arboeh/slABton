@@ -45,6 +45,7 @@
   "editor.preset": "Vorlage",
   "editor.min": "Minimum",
   "editor.max": "Maximum",
+  "editor.step": "Schrittweite (leer = von der Entität)",
   "editor.unit": "Einheit",
   "editor.decimals": "Nachkommastellen",
   "editor.tap_action": "Aktion beim Tippen",

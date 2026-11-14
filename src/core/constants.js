@@ -31,8 +31,14 @@ export const MODE = Object.freeze({
 });
 export const MODES = Object.freeze(Object.values(MODE));
 
-/** Modes that only display information (the handle cannot be dragged). */
-export const READ_ONLY_MODES = Object.freeze([MODE.VALUE, MODE.COUNTER, MODE.TIMER, MODE.CLOCK]);
+/**
+ * Modes that only display information (the handle cannot be dragged). The value
+ * mode is not listed: it is draggable for the domains in VALUE_SETTABLE_DOMAINS.
+ */
+export const READ_ONLY_MODES = Object.freeze([MODE.COUNTER, MODE.TIMER, MODE.CLOCK]);
+
+/** Domains whose number the value mode can set by dragging (`<domain>.set_value`). */
+export const VALUE_SETTABLE_DOMAINS = Object.freeze(["input_number", "number"]);
 
 /** Interval of the local clock tick (timer and clock modes), in ms. */
 export const TICK_MS = 1000;
@@ -117,4 +123,5 @@ export const TIMER_SOURCE = Object.freeze({ HA: "ha", TARGET: "target", UNSUPPOR
 /** Keys of one-time console notices a mode view can report (texts live in the card). */
 export const NOTICE = Object.freeze({
   TIME_ONLY: "time_only", UNSUPPORTED_ENTITY: "unsupported_entity", INVALID_RANGE: "invalid_range",
+  INVALID_VALUE_RANGE: "invalid_value_range",
 });

@@ -8,6 +8,7 @@
 import {
   ACTION, ACTION_TYPES, ANIMATIONS, DEFAULT_ANIMATION, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES,
   MAX_FONT_SIZE, MIN_FONT_SIZE, OFF_VALUES, READ_ONLY_MODES, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS,
+  VALUE_SETTABLE_DOMAINS,
 } from "./constants.js";
 import { unknownPlaceholders } from "./placeholders.js";
 import { isValidTimeZone } from "./time.js";
@@ -36,7 +37,7 @@ export const RESERVED_KEYS = Object.freeze(["thresholds", "scale", "shape", "con
 export const MAX_TEXT_LENGTH = 200;
 
 /** Keys of the `bar:` block that alias the flat top-level range options. */
-const BAR_ALIAS_KEYS = ["min", "max", "unit", "decimals", "preset"];
+const BAR_ALIAS_KEYS = ["min", "max", "unit", "decimals", "preset", "step"];
 const OPTIONAL_BLOCKS = [MODE.COUNTER, MODE.TIMER, MODE.CLOCK];
 
 /** Defaults for the value-mode presets (plain defaults, overridable). */
@@ -213,7 +214,7 @@ function normalizeLayout(raw, mode) {
     fixed_position: toNumber(raw.fixed_position, DEFAULTS.fixed_position, 0, 100),
     handle_overhang: raw.handle_overhang === true,
     handle_content: pickEnum(
-      raw.handle_content, HANDLE_CONTENTS, READ_ONLY_MODES.includes(mode) ? "text" : "icon", "handle_content",
+      raw.handle_content, HANDLE_CONTENTS, READ_ONLY_MODES.includes(mode) || mode === MODE.VALUE ? "text" : "icon", "handle_content",
     ),
   };
 }
@@ -230,7 +231,16 @@ function normalizeLook(raw) {
   return look;
 }
 
-/** Value range, unit and decimals (value mode, presets provide defaults). */
+/** Step size (value mode): a positive number, else null (warns about an unusable value). */
+function normalizeStep(value) {
+  if (isBlank(value)) return null;
+  const n = toNumber(value, null, -1e9, 1e9);
+  if (n != null && n > 0) return n;
+  warn("step must be a number greater than 0 and was ignored");
+  return null;
+}
+
+/** Value range, step, unit and decimals (value mode, presets provide defaults). */
 function normalizeRange(raw, presetDefaults) {
   const min = toNumber(raw.min, presetDefaults.min ?? 0, -1e9, 1e9);
   const max = toNumber(raw.max, presetDefaults.max ?? 100, -1e9, 1e9);
@@ -240,6 +250,7 @@ function normalizeRange(raw, presetDefaults) {
     max,
     // Which bounds the user set explicitly (the counter mode prefers entity attributes over defaults).
     range_set: { min: toNumber(raw.min, null, -1e9, 1e9) != null, max: toNumber(raw.max, null, -1e9, 1e9) != null },
+    step: normalizeStep(raw.step),
     unit: str(raw.unit) ?? presetDefaults.unit ?? null,
     decimals: toNumber(raw.decimals, presetDefaults.decimals ?? 1, 0, 6),
   };
@@ -436,7 +447,7 @@ export function normalizeConfig(raw) {
     ...normalizeTriggers(raw),
     states,
     hold_reverse: raw.hold_reverse === true,
-    drag: raw.drag !== false,
+    drag: raw.drag !== false && (mode !== MODE.VALUE || VALUE_SETTABLE_DOMAINS.includes(domain)),
     ...normalizeLock(raw),
     preset,
     ...normalizeRange(source, presetDefaults),

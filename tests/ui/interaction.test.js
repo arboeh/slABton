@@ -199,6 +199,17 @@ describe("keyboard", () => {
     expect(cb.onStep.mock.calls).toEqual([[1], [-1]]);
   });
 
+  it("ignores auto-repeat of a held arrow key", () => {
+    setup();
+    const event = new Event("keydown", { bubbles: true, cancelable: true });
+    event.key = "ArrowRight";
+    event.repeat = true;
+    handle.dispatchEvent(event);
+    expect(cb.onStep).not.toHaveBeenCalled();
+    key("ArrowRight");
+    expect(cb.onStep).toHaveBeenCalledTimes(1);
+  });
+
   it("reverses arrows for rtl and uses up/down when vertical", () => {
     setup({ reversed: true });
     key("ArrowRight");

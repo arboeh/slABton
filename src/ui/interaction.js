@@ -68,6 +68,8 @@ function createKeyHandler(opts, horizontal) {
       opts.onTap?.();
     } else if (event.key === forward || event.key === backward) {
       event.preventDefault();
+      // A held key repeats: one press is one step, otherwise every repeat would call a service.
+      if (event.repeat) return;
       const step = event.key === forward ? 1 : -1;
       opts.onStep?.(opts.reversed ? -step : step);
     }

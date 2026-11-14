@@ -222,6 +222,161 @@ describe("value mode", () => {
     expect(q(el, ".root").classList.contains("dragging")).toBe(false);
   });
 
+  it("marks a sensor handle as not draggable", () => {
+    const { el } = create({ entity: "sensor.t" }, sensor("15"));
+    expect(q(el, ".root").classList.contains("nodrag")).toBe(true);
+  });
+
+  describe("settable entities", () => {
+    const NUM = "input_number.v";
+    const numStates = (state = "20", attrs = { min: 0, max: 100, step: 5 }) => ({ [NUM]: makeState(NUM, state, attrs) });
+    const setup = (config = {}, states = numStates()) => {
+      const made = create({ entity: NUM, decimals: 0, ...config }, states);
+      mockRect(q(made.el, ".rail"), { left: 0, width: 200 });
+      return made;
+    };
+    // The handle is 40px wide: its centre follows the pointer, so x = 20 + 200 * fraction.
+    const dragTo = (el, x, release = true) => {
+      const handle = q(el, ".handle");
+      pointer(handle, "pointerdown", { clientX: 20 });
+      pointer(handle, "pointermove", { clientX: x });
+      if (release) pointer(handle, "pointerup", { clientX: x });
+    };
+    const key = (el, name) => {
+      const event = new Event("keydown", { bubbles: true, cancelable: true });
+      event.key = name;
+      q(el, ".handle").dispatchEvent(event);
+    };
+
+    it("sets the value on release, snapped to the step", () => {
+      const { el, hass } = setup();
+      dragTo(el, 120);
+      expect(hass.callService).toHaveBeenCalledTimes(1);
+      expect(hass.callService).toHaveBeenCalledWith("input_number", "set_value", { value: 50 }, { entity_id: NUM });
+      expect(q(el, ".root").classList.contains("dragging")).toBe(false);
+    });
+
+    it("uses number.set_value for number entities", () => {
+      const { el, hass } = setup({ entity: "number.v" }, { "number.v": makeState("number.v", "20", { min: 0, max: 100, step: 5 }) });
+      dragTo(el, 220);
+      expect(hass.callService).toHaveBeenCalledWith("number", "set_value", { value: 100 }, { entity_id: "number.v" });
+    });
+
+    it("shows the value under the finger without calling a service while dragging", () => {
+      const { el, hass } = setup();
+      dragTo(el, 120, false);
+      expect(q(el, ".h-text").textContent).toBe("50");
+      expect(q(el, ".root").classList.contains("dragging")).toBe(true);
+      expect(hass.callService).not.toHaveBeenCalled();
+    });
+
+    it("keeps the new value until the entity reports it", () => {
+      const { el, hass } = setup();
+      dragTo(el, 120);
+      expect(q(el, ".h-text").textContent).toBe("50");
+      expect(q(el, ".root").style.getPropertyValue("--slabton-p")).toBe("0.5");
+      el.hass = withState(hass, NUM, "50", { min: 0, max: 100, step: 5 });
+      expect(q(el, ".h-text").textContent).toBe("50");
+    });
+
+    it("falls back to the entity value when it never changes", () => {
+      const { el } = setup();
+      dragTo(el, 120);
+      vi.advanceTimersByTime(PENDING_TIMEOUT_MS + 1);
+      expect(q(el, ".h-text").textContent).toBe("20");
+    });
+
+    it("sends nothing when the value stays the same", () => {
+      const { el, hass } = setup();
+      dragTo(el, 60);
+      expect(hass.callService).not.toHaveBeenCalled();
+      expect(q(el, ".h-text").textContent).toBe("20");
+    });
+
+    it("does not drag with drag: false", () => {
+      const { el, hass } = setup({ drag: false });
+      dragTo(el, 120);
+      expect(hass.callService).not.toHaveBeenCalled();
+      expect(q(el, ".root").classList.contains("dragging")).toBe(false);
+      expect(q(el, ".root").classList.contains("nodrag")).toBe(true);
+    });
+
+    it("does not drag while the entity is unavailable", () => {
+      const { el, hass } = setup({}, numStates("unavailable"));
+      dragTo(el, 120);
+      expect(hass.callService).not.toHaveBeenCalled();
+    });
+
+    it("lets the config step override the entity step", () => {
+      const { el, hass } = setup({ step: 20 });
+      dragTo(el, 120);
+      expect(hass.callService).toHaveBeenCalledWith("input_number", "set_value", { value: 60 }, { entity_id: NUM });
+    });
+
+    it("steps with the arrow keys", () => {
+      const { el, hass } = setup();
+      key(el, "ArrowRight");
+      expect(hass.callService).toHaveBeenLastCalledWith("input_number", "set_value", { value: 25 }, { entity_id: NUM });
+      expect(q(el, ".h-text").textContent).toBe("25");
+      vi.advanceTimersByTime(MIN_CALL_INTERVAL_MS + 1);
+      key(el, "ArrowLeft");
+      expect(hass.callService).toHaveBeenLastCalledWith("input_number", "set_value", { value: 20 }, { entity_id: NUM });
+    });
+
+    it("ignores the arrow keys when dragging is off or the entity is a sensor", () => {
+      const off = setup({ drag: false });
+      key(off.el, "ArrowRight");
+      expect(off.hass.callService).not.toHaveBeenCalled();
+      const read = create({ entity: "sensor.t" }, sensor("15"));
+      key(read.el, "ArrowRight");
+      expect(read.hass.callService).not.toHaveBeenCalled();
+    });
+
+    it("sends one call per key press, not one per auto-repeat", () => {
+      const { el, hass } = setup();
+      const event = new Event("keydown", { bubbles: true, cancelable: true });
+      event.key = "ArrowRight";
+      q(el, ".handle").dispatchEvent(event);
+      for (let i = 0; i < 5; i += 1) {
+        const repeat = new Event("keydown", { bubbles: true, cancelable: true });
+        repeat.key = "ArrowRight";
+        repeat.repeat = true;
+        q(el, ".handle").dispatchEvent(repeat);
+      }
+      expect(hass.callService).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not rewrite an off-grid value when the drag ends where it started", () => {
+      const { el, hass } = setup({}, numStates("52"));
+      dragTo(el, 120);
+      expect(hass.callService).not.toHaveBeenCalled();
+    });
+
+    it("is not draggable with a separate bar entity", () => {
+      const { el, hass } = setup({ bar: { entity: "sensor.other" } }, { ...numStates(), "sensor.other": makeState("sensor.other", "40") });
+      dragTo(el, 220);
+      key(el, "ArrowRight");
+      expect(hass.callService).not.toHaveBeenCalled();
+    });
+
+    it("still opens more-info on tap", () => {
+      const { el, hass } = setup();
+      const listener = vi.fn();
+      el.addEventListener("hass-more-info", listener);
+      tap(q(el, ".handle"));
+      expect(listener).toHaveBeenCalledTimes(1);
+      expect(hass.callService).not.toHaveBeenCalled();
+    });
+
+    it("warns once about an invalid entity range", () => {
+      const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+      const { el } = setup({}, numStates("5", { min: 20, max: 10 }));
+      el.hass = withState(el.hass, NUM, "6", { min: 20, max: 10 });
+      expect(warn).toHaveBeenCalledTimes(1);
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/maximum must be greater/));
+    });
+  });
+
   it("updates when the sensor changes", () => {
     const { el, hass } = create({ entity: "sensor.t" }, sensor("10"));
     el.hass = withState(hass, "sensor.t", "80");

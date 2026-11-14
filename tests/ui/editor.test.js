@@ -31,6 +31,20 @@ describe("buildSchema", () => {
     expect(names(buildSchema({ entity: "sensor.a", mode: "lock" }))).toContain("swipe_threshold");
   });
 
+  it("offers step and the drag switch in value mode", () => {
+    const schema = buildSchema({ entity: "input_number.a" });
+    expect(names(schema)).toEqual(expect.arrayContaining(["drag", "step"]));
+    expect(names(buildSchema({ entity: "sensor.a" }))).toEqual(expect.arrayContaining(["drag", "step"]));
+    expect(names(buildSchema({ entity: "lock.a" }))).not.toContain("step");
+    expect(names(buildSchema({ entity: "input_select.a" }))).not.toContain("step");
+  });
+
+  it("lets the step take decimals", () => {
+    const flat = (items) => items.flatMap((item) => (item.schema ? flat(item.schema) : [item]));
+    const step = flat(buildSchema({ entity: "input_number.a" })).find((f) => f.name === "step");
+    expect(step.selector.number).toMatchObject({ min: 0, step: "any", mode: "box" });
+  });
+
   it("only offers fixed_position for the fixed handle position", () => {
     expect(names(buildSchema({ entity: "switch.a" }))).not.toContain("fixed_position");
     expect(names(buildSchema({ entity: "switch.a", handle_position: "fixed" }))).toContain("fixed_position");
@@ -136,6 +150,18 @@ describe("SlabtonCardEditor", () => {
     const editor = document.createElement("slabton-card-editor");
     editor.setConfig({ entity: "switch.a" });
     expect(editor.shadowRoot.textContent).toMatch(/YAML/);
+  });
+
+  it("labels the step in both languages", () => {
+    if (!customElements.get("ha-form")) customElements.define("ha-form", class extends HTMLElement {});
+    const labelOf = (language) => {
+      const editor = document.createElement("slabton-card-editor");
+      editor.hass = { states: {}, locale: { language } };
+      editor.setConfig({ entity: "input_number.a" });
+      return editor.shadowRoot.querySelector("ha-form").computeLabel({ name: "step" });
+    };
+    expect(labelOf("en")).toMatch(/step/i);
+    expect(labelOf("de")).toMatch(/Schritt/);
   });
 
   it("renders ha-form and emits config-changed", () => {

@@ -45,6 +45,7 @@
   "editor.preset": "Preset",
   "editor.min": "Minimum",
   "editor.max": "Maximum",
+  "editor.step": "Step size (empty = from the entity)",
   "editor.unit": "Unit",
   "editor.decimals": "Decimals",
   "editor.tap_action": "Tap action",
