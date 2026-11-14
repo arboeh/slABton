@@ -16,6 +16,15 @@ export function handleDimensions(config) {
   return { cross, along };
 }
 
+/**
+ * How far the handle sticks out of the bar on each side across the bar axis, in px.
+ * Derived from the sizes, not from `pad` (a border makes `pad` negative for a handle
+ * that still fits inside the bar). Zero when the handle is not larger than the bar.
+ */
+export function handleExtra(config) {
+  return Math.max(0, (config.handle_size - config.thickness) / 2);
+}
+
 /** Variables for the configured `text:` options only; unset options keep the CSS default. */
 function textVars(text) {
   const vars = {};
@@ -38,6 +47,7 @@ export function buildVars(config) {
   // Overhang: the handle centre travels from edge to edge, so it sticks out half its length at both ends.
   const overhang = config.handle_overhang === true;
   const pad = overhang ? -along / 2 : (config.thickness - cross) / 2 - config.border_width;
+  const extra = handleExtra(config);
 
   const vars = {
     "--slabton-length": config.length > 0 ? `${config.length}px` : (vertical ? `${DEFAULT_VERTICAL_LENGTH}px` : "100%"),
@@ -45,7 +55,10 @@ export function buildVars(config) {
     "--slabton-hc": `${cross}px`,
     "--slabton-hl": `${along}px`,
     "--slabton-pad": `${pad}px`,
-    "--slabton-overhang": overhang ? `${along / 2}px` : "0px",
+    // Room the stage keeps free for the handle: along the bar the larger of overhang and
+    // the handle's excess over the bar, across the bar the excess only.
+    "--slabton-overhang": `${Math.max(overhang ? along / 2 : 0, extra)}px`,
+    "--slabton-cross-extra": `${extra}px`,
     "--slabton-bar-radius": `${barRadius}px`,
     "--slabton-handle-radius": square ? `${Math.round(cross * SQUARE_HANDLE_RADIUS_RATIO)}px` : PILL_RADIUS,
     "--slabton-border-width": `${config.border_width}px`,
@@ -87,8 +100,8 @@ export function buildCss() {
     .header.icon-right .title { flex: 1; min-width: 0; }
     .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--slabton-header-color, inherit); }
     .stage { display: flex; justify-content: center; }
-    .o-h .stage { padding: 0 var(--slabton-overhang, 0px); }
-    .o-v .stage { padding: var(--slabton-overhang, 0px) 0; }
+    .o-h .stage { padding: var(--slabton-cross-extra, 0px) var(--slabton-overhang, 0px); }
+    .o-v .stage { padding: var(--slabton-overhang, 0px) var(--slabton-cross-extra, 0px); }
     .bar {
       position: relative; box-sizing: border-box; flex: none;
       background: var(--slabton-bar-color, var(--secondary-background-color, #e0e0e0));

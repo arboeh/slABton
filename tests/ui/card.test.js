@@ -76,6 +76,28 @@ describe("setConfig", () => {
     el.setConfig({ entity: SELECT, orientation: "vertical" });
     expect(el.getCardSize()).toBe(4);
   });
+
+  it("keeps card size and rows when the handle is not larger than the bar", () => {
+    const { el } = create({ thickness: 48, handle_size: 48 });
+    expect(el.getCardSize()).toBe(2);
+    expect(el.getGridOptions().rows).toBe(2);
+  });
+
+  it("grows card size and rows for a handle larger than the bar", () => {
+    const { el } = create({ thickness: 18, handle_size: 70 });
+    expect(el.getGridOptions().rows).toBe(3);
+    expect(el.getCardSize()).toBe(4);
+    el.setConfig({ entity: SELECT, orientation: "vertical", thickness: 18, handle_size: 70 });
+    expect(el.getGridOptions().rows).toBe(5);
+    expect(el.getCardSize()).toBe(6);
+  });
+
+  it("does not change the shared grid defaults", () => {
+    const { el } = create({ thickness: 18, handle_size: 70 });
+    el.getGridOptions();
+    el.setConfig({ entity: SELECT });
+    expect(el.getGridOptions().rows).toBe(2);
+  });
 });
 
 describe("state mode", () => {

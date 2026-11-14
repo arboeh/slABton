@@ -60,6 +60,9 @@ export const GRID = Object.freeze({
   vertical: { columns: 3, rows: 4, min_columns: 2, min_rows: 3 },
 });
 export const CARD_SIZE = Object.freeze({ horizontal: 2, vertical: 4 });
+/** One sections-view row including its gap, and one masonry card-size unit, in px. */
+export const GRID_ROW_PX = 64;
+export const CARD_UNIT_PX = 50;
 
 /**
  * The `text:` block: every area with its options and the CSS variable each one

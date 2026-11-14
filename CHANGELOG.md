@@ -33,6 +33,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 - Mode `value` is read-only only for `sensor`; `input_number` and `number` can be set (see Added).
 - Held arrow keys no longer repeat: one key press is one step, in all modes.
 
+### Fixed
+
+- Handle larger than the bar (`handle_size` above `thickness`): the card reserves room for the handle on both sides,
+  across and along the bar, in all modes. Sections and masonry layouts get extra rows or size for it. Handles that
+  fit the bar keep the old layout.
+
 ## [0.2.0] - 2026-11-12
 
 ### Added

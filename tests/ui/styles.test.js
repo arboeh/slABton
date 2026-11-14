@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { normalizeConfig } from "../../src/core/config.js";
-import { applyVars, buildCss, buildVars, handleDimensions } from "../../src/ui/styles.js";
+import { applyVars, buildCss, buildVars, handleDimensions, handleExtra } from "../../src/ui/styles.js";
 
 const cfg = (extra = {}) => normalizeConfig({ entity: "input_select.x", ...extra });
 
@@ -20,6 +20,48 @@ describe("buildVars", () => {
     expect(v["--slabton-pad"]).toBe("4px");
     expect(v["--slabton-bar-radius"]).toBe("24px");
     expect(v["--slabton-handle-radius"]).toBe("999px");
+  });
+
+  it("reserves room across and along the bar for a handle larger than the bar", () => {
+    const v = buildVars(cfg({ thickness: 18, handle_size: 70 }));
+    expect(v["--slabton-cross-extra"]).toBe("26px");
+    expect(v["--slabton-overhang"]).toBe("26px");
+  });
+
+  it("reserves the same for every handle shape", () => {
+    for (const handle_shape of ["round", "square", "oval"]) {
+      const v = buildVars(cfg({ thickness: 18, handle_size: 70, handle_shape }));
+      expect(v["--slabton-cross-extra"]).toBe("26px");
+      expect(v["--slabton-overhang"]).toBe("26px");
+    }
+  });
+
+  it("reserves nothing when the handle is not larger than the bar", () => {
+    for (const handle_size of [40, 48]) {
+      const v = buildVars(cfg({ thickness: 48, handle_size }));
+      expect(v["--slabton-cross-extra"]).toBe("0px");
+      expect(v["--slabton-overhang"]).toBe("0px");
+    }
+  });
+
+  it("reserves nothing for a border around a handle that still fits in the bar", () => {
+    const v = buildVars(cfg({ thickness: 48, handle_size: 40, border_width: 6 }));
+    expect(v["--slabton-pad"]).toBe("-2px");
+    expect(v["--slabton-cross-extra"]).toBe("0px");
+    expect(v["--slabton-overhang"]).toBe("0px");
+  });
+
+  it("keeps the overhang reserve when it is larger than the excess", () => {
+    expect(buildVars(cfg({ thickness: 48, handle_size: 40, handle_overhang: true }))["--slabton-overhang"]).toBe("20px");
+    const big = buildVars(cfg({ thickness: 20, handle_size: 100, handle_overhang: true }));
+    expect(big["--slabton-overhang"]).toBe("50px");
+    expect(big["--slabton-cross-extra"]).toBe("40px");
+  });
+
+  it("uses the oval length for the overhang but the width for the excess", () => {
+    const v = buildVars(cfg({ thickness: 48, handle_size: 40, handle_shape: "oval", handle_overhang: true }));
+    expect(v["--slabton-overhang"]).toBe("32px");
+    expect(v["--slabton-cross-extra"]).toBe("0px");
   });
 
   it("subtracts the border from the padding", () => {
@@ -122,7 +164,21 @@ describe("applyVars", () => {
   });
 });
 
+describe("handleExtra", () => {
+  it("is half the excess of the handle over the bar, never negative", () => {
+    expect(handleExtra(cfg({ thickness: 18, handle_size: 70 }))).toBe(26);
+    expect(handleExtra(cfg({ thickness: 48, handle_size: 48 }))).toBe(0);
+    expect(handleExtra(cfg({ thickness: 48, handle_size: 40 }))).toBe(0);
+  });
+});
+
 describe("buildCss", () => {
+  it("pads the stage across and along the bar for both orientations", () => {
+    const css = buildCss();
+    expect(css).toContain(".o-h .stage { padding: var(--slabton-cross-extra, 0px) var(--slabton-overhang, 0px); }");
+    expect(css).toContain(".o-v .stage { padding: var(--slabton-overhang, 0px) var(--slabton-cross-extra, 0px); }");
+  });
+
   it("contains theme fallbacks and motion handling", () => {
     const css = buildCss();
     expect(css).toContain("var(--slabton-bar-color, var(--secondary-background-color");

@@ -12,7 +12,7 @@
 
 import { VERSION } from "../version.js";
 import { normalizeConfig } from "../core/config.js";
-import { ACTION, CARD_SIZE, GRID, MODE, NOTICE, TICK_MS, hasAction } from "../core/constants.js";
+import { ACTION, CARD_SIZE, CARD_UNIT_PX, GRID, GRID_ROW_PX, MODE, NOTICE, TICK_MS, hasAction } from "../core/constants.js";
 import { resolveLanguage, resolveLocale } from "../core/i18n.js";
 import { Pulse } from "../core/pulse.js";
 import { createInteraction } from "./interaction.js";
@@ -24,7 +24,7 @@ import * as timerMode from "../core/modes/timer.js";
 import * as valueMode from "../core/modes/value.js";
 import { renderTemplate } from "../core/placeholders.js";
 import { renderCard, updateSwitches, updateView } from "./render.js";
-import { applyVars, buildCss, handleDimensions } from "./styles.js";
+import { applyVars, buildCss, handleDimensions, handleExtra } from "./styles.js";
 import { safeUrl, warn } from "../core/util.js";
 import { SlabtonCardEditor } from "./editor.js";
 
@@ -103,11 +103,20 @@ export class SlabtonCard extends HTMLElement {
   }
 
   getCardSize() {
-    return this._config?.orientation === "vertical" ? CARD_SIZE.vertical : CARD_SIZE.horizontal;
+    const base = this._config?.orientation === "vertical" ? CARD_SIZE.vertical : CARD_SIZE.horizontal;
+    return base + this._extraUnits(CARD_UNIT_PX);
   }
 
   getGridOptions() {
-    return { ...(this._config?.orientation === "vertical" ? GRID.vertical : GRID.horizontal) };
+    const grid = { ...(this._config?.orientation === "vertical" ? GRID.vertical : GRID.horizontal) };
+    grid.rows += this._extraUnits(GRID_ROW_PX);
+    return grid;
+  }
+
+  /** Extra rows or size units for a handle larger than the bar (it sticks out on both sides). */
+  _extraUnits(unitPx) {
+    if (!this._config) return 0;
+    return Math.ceil((2 * handleExtra(this._config)) / unitPx);
   }
 
   connectedCallback() {
