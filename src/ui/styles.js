@@ -6,7 +6,8 @@
 
 import { animationCss } from "./animations.js";
 import {
-  DEFAULT_VERTICAL_LENGTH, OVAL_RATIO, PILL_RADIUS, SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO, TEXT_OPTIONS,
+  DEFAULT_SCALE_SIZE, DEFAULT_VERTICAL_LENGTH, OVAL_RATIO, PILL_RADIUS, SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO,
+  TEXT_OPTIONS,
 } from "../core/constants.js";
 
 /** Handle size across and along the bar axis, in px. */
@@ -68,6 +69,8 @@ export function buildVars(config) {
   if (config.handle_color) vars["--slabton-handle-color"] = config.handle_color;
   if (config.text_color) vars["--slabton-text-color"] = config.text_color;
   if (config.border_color) vars["--slabton-border-color"] = config.border_color;
+  if (config.scale?.size != null) vars["--slabton-scale-size"] = `${config.scale.size}px`;
+  if (config.scale?.color) vars["--slabton-scale-color"] = config.scale.color;
   // `text:` comes after `styles:` so that it wins: text option > styles > default.
   return { ...vars, ...config.styles, ...textVars(config.text) };
 }
@@ -143,11 +146,23 @@ export function buildCss() {
     .o-v .stage.has-info { flex-direction: column; align-items: center; gap: 6px; }
     .o-v .info { position: static; max-width: 100%; }
 
-    .rail, .switches { position: absolute; pointer-events: none; }
+    .rail, .switches, .scale { position: absolute; pointer-events: none; }
     .o-h .rail { left: var(--slabton-pad); top: 0; height: 100%; width: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
     .o-v .rail { top: var(--slabton-pad); left: 0; width: 100%; height: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
-    .o-h .switches { left: calc(var(--slabton-pad) + var(--slabton-hl) / 2); top: 0; height: 100%; width: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
-    .o-v .switches { top: calc(var(--slabton-pad) + var(--slabton-hl) / 2); left: 0; width: 100%; height: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
+    /* Switches and ticks share the handle-centre track, so a tick sits exactly under the handle at its value. */
+    .o-h .switches, .o-h .scale { left: calc(var(--slabton-pad) + var(--slabton-hl) / 2); top: 0; height: 100%; width: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
+    .o-v .switches, .o-v .scale { top: calc(var(--slabton-pad) + var(--slabton-hl) / 2); left: 0; width: 100%; height: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
+
+    /* Scale ticks (scale:): across the bar at the start, centre or end edge. */
+    .tick { position: absolute; background: var(--slabton-scale-color, color-mix(in srgb, var(--slabton-text-color, var(--primary-text-color, #212121)) 45%, transparent)); }
+    .o-h .tick { left: calc(var(--slabton-tick-e, 0) * 100%); width: 2px; margin-left: -1px; height: var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px); }
+    .o-v .tick { top: calc(var(--slabton-tick-e, 0) * 100%); height: 2px; margin-top: -1px; width: var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px); }
+    .o-h .sc-start .tick { top: 0; }
+    .o-h .sc-end .tick { bottom: 0; }
+    .o-h .sc-center .tick { top: 50%; margin-top: calc(var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px) / -2); }
+    .o-v .sc-start .tick { left: 0; }
+    .o-v .sc-end .tick { right: 0; }
+    .o-v .sc-center .tick { left: 50%; margin-left: calc(var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px) / -2); }
     .carrier { position: absolute; inset: 0; }
     .o-h .carrier { transform: translateX(calc(var(--slabton-e, 0) * 100%)); }
     .o-v .carrier { transform: translateY(calc(var(--slabton-e, 0) * 100%)); }

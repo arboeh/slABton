@@ -6,9 +6,10 @@
  */
 
 import {
-  ACTION, ACTION_TYPES, ANIMATIONS, DEFAULT_ANIMATION, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES,
-  MAX_FONT_SIZE, MIN_FONT_SIZE, OFF_VALUES, READ_ONLY_MODES, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS,
-  VALUE_SETTABLE_DOMAINS,
+  ACTION, ACTION_TYPES, ANIMATIONS, CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, DEFAULT_ANIMATION, DEFAULT_SCALE_POSITION,
+  DEFAULT_SCALE_TICKS, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES, MAX_FONT_SIZE, MAX_SCALE_TICKS,
+  MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_THICKNESS, OFF_VALUES, READ_ONLY_MODES, SCALE_ALIASES, SCALE_AXIS_POSITIONS,
+  SCALE_OPTIONS, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS, VALUE_SETTABLE_DOMAINS,
 } from "./constants.js";
 import { unknownPlaceholders } from "./placeholders.js";
 import { isValidTimeZone } from "./time.js";
@@ -31,7 +32,7 @@ export const CLOCK_DISPLAYS_OFFERED = ["digital"];
 export const HOUR_FORMATS = ["auto", "12", "24"];
 
 /** Names reserved for later releases: accepted, warned about once and ignored. */
-export const RESERVED_KEYS = Object.freeze(["thresholds", "scale", "shape", "control"]);
+export const RESERVED_KEYS = Object.freeze(["thresholds", "shape", "control"]);
 
 /** Longest accepted `bar_text` / `timer.info`. */
 export const MAX_TEXT_LENGTH = 200;
@@ -207,7 +208,7 @@ function normalizeLayout(raw, mode) {
     orientation: pickEnum(raw.orientation, ORIENTATIONS, DEFAULTS.orientation, "orientation"),
     direction: pickEnum(raw.direction, DIRECTIONS, DEFAULTS.direction, "direction"),
     length: toNumber(raw.length, DEFAULTS.length, 0, 2000),
-    thickness: toNumber(raw.thickness, DEFAULTS.thickness, 12, 200),
+    thickness: toNumber(raw.thickness, DEFAULTS.thickness, MIN_THICKNESS, MAX_THICKNESS),
     handle_size: toNumber(raw.handle_size, DEFAULTS.handle_size, 8, 200),
     handle_shape: pickEnum(raw.handle_shape, HANDLE_SHAPES, DEFAULTS.handle_shape, "handle_shape"),
     handle_position: pickEnum(raw.handle_position, HANDLE_POSITIONS, DEFAULTS.handle_position, "handle_position"),
@@ -302,8 +303,8 @@ const PLAIN_NUMBER_RE = /^\d+(\.\d+)?$/;
 
 const isBlank = (value) => value == null || value === "";
 
-/** Numeric value of a font size; NaN when it is neither a number nor a plain decimal text. */
-function parseFontSize(value) {
+/** Numeric value of a size or count; NaN when it is neither a number nor a plain decimal text. */
+function parsePlainNumber(value) {
   if (typeof value === "number") return value;
   if (typeof value === "string" && PLAIN_NUMBER_RE.test(value.trim())) return Number(value);
   return NaN;
@@ -312,7 +313,7 @@ function parseFontSize(value) {
 /** Font size in px within the accepted limits, or null (warns about an unusable value). */
 function textFontSize(value, key) {
   if (isBlank(value)) return null;
-  const n = parseFontSize(value);
+  const n = parsePlainNumber(value);
   if (n >= MIN_FONT_SIZE && n <= MAX_FONT_SIZE) return n;
   warn(`${key} must be a number from ${MIN_FONT_SIZE} to ${MAX_FONT_SIZE} and was ignored`);
   return null;
@@ -350,6 +351,56 @@ function normalizeTextStyle(raw) {
     if (!TEXT_AREAS.includes(area)) warn(`text.${area} is not a known area and was ignored`);
   }
   return Object.fromEntries(TEXT_AREAS.map((area) => [area, normalizeTextArea(source[area], area)]));
+}
+
+/** Segments of the scale: the explicit count, else the clock's hours (12 or 24), else the default. */
+function scaleTicks(value, mode, clock) {
+  if (!isBlank(value)) {
+    const n = parsePlainNumber(value);
+    if (Number.isInteger(n) && n >= MIN_SCALE_TICKS && n <= MAX_SCALE_TICKS) return n;
+    warn(`scale.ticks must be a whole number from ${MIN_SCALE_TICKS} to ${MAX_SCALE_TICKS} and was ignored`);
+  }
+  if (mode !== MODE.CLOCK) return DEFAULT_SCALE_TICKS;
+  return clock.hour_format === "12" ? CLOCK_SCALE_TICKS_12 : CLOCK_SCALE_TICKS_24;
+}
+
+/** Axis position (`start`, `center`, `end`) of the scale; `top`/`bottom`/`left`/`right` are aliases per orientation. */
+function scalePosition(value, orientation) {
+  if (isBlank(value)) return DEFAULT_SCALE_POSITION;
+  if (SCALE_AXIS_POSITIONS.includes(value)) return value;
+  const aliases = SCALE_ALIASES[orientation];
+  if (typeof value === "string" && Object.hasOwn(aliases, value)) return aliases[value];
+  const allowed = [...Object.keys(aliases), ...SCALE_AXIS_POSITIONS].join(", ");
+  warn(`scale.position "${String(value)}" is not valid for a ${orientation} bar (allowed: ${allowed}) and was ignored`);
+  return DEFAULT_SCALE_POSITION;
+}
+
+/** Tick length in px, from the minimum up to the bar thickness; null = not set (CSS default). */
+function scaleSize(value, thickness) {
+  if (isBlank(value)) return null;
+  const n = parsePlainNumber(value);
+  if (n >= MIN_SCALE_SIZE && n <= thickness) return n;
+  warn(`scale.size must be a number from ${MIN_SCALE_SIZE} to the bar thickness (${thickness}) and was ignored`);
+  return null;
+}
+
+/**
+ * The `scale:` block (tick marks in the bar): `true` = defaults, missing/`false` = off (null).
+ * Anything else than a boolean or a map is an error; invalid option values warn and fall back.
+ */
+function normalizeScale(raw, mode, clock, { orientation, thickness }) {
+  if (isBlank(raw) || raw === false) return null;
+  if (raw !== true && !isPlainObject(raw)) throw new Error("slabton-card: scale must be true, false or a map");
+  const source = raw === true ? {} : raw;
+  for (const key of Object.keys(source)) {
+    if (!SCALE_OPTIONS.includes(key)) warn(`scale.${key} is not a known option and was ignored`);
+  }
+  return {
+    ticks: scaleTicks(source.ticks, mode, clock),
+    position: scalePosition(source.position, orientation),
+    size: scaleSize(source.size, thickness),
+    color: textColor(source.color, "scale.color"),
+  };
 }
 
 function normalizeTimeZone(value, key) {
@@ -429,8 +480,10 @@ export function normalizeConfig(raw) {
   const states = normalizeStates(raw.states);
   if (mode === MODE.STATE) warnUnreachableStates(states, domain);
   warnUnusedKeys(raw, mode);
+  const layout = normalizeLayout(raw, mode);
+  const clock = mode === MODE.CLOCK ? normalizeClock(raw) : { ...CLOCK_DEFAULTS };
 
-  // `thresholds`, `scale`, `shape` and `control` are reserved (RESERVED_KEYS) and intentionally ignored.
+  // `thresholds`, `shape` and `control` are reserved (RESERVED_KEYS) and intentionally ignored.
   return {
     type: typeof raw.type === "string" ? raw.type : "custom:slabton-card",
     entity,
@@ -441,8 +494,9 @@ export function normalizeConfig(raw) {
     bar_text: normalizeText(raw.bar_text, "bar_text", mode),
     counter: mode === MODE.COUNTER ? normalizeCounter(raw) : { ...COUNTER_DEFAULTS },
     timer: mode === MODE.TIMER ? normalizeTimer(raw) : { ...TIMER_DEFAULTS },
-    clock: mode === MODE.CLOCK ? normalizeClock(raw) : { ...CLOCK_DEFAULTS },
-    ...normalizeLayout(raw, mode),
+    clock,
+    ...layout,
+    scale: normalizeScale(raw.scale, mode, clock, layout),
     ...normalizeLook(raw),
     ...normalizeTriggers(raw),
     states,

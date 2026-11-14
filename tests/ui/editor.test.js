@@ -88,8 +88,46 @@ describe("buildSchema", () => {
 
   it("translates section titles", () => {
     const titles = (lang) => buildSchema({ entity: "switch.a" }, lang).filter((i) => i.type === "expandable").map((i) => i.title);
-    expect(titles("en")).toEqual(["Bar value", "Layout", "Colors", "Appearance", "Actions"]);
-    expect(titles("de")).toEqual(["Balkenwert", "Layout", "Farben", "Darstellung", "Aktionen"]);
+    expect(titles("en")).toEqual(["Bar value", "Layout", "Colors", "Scale", "Appearance", "Actions"]);
+    expect(titles("de")).toEqual(["Balkenwert", "Layout", "Farben", "Skala", "Darstellung", "Aktionen"]);
+  });
+
+  it("offers the scale fields in every mode", () => {
+    for (const config of [{ entity: "switch.a" }, { entity: "lock.a" }, { entity: "sensor.a" }, { entity: "timer.a" }, { mode: "clock" }]) {
+      const scale = buildSchema(config).find((item) => item.name === "scale");
+      expect(scale.type).toBe("expandable");
+      expect(scale.schema.map((f) => f.name)).toEqual(["enabled", "ticks", "position", "size", "color"]);
+    }
+  });
+
+  it("offers the on/off switch as a boolean", () => {
+    const fields = buildSchema({ entity: "switch.a" }).find((item) => item.name === "scale").schema;
+    expect(fields.find((f) => f.name === "enabled").selector).toEqual({ boolean: {} });
+  });
+
+  it("limits ticks and size like the config does", () => {
+    const fields = buildSchema({ entity: "switch.a" }).find((item) => item.name === "scale").schema;
+    expect(fields.find((f) => f.name === "ticks").selector.number).toMatchObject({ min: 1, max: 100 });
+    expect(fields.find((f) => f.name === "size").selector.number).toMatchObject({ min: 2 });
+  });
+
+  it("limits the tick length to the bar thickness of the config", () => {
+    const sizeMax = (config) => buildSchema(config).find((item) => item.name === "scale").schema
+      .find((f) => f.name === "size").selector.number.max;
+    expect(sizeMax({ entity: "switch.a" })).toBe(48);
+    expect(sizeMax({ entity: "switch.a", thickness: 60 })).toBe(60);
+    expect(sizeMax({ entity: "switch.a", thickness: "30" })).toBe(30);
+    expect(sizeMax({ entity: "switch.a", thickness: 999 })).toBe(200);
+    expect(sizeMax({ entity: "switch.a", thickness: 5 })).toBe(12);
+    expect(sizeMax({ entity: "switch.a", thickness: "abc" })).toBe(48);
+  });
+
+  it("offers the positions that fit the orientation", () => {
+    const options = (config) => buildSchema(config).find((item) => item.name === "scale").schema
+      .find((f) => f.name === "position").selector.select.options.map((o) => o.value);
+    expect(options({ entity: "switch.a" })).toEqual(["top", "bottom", "start", "center", "end"]);
+    expect(options({ entity: "switch.a", orientation: "horizontal" })).toEqual(["top", "bottom", "start", "center", "end"]);
+    expect(options({ entity: "switch.a", orientation: "vertical" })).toEqual(["left", "right", "start", "center", "end"]);
   });
 
   it("offers font size and color per text area, the icon color only in the header", () => {
@@ -125,6 +163,12 @@ describe("cleanConfig", () => {
       text: { header: { font_size: 16, color: "" }, bar: { font_size: undefined, color: null }, info: {}, button: { color: "red" } },
     })).toEqual({ entity: "switch.a", text: { header: { font_size: 16 }, button: { color: "red" } } });
     expect(cleanConfig({ entity: "switch.a", text: { header: { color: "" }, bar: {} } })).toEqual({ entity: "switch.a" });
+  });
+
+  it("drops cleared scale fields and an empty scale map", () => {
+    expect(cleanConfig({ entity: "switch.a", scale: { ticks: 8, position: "", size: undefined, color: null } }))
+      .toEqual({ entity: "switch.a", scale: { ticks: 8 } });
+    expect(cleanConfig({ entity: "switch.a", scale: { ticks: "", position: "" } })).toEqual({ entity: "switch.a" });
   });
 
   it("leaves other nested values untouched", () => {
@@ -227,6 +271,151 @@ describe("SlabtonCardEditor", () => {
       areas: ["Kopfzeile", "Balkentext", "Timer-Info", "Griff-Text"],
       fields: ["Schriftgröße in px", "Farbe", "Symbolfarbe"],
     });
+  });
+
+  it("labels the scale section and fields in both languages", () => {
+    if (!customElements.get("ha-form")) customElements.define("ha-form", class extends HTMLElement {});
+    const labelsOf = (language) => {
+      const editor = document.createElement("slabton-card-editor");
+      editor.hass = { states: {}, locale: { language } };
+      editor.setConfig({ entity: "switch.a" });
+      const form = editor.shadowRoot.querySelector("ha-form");
+      const scale = form.schema.find((item) => item.name === "scale");
+      return { section: form.computeLabel(scale), fields: scale.schema.map((f) => form.computeLabel(f)) };
+    };
+    expect(labelsOf("en")).toEqual({
+      section: "Scale",
+      fields: ["Show scale", "Segments (ticks = segments + 1)", "Position across the bar", "Tick length in px", "Tick color"],
+    });
+    expect(labelsOf("de")).toEqual({
+      section: "Skala",
+      fields: ["Skala anzeigen", "Segmente (Striche = Segmente + 1)", "Position quer zum Balken", "Strichlänge in px", "Strichfarbe"],
+    });
+  });
+
+  /** Editor with `config`, a spy on config-changed and a helper that sends form values. */
+  const setup = (config) => {
+    if (!customElements.get("ha-form")) customElements.define("ha-form", class extends HTMLElement {});
+    const editor = document.createElement("slabton-card-editor");
+    editor.setConfig(config);
+    const form = editor.shadowRoot.querySelector("ha-form");
+    const handler = vi.fn();
+    editor.addEventListener("config-changed", handler);
+    const send = (value) => {
+      form.dispatchEvent(new CustomEvent("value-changed", { detail: { value } }));
+      return handler.mock.calls.at(-1)[0].detail.config;
+    };
+    return { editor, form, send };
+  };
+
+  it("shows scale: true and scale: {} as an enabled, empty section", () => {
+    expect(setup({ entity: "switch.a", scale: true }).form.data).toEqual({ entity: "switch.a", scale: { enabled: true } });
+    expect(setup({ entity: "switch.a", scale: {} }).form.data).toEqual({ entity: "switch.a", scale: { enabled: true } });
+  });
+
+  it("shows the fields of a scale map next to the enabled switch", () => {
+    expect(setup({ entity: "switch.a", scale: { ticks: 5 } }).form.data)
+      .toEqual({ entity: "switch.a", scale: { enabled: true, ticks: 5 } });
+  });
+
+  it("shows the enabled switch on even when the YAML scale map has its own enabled: false", () => {
+    expect(setup({ entity: "switch.a", scale: { enabled: false, ticks: 5 } }).form.data)
+      .toEqual({ entity: "switch.a", scale: { enabled: true, ticks: 5 } });
+  });
+
+  it("refreshes the form data after a change, without waiting for setConfig", () => {
+    const { form, send } = setup({ entity: "switch.a" });
+    send({ entity: "switch.a", scale: { enabled: true } });
+    expect(form.data).toEqual({ entity: "switch.a", scale: { enabled: true } });
+    send({ entity: "switch.a", scale: { enabled: true, ticks: 5 } });
+    expect(form.data).toEqual({ entity: "switch.a", scale: { enabled: true, ticks: 5 } });
+    send({ entity: "switch.a", scale: { enabled: false, ticks: 5 } });
+    expect(form.data).toEqual({ entity: "switch.a" });
+  });
+
+  it("shows scale: false like a missing scale", () => {
+    expect(setup({ entity: "switch.a", scale: false }).form.data).toEqual({ entity: "switch.a" });
+  });
+
+  it("keeps scale: true and scale: {} when another field changes", () => {
+    const withTrue = setup({ entity: "switch.a", scale: true });
+    expect(withTrue.send({ entity: "switch.a", name: "N", scale: { enabled: true } }))
+      .toEqual({ entity: "switch.a", name: "N", scale: true });
+    const withMap = setup({ entity: "switch.a", scale: {} });
+    expect(withMap.send({ entity: "switch.a", name: "N", scale: { enabled: true } }))
+      .toEqual({ entity: "switch.a", name: "N", scale: true });
+  });
+
+  it("keeps a plain scale when the form sends an empty scale section", () => {
+    const { send } = setup({ entity: "switch.a", scale: true });
+    expect(send({ entity: "switch.a", name: "N", scale: {} })).toEqual({ entity: "switch.a", name: "N", scale: true });
+  });
+
+  it("stores the fields without the enabled switch", () => {
+    const { send } = setup({ entity: "switch.a", scale: true });
+    expect(send({ entity: "switch.a", scale: { enabled: true, ticks: 5, position: "" } }))
+      .toEqual({ entity: "switch.a", scale: { ticks: 5 } });
+  });
+
+  it("falls back to scale: true when the last scale field is cleared", () => {
+    const { send } = setup({ entity: "switch.a", scale: { ticks: 5 } });
+    expect(send({ entity: "switch.a", scale: { enabled: true, ticks: "" } })).toEqual({ entity: "switch.a", scale: true });
+    expect(send({ entity: "switch.a", scale: { ticks: undefined } })).toEqual({ entity: "switch.a", scale: true });
+  });
+
+  it("turns the scale on with the switch and off again, dropping the fields", () => {
+    const { send } = setup({ entity: "switch.a" });
+    expect(send({ entity: "switch.a", scale: { enabled: true } })).toEqual({ entity: "switch.a", scale: true });
+    expect(send({ entity: "switch.a", scale: { enabled: false, ticks: 5, color: "red" } })).toEqual({ entity: "switch.a" });
+  });
+
+  it("turns the scale on by setting a field while it is off", () => {
+    const { send } = setup({ entity: "switch.a" });
+    expect(send({ entity: "switch.a", scale: { ticks: 5 } })).toEqual({ entity: "switch.a", scale: { ticks: 5 } });
+  });
+
+  it("drops scale: false when another field changes", () => {
+    const { send } = setup({ entity: "switch.a", scale: false });
+    expect(send({ entity: "switch.a", name: "N" })).toEqual({ entity: "switch.a", name: "N" });
+  });
+
+  it("maps the scale position when the orientation changes", () => {
+    const horizontal = setup({ entity: "switch.a", scale: { position: "top" } });
+    expect(horizontal.send({ entity: "switch.a", orientation: "vertical", scale: { enabled: true, position: "top" } }))
+      .toEqual({ entity: "switch.a", orientation: "vertical", scale: { position: "left" } });
+    expect(horizontal.send({ entity: "switch.a", orientation: "horizontal", scale: { enabled: true, position: "left" } }))
+      .toEqual({ entity: "switch.a", orientation: "horizontal", scale: { position: "top" } });
+
+    const bottom = setup({ entity: "switch.a", scale: { position: "bottom" } });
+    expect(bottom.send({ entity: "switch.a", orientation: "vertical", scale: { enabled: true, position: "bottom" } }).scale)
+      .toEqual({ position: "right" });
+    expect(bottom.send({ entity: "switch.a", orientation: "horizontal", scale: { enabled: true, position: "right" } }).scale)
+      .toEqual({ position: "bottom" });
+  });
+
+  it("keeps start, center and end and unrelated positions when the orientation changes", () => {
+    for (const position of ["start", "center", "end", "middle", "constructor"]) {
+      const { send } = setup({ entity: "switch.a", scale: { position } });
+      expect(send({ entity: "switch.a", orientation: "vertical", scale: { enabled: true, position } }).scale).toEqual({ position });
+    }
+  });
+
+  it("leaves the position alone while the orientation stays", () => {
+    const { send } = setup({ entity: "switch.a", orientation: "vertical", scale: { position: "left" } });
+    expect(send({ entity: "switch.a", orientation: "vertical", name: "N", scale: { enabled: true, position: "left" } }).scale)
+      .toEqual({ position: "left" });
+  });
+
+  it("does not turn the scale on by itself", () => {
+    if (!customElements.get("ha-form")) customElements.define("ha-form", class extends HTMLElement {});
+    const editor = document.createElement("slabton-card-editor");
+    editor.setConfig({ entity: "switch.a" });
+    const form = editor.shadowRoot.querySelector("ha-form");
+    expect(form.data).toEqual({ entity: "switch.a" });
+    const handler = vi.fn();
+    editor.addEventListener("config-changed", handler);
+    form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { entity: "switch.a", name: "N", scale: {} } } }));
+    expect(handler.mock.calls[0][0].detail.config).toEqual({ entity: "switch.a", name: "N" });
   });
 
   it("forwards hass updates to the form", () => {

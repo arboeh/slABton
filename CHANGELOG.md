@@ -20,6 +20,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   entity's `min` / `max` attributes. Step from the new `step` option (also `bar.step`), else the entity's `step`
   attribute, else stepless. `drag: false` turns it off. Sensors stay read-only.
 - Visual editor: `drag` switch and `step` field in value mode.
+- `scale:` block: tick marks across the bar, under the handle. Options `ticks` (segments, 1 to 100), `position`
+  (`top` / `bottom` or `left` / `right`; `start` / `center` / `end` also work), `size` (tick length in px, up to the bar
+  thickness) and `color`. `scale: true` takes the defaults. Clock mode gets one tick per hour (24, or 12 with
+  `clock.hour_format: "12"`).
+- Visual editor section "Scale" / "Skala" with a "Show scale" switch; English and German texts.
+- CSS variables `--slabton-scale-size` and `--slabton-scale-color`.
 
 ### Changed
 
@@ -32,6 +38,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   numeric state parsing).
 - Mode `value` is read-only only for `sensor`; `input_number` and `number` can be set (see Added).
 - Held arrow keys no longer repeat: one key press is one step, in all modes.
+- `scale` is no longer a reserved name (reserved now: `thresholds`, `shape`, `control`). A `scale` value that is neither
+  `true`, `false` nor a map is a configuration error; it used to be ignored with a warning.
 
 ### Fixed
 

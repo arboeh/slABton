@@ -143,6 +143,49 @@ describe("buildVars text block", () => {
   });
 });
 
+describe("buildVars scale", () => {
+  it("sets no scale variable without scale: or without size and color", () => {
+    for (const config of [cfg(), cfg({ scale: true }), cfg({ scale: { ticks: 4, position: "start" } })]) {
+      const v = buildVars(config);
+      expect(v["--slabton-scale-size"]).toBeUndefined();
+      expect(v["--slabton-scale-color"]).toBeUndefined();
+    }
+  });
+
+  it("maps size to px and passes the color through", () => {
+    const v = buildVars(cfg({ scale: { size: 6, color: "var(--divider-color)" } }));
+    expect(v["--slabton-scale-size"]).toBe("6px");
+    expect(v["--slabton-scale-color"]).toBe("var(--divider-color)");
+  });
+
+  it("only sets what was configured", () => {
+    const v = buildVars(cfg({ scale: { color: "red" } }));
+    expect(v["--slabton-scale-color"]).toBe("red");
+    expect(v["--slabton-scale-size"]).toBeUndefined();
+  });
+
+  it("lets styles: override the scale variables", () => {
+    const v = buildVars(cfg({ scale: { size: 6 }, styles: { "scale-size": "12px", "scale-color": "teal" } }));
+    expect(v["--slabton-scale-size"]).toBe("12px");
+    expect(v["--slabton-scale-color"]).toBe("teal");
+  });
+
+  it("copes with a config without scale", () => {
+    const { scale, ...rest } = cfg({ scale: true });
+    expect(scale).not.toBeNull();
+    expect(() => buildVars(rest)).not.toThrow();
+  });
+
+  it("removes the scale variables again when the option is dropped", () => {
+    const host = document.createElement("div");
+    const keys = applyVars(host, cfg({ scale: { size: 6, color: "red" } }));
+    expect(host.style.getPropertyValue("--slabton-scale-size")).toBe("6px");
+    applyVars(host, cfg(), keys);
+    expect(host.style.getPropertyValue("--slabton-scale-size")).toBe("");
+    expect(host.style.getPropertyValue("--slabton-scale-color")).toBe("");
+  });
+});
+
 describe("applyVars", () => {
   it("sets text variables and removes them again when the option is dropped", () => {
     const host = document.createElement("div");
@@ -215,6 +258,31 @@ describe("buildCss", () => {
     expect(css).toMatch(new RegExp(`\\.bar-text \\{[^}]*color: var\\(--slabton-bar-text-color, ${escapeRe(fallback)}\\)`));
     expect(css).toMatch(new RegExp(`\\.info \\{[^}]*color: var\\(--slabton-info-color, ${escapeRe(fallback)}\\)`));
     expect(css).toMatch(new RegExp(`\\.handle \\{[^}]*color: var\\(--slabton-button-color, ${escapeRe(fallback)}\\)`));
+  });
+
+  it("draws the scale behind the handle without capturing the pointer", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.rail, \.switches, \.scale \{[^}]*pointer-events: none/);
+    expect(css).toMatch(/\.o-h \.switches, \.o-h \.scale \{[^}]*left: calc\(var\(--slabton-pad\) \+ var\(--slabton-hl\) \/ 2\)/);
+    expect(css).toMatch(/\.o-v \.switches, \.o-v \.scale \{[^}]*top: calc\(var\(--slabton-pad\) \+ var\(--slabton-hl\) \/ 2\)/);
+  });
+
+  it("places the ticks per orientation and position from the tick fraction", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.o-h \.tick \{[^}]*left: calc\(var\(--slabton-tick-e, 0\) \* 100%\)/);
+    expect(css).toMatch(/\.o-v \.tick \{[^}]*top: calc\(var\(--slabton-tick-e, 0\) \* 100%\)/);
+    for (const rule of [
+      ".o-h .sc-start .tick { top: 0; }", ".o-h .sc-end .tick { bottom: 0; }",
+      ".o-v .sc-start .tick { left: 0; }", ".o-v .sc-end .tick { right: 0; }",
+    ]) expect(css).toContain(rule);
+    expect(css).toMatch(/\.o-h \.sc-center \.tick \{[^}]*top: 50%/);
+    expect(css).toMatch(/\.o-v \.sc-center \.tick \{[^}]*left: 50%/);
+  });
+
+  it("sizes and colors the ticks from variables with theme fallbacks", () => {
+    const css = buildCss();
+    expect(css).toContain("var(--slabton-scale-size, 8px)");
+    expect(css).toMatch(/\.tick \{[^}]*background: var\(--slabton-scale-color, color-mix\(in srgb, var\(--slabton-text-color, var\(--primary-text-color, #212121\)\) 45%, transparent\)\)/);
   });
 
   it("colors the header title and icon independently", () => {

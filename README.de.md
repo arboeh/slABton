@@ -21,6 +21,7 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Timer: Home-Assistant-`timer.*` oder Countdown auf ein `input_datetime` / `input_date`, Pulsieren bei Ablauf, Zeitzonen
 - Text in der Bar (`bar_text`) mit einfachen Platzhaltern, ohne Templates
 - Bar-Wert aus einer eigenen Entity (`bar:`)
+- Skala in der Bar (`scale:`): Striche, Position, Größe, Farbe; stündliche Striche im Modus Uhr
 - Modus `value` bei `input_number` / `number`: Ziehen oder Pfeiltasten setzen den Wert (`step`, `drag: false`)
 - Schriftgröße und Farbe der Texte (`text:`)
 - Texte auf Deutsch und Englisch, Sprache folgt Home Assistant
@@ -91,6 +92,7 @@ alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein a
 | `tap_action`, `double_tap_action`, `hold_action` | nach Modus | HA-Aktionen plus `cycle`, `cycle_back` |
 | `switches` | keine | `start`, `mid`, `end`, je mit `entity`, `icon`, `name`, Aktionen |
 | `text` | Standardwerte | Schriftgröße und Farbe je Textbereich, siehe [Textdarstellung](#textdarstellung) |
+| `scale` | keine | Striche in der Bar, siehe [Skala](#skala) |
 
 `call-service` (mit `service` / `service_data`) wird als veralteter Alias von `perform-action` akzeptiert und kann in einer späteren Version entfallen.
 
@@ -346,6 +348,36 @@ text:
 - `button.font_size` setzt nur den Griff-Text; das Griff-Icon folgt `handle_size`. `button.color` färbt auch das Icon.
 - Große Schrift wird abgeschnitten: Bar-Text, Timer-Info und Griff-Text haben `overflow: hidden`. Das Ergebnis im Dashboard prüfen.
 
+### Skala
+
+Striche entlang der Bar, unter dem Griff gezeichnet. Ohne `scale:` wird nichts gezeichnet.
+
+```yaml
+type: custom:slabton-card
+entity: sensor.akku_soc
+preset: soc
+scale:
+  ticks: 5
+  position: top
+  size: 10
+  color: "#888"
+```
+
+| Option | Standard | Beschreibung |
+| --- | --- | --- |
+| `ticks` | 10 (Uhr: 24) | Segmente, 1 bis 100. Die Skala zeichnet ein Strich mehr als Segmente, je einen am Anfang und am Ende |
+| `position` | `bottom` (vertikal: `right`) | Rand quer zur Bar: `top` / `bottom` (horizontal) oder `left` / `right` (vertikal). `start`, `center`, `end` gehen auch: `start` ist oben bzw. links, `end` unten bzw. rechts |
+| `size` | 8 px | Strichlänge in px, 2 bis zur Bar-Dicke `thickness` |
+| `color` | Textfarbe mit 45 % | Jede CSS-Farbe, die `styles:` akzeptiert |
+
+- `scale: true` übernimmt alle Standardwerte. `scale: false` oder fehlender Block: aus.
+- Die Striche liegen auf dem Laufweg des Griffs: der Strich für Wert i/ticks steht genau unter dem Griff bei diesem Wert. `direction: rtl` spiegelt sie.
+- Uhr: ein Strich je Stunde (24). Mit `clock.hour_format: "12"` gibt es 12 Striche, je zwei Stunden. `auto` ergibt 24 Striche, auch bei 12-Stunden-Sprache. Ein ausdrückliches `ticks` gewinnt.
+- Ungültige Werte werden mit Konsolenwarnung ignoriert, es gilt der Standard. Unbekannte Schlüssel werden gewarnt und ignoriert.
+- Der Schlüssel `enabled` existiert nur als Schalter im Editor. In YAML wird er gewarnt und ignoriert.
+- Noch nicht enthalten: Beschriftungen und Zeiger für Stunde und Minute. Folgen in späteren Versionen.
+- Visueller Editor: Abschnitt „Skala“ mit Schalter „Skala anzeigen“. Ausschalten entfernt alle Skala-Optionen; Einschalten startet mit den Standardwerten.
+
 ## Sprachen
 
 Texte (Editor-Beschriftungen, Timer-Status, Einheiten) erscheinen auf Deutsch oder Englisch, nach der
@@ -354,7 +386,7 @@ und Konsolenwarnungen bleiben Englisch.
 
 ## Reservierte Namen
 
-`thresholds`, `scale`, `shape` und `control` sind für spätere Versionen reserviert. Sie werden akzeptiert,
+`thresholds`, `shape` und `control` sind für spätere Versionen reserviert. Sie werden akzeptiert,
 ignoriert und mit Warnung protokolliert. Mehrere Bars oder Buttons in einer Karte (`bars:`) sind nicht Teil des Schemas.
 
 ## Styling
@@ -375,6 +407,8 @@ Der Block [`text:`](#textdarstellung) setzt diese Variablen. `styles:` kann sie 
 `--slabton-header-size`, `--slabton-header-color`, `--slabton-header-icon-color`,
 `--slabton-bar-text-size`, `--slabton-bar-text-color`, `--slabton-info-size`, `--slabton-info-color`,
 `--slabton-button-size`, `--slabton-button-color`. Standardgrößen: Header 14 px, Bar 13 px, Info 13 px, Griff 14 px.
+
+Skala: `--slabton-scale-size` und `--slabton-scale-color` setzen `scale.size` und `scale.color`; `styles:` kann sie überschreiben.
 
 ## Entwicklung
 
@@ -399,7 +433,7 @@ Schlüssel und `{Platzhalter}` behalten und die Datei in `src/core/i18n.js` eint
 ## Roadmap
 
 Geplant als eigene Folgevorgänge: Zähler durch Ziehen setzen; Thresholds mit Farbwechsel;
-Lock der ganzen Karte; Kreis und 3/4-Kreis; mehrere Bars und Griffe; Select-Dropdown; Analoguhr; andere Kalender.
+Lock der ganzen Karte; Kreis und 3/4-Kreis; mehrere Bars und Griffe; Select-Dropdown; Analoguhr; Skalenbeschriftung und Zeiger; andere Kalender.
 
 ## Lizenz
 

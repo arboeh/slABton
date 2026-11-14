@@ -7,12 +7,15 @@
  */
 
 import {
-  ARM_SERVICES, CLOCK_DISPLAYS_OFFERED, DIRECTIONS, HANDLE_CONTENTS, HANDLE_POSITIONS, HANDLE_SHAPES, HEADER_ICON_POSITIONS,
-  HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, inferMode,
+  ARM_SERVICES, CLOCK_DISPLAYS_OFFERED, DEFAULTS, DIRECTIONS, HANDLE_CONTENTS, HANDLE_POSITIONS, HANDLE_SHAPES,
+  HEADER_ICON_POSITIONS, HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, inferMode,
 } from "../core/config.js";
-import { ANIMATIONS, MAX_FONT_SIZE, MIN_FONT_SIZE, MODE, MODES, TEXT_AREAS, TEXT_OPTIONS } from "../core/constants.js";
+import {
+  ANIMATIONS, MAX_FONT_SIZE, MAX_SCALE_TICKS, MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_THICKNESS, MODE, MODES,
+  SCALE_ALIASES, TEXT_AREAS, TEXT_OPTIONS, scalePositionsFor,
+} from "../core/constants.js";
 import { DEFAULT_LANGUAGE, hasTranslation, resolveLanguage, t } from "../core/i18n.js";
-import { isPlainObject, warn } from "../core/util.js";
+import { isPlainObject, toNumber, warn } from "../core/util.js";
 
 const select = (options) => ({
   select: { mode: "dropdown", options: options.map((value) => ({ value, label: value })) },
@@ -78,7 +81,7 @@ function layoutFields(config) {
     { name: "orientation", selector: select(ORIENTATIONS) },
     { name: "direction", selector: select(DIRECTIONS) },
     { name: "length", selector: number(0, 2000) },
-    { name: "thickness", selector: number(12, 200) },
+    { name: "thickness", selector: number(MIN_THICKNESS, MAX_THICKNESS) },
     { name: "handle_size", selector: number(8, 200) },
     { name: "handle_shape", selector: select(HANDLE_SHAPES) },
     { name: "handle_position", selector: select(HANDLE_POSITIONS) },
@@ -121,6 +124,23 @@ function textFields(lang) {
   }));
 }
 
+/** Bar thickness the config resolves to (the longest tick): same limits and default as `normalizeConfig`. */
+const thicknessOf = (config) => toNumber(config.thickness, DEFAULTS.thickness, MIN_THICKNESS, MAX_THICKNESS);
+
+/**
+ * Fields of the `scale:` block. `enabled` is form-only (never stored, see `resolveScale`).
+ * `labelKey`: "position", "size" and "color" would clash with other labels.
+ */
+function scaleFields(config) {
+  return [
+    { name: "enabled", labelKey: "editor.scale_enabled", selector: bool() },
+    { name: "ticks", labelKey: "editor.scale_ticks", selector: number(MIN_SCALE_TICKS, MAX_SCALE_TICKS) },
+    { name: "position", labelKey: "editor.scale_position", selector: select(scalePositionsFor(config.orientation)) },
+    { name: "size", labelKey: "editor.scale_size", selector: number(MIN_SCALE_SIZE, thicknessOf(config)) },
+    { name: "color", labelKey: "editor.scale_color", selector: text() },
+  ];
+}
+
 /** ha-form schema for the given (raw) config. */
 export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
   const domain = typeof config.entity === "string" ? config.entity.split(".")[0] : "";
@@ -146,6 +166,7 @@ export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
       { name: "border_width", selector: number(0, 20) },
       { name: "border_radius", selector: number(0, 999) },
     ]),
+    section("scale", t(lang, "editor.section.scale"), scaleFields(config)),
     section("text", t(lang, "editor.section.text"), textFields(lang)),
     section("", t(lang, "editor.section.actions"), [
       { name: "tap_action", selector: { ui_action: {} } },
@@ -156,7 +177,7 @@ export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
 }
 
 /** Top-level blocks whose cleared fields are dropped at every depth (so no `header: {}` stays behind). */
-const NESTED_CLEAN_KEYS = ["text"];
+const NESTED_CLEAN_KEYS = ["text", "scale"];
 
 const isCleared = (value) => value === undefined || value === null || value === "";
 
@@ -184,6 +205,46 @@ export function cleanConfig(data) {
     out[key] = value;
   }
   return out;
+}
+
+/**
+ * Form data of a config. The form cannot show `scale: true` or `scale: false`, so the scale becomes a section
+ * with the `enabled` switch (on for `true` and for a map); a missing or false scale has no section data.
+ */
+function formData(config) {
+  const { scale, ...rest } = config;
+  if (scale === true) return { ...rest, scale: { enabled: true } };
+  return isPlainObject(scale) ? { ...rest, scale: { ...scale, enabled: true } } : rest;
+}
+
+/**
+ * Scale to store after a form change: the option map, `true` (defaults) or undefined (off).
+ * A scale that was on stays on when its last option is cleared; setting an option switches it on.
+ */
+function resolveScale(formScale, previous) {
+  if (formScale === true) return true;
+  if (!isPlainObject(formScale)) return undefined;
+  const { enabled, ...fields } = formScale;
+  if (enabled === false) return undefined;
+  const options = pruneCleared(fields);
+  if (Object.keys(options).length > 0) return options;
+  const wasOn = previous !== undefined && previous !== null && previous !== false;
+  return enabled === true || wasOn ? true : undefined;
+}
+
+const orientationOf = (config) => (config.orientation === "vertical" ? "vertical" : "horizontal");
+
+/** `top`/`bottom` become `left`/`right` (and back) when the orientation changes; other positions stay. */
+function mapScalePosition(position, from, to) {
+  if (from === to || typeof position !== "string" || !Object.hasOwn(SCALE_ALIASES[from], position)) return position;
+  const axis = SCALE_ALIASES[from][position];
+  return Object.keys(SCALE_ALIASES[to]).find((alias) => SCALE_ALIASES[to][alias] === axis);
+}
+
+/** `scale` with its position carried over to the new orientation. */
+function scaleForOrientation(scale, from, to) {
+  if (!isPlainObject(scale) || scale.position === undefined) return scale;
+  return { ...scale, position: mapScalePosition(scale.position, from, to) };
 }
 
 export class SlabtonCardEditor extends HTMLElement {
@@ -256,16 +317,23 @@ export class SlabtonCardEditor extends HTMLElement {
       this.shadowRoot.appendChild(this._form);
     }
     this._form.hass = this._hass;
-    this._form.data = this._config;
+    this._form.data = formData(this._config);
     this._form.schema = this._schema();
   }
 
   _onChanged(event) {
     event.stopPropagation();
-    this._config = cleanConfig(event.detail.value);
+    const { scale: formScale, ...rest } = event.detail.value ?? {};
+    const cleaned = cleanConfig(rest);
+    const scale = scaleForOrientation(
+      resolveScale(formScale, this._config.scale), orientationOf(this._config), orientationOf(cleaned),
+    );
+    this._config = scale === undefined ? cleaned : { ...cleaned, scale };
     this.dispatchEvent(new CustomEvent("config-changed", {
       detail: { config: this._config }, bubbles: true, composed: true,
     }));
+    // Keep the form in step with the stored config, whether or not HA calls setConfig back.
+    this._form.data = formData(this._config);
     this._form.schema = this._schema();
   }
 }

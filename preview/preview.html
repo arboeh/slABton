@@ -146,6 +146,26 @@
       }],
       ["clock (Berlin, seconds)", { mode: "clock", name: "Berlin", clock: { time_zone: "Europe/Berlin", hour_format: "24", seconds: true } }],
       ["clock (New York, 12 h)", { mode: "clock", name: "New York", clock: { time_zone: "America/New_York", hour_format: "12" } }],
+      ["scale, default (10 segments, bottom)", { entity: "sensor.soc", preset: "soc", name: "Battery", scale: true }],
+      ["scale, top, 5 segments, 12 px, colored", {
+        entity: "sensor.temp", preset: "thermometer", name: "Living room", scale: { ticks: 5, position: "top", size: 12, color: "#ff9800" },
+      }],
+      ["scale, centre, rtl", { entity: "sensor.soc", preset: "soc", direction: "rtl", scale: { ticks: 10, position: "center", size: 14 } }],
+      ["scale, vertical, left", {
+        entity: "sensor.soc", preset: "soc", orientation: "vertical", length: 200, scale: { ticks: 4, position: "left" },
+      }],
+      ["scale, overhang and oval handle", {
+        entity: "sensor.soc", preset: "soc", handle_overhang: true, handle_shape: "oval", scale: { ticks: 10 },
+      }],
+      ["scale, switches (start/mid/end)", {
+        entity: "input_select.mode",
+        scale: { ticks: 4, position: "top" },
+        switches: { start: { icon: "mdi:power" }, mid: { icon: "mdi:cog" }, end: { icon: "mdi:fire" } },
+      }],
+      ["clock with hourly scale (24 h)", { mode: "clock", name: "Berlin", clock: { time_zone: "Europe/Berlin" }, scale: true }],
+      ["clock with scale (12 h = 12 ticks)", {
+        mode: "clock", name: "New York", clock: { time_zone: "America/New_York", hour_format: "12" }, scale: { position: "center" },
+      }],
       ["bar from another entity", {
         entity: "timer.sauna", name: "Sauna", bar: { entity: "sensor.temp", min: 0, max: 40, unit: "°C", decimals: 1 }, bar_text: "{value}",
       }],

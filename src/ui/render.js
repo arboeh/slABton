@@ -29,6 +29,27 @@ function switchesHtml(config) {
   return `<div class="switches">${buttons}</div>`;
 }
 
+/** Tick container of the `scale:` block; the tick positions are set after rendering (see `placeTicks`). */
+function scaleHtml(config) {
+  if (!config.scale) return "";
+  const ticks = '<span class="tick"></span>'.repeat(config.scale.ticks + 1);
+  return `<div class="scale sc-${config.scale.position}" aria-hidden="true">${ticks}</div>`;
+}
+
+/** Tick positions are rounded to four decimals: far below a pixel on any bar. */
+const TICK_PRECISION = 1e4;
+
+/** Put every tick at its share of the handle-centre travel, mirrored like the handle itself. */
+function placeTicks(shadow, config) {
+  if (!config.scale) return;
+  const { ticks } = config.scale;
+  const horizontal = config.orientation === "horizontal";
+  shadow.querySelectorAll(".scale .tick").forEach((tick, i) => {
+    const edge = axisFraction(i / ticks, horizontal, config.direction === "rtl");
+    tick.style.setProperty("--slabton-tick-e", String(Math.round(edge * TICK_PRECISION) / TICK_PRECISION));
+  });
+}
+
 export function rootClasses(config) {
   const horizontal = config.orientation === "horizontal";
   const classes = [
@@ -68,6 +89,7 @@ export function renderCard(shadow, config, css) {
           ${horizontal ? "" : info}
           <div class="bar">
             <div class="fill-clip"><div class="fill"></div></div>
+            ${scaleHtml(config)}
             ${barText}
             ${horizontal ? info : ""}
             ${switchesHtml(config)}
@@ -83,6 +105,7 @@ export function renderCard(shadow, config, css) {
     </ha-card>`;
 
   const q = (selector) => shadow.querySelector(selector);
+  placeTicks(shadow, config);
   const switches = {};
   for (const button of shadow.querySelectorAll(".sw")) {
     const slot = button.dataset.slot;

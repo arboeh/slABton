@@ -92,6 +92,37 @@ export const TEXT_AREAS = Object.freeze(Object.keys(TEXT_OPTIONS));
 export const MIN_FONT_SIZE = 8;
 export const MAX_FONT_SIZE = 48;
 
+/**
+ * The `scale:` block (tick marks in the bar). Positions are across the bar:
+ * `start` is the top (horizontal) or left (vertical) edge, `end` the opposite one.
+ * `top`/`bottom` (horizontal) and `left`/`right` (vertical) are aliases of those.
+ */
+export const SCALE_AXIS_POSITIONS = Object.freeze(["start", "center", "end"]);
+export const SCALE_ALIASES = Object.freeze({
+  horizontal: Object.freeze({ top: "start", bottom: "end" }),
+  vertical: Object.freeze({ left: "start", right: "end" }),
+});
+export const SCALE_OPTIONS = Object.freeze(["ticks", "position", "size", "color"]);
+export const DEFAULT_SCALE_POSITION = "end";
+/** Segments of a scale (ticks = segments + 1): default, limits and the clock's hours. */
+export const DEFAULT_SCALE_TICKS = 10;
+export const MIN_SCALE_TICKS = 1;
+export const MAX_SCALE_TICKS = 100;
+export const CLOCK_SCALE_TICKS_24 = 24;
+export const CLOCK_SCALE_TICKS_12 = 12;
+/** Tick length in px: default and lower limit (the upper limit is the bar thickness). */
+export const DEFAULT_SCALE_SIZE = 8;
+export const MIN_SCALE_SIZE = 2;
+
+/** Positions the `scale.position` option accepts for an orientation (editor list). */
+export function scalePositionsFor(orientation) {
+  return [...Object.keys(SCALE_ALIASES[orientation] ?? SCALE_ALIASES.horizontal), ...SCALE_AXIS_POSITIONS];
+}
+
+/** Bar thickness limits in px (the upper one is also the longest tick of a scale). */
+export const MIN_THICKNESS = 12;
+export const MAX_THICKNESS = 200;
+
 /** Handle and bar geometry. */
 export const OVAL_RATIO = 1.6;
 export const DEFAULT_VERTICAL_LENGTH = 160;

@@ -326,9 +326,9 @@ describe("new modes", () => {
 describe("reserved keys and texts", () => {
   it("warns once per reserved key and ignores it", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
-    const c = normalizeConfig({ ...base, thresholds: [], scale: {}, shape: "circle", control: "select" });
-    expect(RESERVED_KEYS).toEqual(["thresholds", "scale", "shape", "control"]);
-    expect(warn).toHaveBeenCalledTimes(4);
+    const c = normalizeConfig({ ...base, thresholds: [], shape: "circle", control: "select" });
+    expect(RESERVED_KEYS).toEqual(["thresholds", "shape", "control"]);
+    expect(warn).toHaveBeenCalledTimes(3);
     for (const key of RESERVED_KEYS) expect(c[key]).toBeUndefined();
   });
 
@@ -344,6 +344,148 @@ describe("reserved keys and texts", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     expect(normalizeConfig({ ...base, bar_text: "x".repeat(500) }).bar_text).toHaveLength(MAX_TEXT_LENGTH);
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/shortened/));
+  });
+});
+
+describe("scale block", () => {
+  const quiet = () => vi.spyOn(console, "warn").mockImplementation(() => {});
+  const scaleOf = (extra, scale) => normalizeConfig({ ...base, ...extra, scale }).scale;
+
+  it("is off without scale: and with scale: false", () => {
+    const warn = quiet();
+    expect(normalizeConfig(base).scale).toBeNull();
+    expect(scaleOf({}, false)).toBeNull();
+    expect(scaleOf({}, null)).toBeNull();
+    expect(scaleOf({}, "")).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("is no longer reserved", () => {
+    const warn = quiet();
+    expect(scaleOf({}, true)).not.toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("uses defaults for scale: true and an empty map", () => {
+    const expected = { ticks: 10, position: "end", size: null, color: null };
+    expect(scaleOf({}, true)).toEqual(expected);
+    expect(scaleOf({}, {})).toEqual(expected);
+  });
+
+  it("keeps valid values", () => {
+    expect(scaleOf({}, { ticks: 4, position: "center", size: 6, color: "#888" })).toEqual({
+      ticks: 4, position: "center", size: 6, color: "#888",
+    });
+    expect(scaleOf({}, { ticks: "20", size: "5" })).toMatchObject({ ticks: 20, size: 5 });
+  });
+
+  it("does not mutate the input", () => {
+    const raw = { ...base, scale: { ticks: 4 } };
+    normalizeConfig(raw);
+    expect(raw.scale).toEqual({ ticks: 4 });
+  });
+
+  it("counts hours in clock mode: 24 by default, 12 for hour_format 12", () => {
+    expect(normalizeConfig({ mode: "clock", scale: true }).scale.ticks).toBe(24);
+    expect(normalizeConfig({ mode: "clock", scale: {}, clock: { hour_format: "24" } }).scale.ticks).toBe(24);
+    expect(normalizeConfig({ mode: "clock", scale: true, clock: { hour_format: "12" } }).scale.ticks).toBe(12);
+    expect(normalizeConfig({ mode: "clock", scale: true, clock: { hour_format: 12 } }).scale.ticks).toBe(12);
+  });
+
+  it("lets an explicit ticks win over the clock rule and adds no scale to a clock without scale:", () => {
+    expect(normalizeConfig({ mode: "clock", scale: { ticks: 6 }, clock: { hour_format: "12" } }).scale.ticks).toBe(6);
+    expect(normalizeConfig({ mode: "clock" }).scale).toBeNull();
+  });
+
+  it("uses 10 segments in every other mode", () => {
+    for (const entity of ["sensor.t", "lock.a", "counter.a", "timer.a"]) {
+      expect(normalizeConfig({ entity, scale: true }).scale.ticks).toBe(10);
+    }
+  });
+
+  it.each([
+    ["end", "horizontal", "end"],
+    ["start", "horizontal", "start"],
+    ["center", "horizontal", "center"],
+    ["top", "horizontal", "start"],
+    ["bottom", "horizontal", "end"],
+    ["start", "vertical", "start"],
+    ["end", "vertical", "end"],
+    ["center", "vertical", "center"],
+    ["left", "vertical", "start"],
+    ["right", "vertical", "end"],
+  ])("maps position %s on a %s bar to %s", (position, orientation, expected) => {
+    expect(scaleOf({ orientation }, { position }).position).toBe(expected);
+  });
+
+  it.each([
+    ["top", "vertical"], ["bottom", "vertical"], ["left", "horizontal"], ["right", "horizontal"],
+    ["middle", "horizontal"], ["constructor", "horizontal"], ["__proto__", "vertical"], [5, "horizontal"],
+  ])("warns about position %j on a %s bar and uses the default", (position, orientation) => {
+    const warn = quiet();
+    expect(scaleOf({ orientation }, { position }).position).toBe("end");
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.position/));
+  });
+
+  it("does not warn about an empty position, ticks, size or color", () => {
+    const warn = quiet();
+    expect(scaleOf({}, { position: "", ticks: "", size: null, color: "" })).toEqual({
+      ticks: 10, position: "end", size: null, color: null,
+    });
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it.each([[0], [101], [2.5], [-1], ["abc"], ["1e1"], [true], [{}]])("warns about ticks %j and uses the default", (value) => {
+    const warn = quiet();
+    expect(scaleOf({}, { ticks: value }).ticks).toBe(10);
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.ticks/));
+  });
+
+  it("accepts the limits 1 and 100 for ticks", () => {
+    expect(scaleOf({}, { ticks: 1 }).ticks).toBe(1);
+    expect(scaleOf({}, { ticks: 100 }).ticks).toBe(100);
+  });
+
+  it("falls back to the default ticks of the clock after an invalid value", () => {
+    quiet();
+    expect(normalizeConfig({ mode: "clock", scale: { ticks: 0 }, clock: { hour_format: "12" } }).scale.ticks).toBe(12);
+  });
+
+  it.each([[1], [0], ["abc"], [-4], [{}]])("warns about size %j and leaves it unset", (value) => {
+    const warn = quiet();
+    expect(scaleOf({}, { size: value }).size).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.size/));
+  });
+
+  it("limits the size to the bar thickness", () => {
+    const warn = quiet();
+    expect(scaleOf({ thickness: 20 }, { size: 20 }).size).toBe(20);
+    expect(scaleOf({ thickness: 20 }, { size: 21 }).size).toBeNull();
+    expect(scaleOf({}, { size: 2 }).size).toBe(2);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([["red;}"], ["url(http://x)"], ["javascript:alert(1)"], [12]])("warns about unsafe color %j", (value) => {
+    const warn = quiet();
+    expect(scaleOf({}, { color: value }).color).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.color/));
+  });
+
+  it("accepts theme variables as color", () => {
+    expect(scaleOf({}, { color: "var(--divider-color)" }).color).toBe("var(--divider-color)");
+  });
+
+  it("rejects anything but a boolean or a map", () => {
+    for (const value of ["yes", 3, [], [1]]) {
+      expect(() => scaleOf({}, value)).toThrow(/scale must be/);
+    }
+  });
+
+  it("warns about unknown options and ignores them", () => {
+    const warn = quiet();
+    const scale = scaleOf({}, { ticks: 5, labels: true });
+    expect(scale).toEqual({ ticks: 5, position: "end", size: null, color: null });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.labels/));
   });
 });
 

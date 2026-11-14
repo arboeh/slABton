@@ -21,6 +21,7 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Timer: Home Assistant `timer.*` or countdown to an `input_datetime` / `input_date`, pulse on expiry, time zones
 - Text in the bar (`bar_text`) with simple placeholders, no templates
 - Bar value from a separate entity (`bar:`)
+- Tick scale in the bar (`scale:`): ticks, position, size, color; hourly ticks in clock mode
 - Value mode on `input_number` / `number`: drag or arrow keys set the value (`step`, `drag: false`)
 - Font size and color of the texts (`text:`)
 - English and German texts, language follows Home Assistant
@@ -91,6 +92,7 @@ everything else gives `state`. `input_datetime` / `input_date` and `clock` need 
 | `tap_action`, `double_tap_action`, `hold_action` | by mode | HA actions plus `cycle`, `cycle_back` |
 | `switches` | none | `start`, `mid`, `end`, each with `entity`, `icon`, `name`, actions |
 | `text` | defaults | Font size and color per text area, see [Text appearance](#text-appearance) |
+| `scale` | none | Tick marks in the bar, see [Scale](#scale) |
 
 `call-service` (with `service` / `service_data`) is accepted as a deprecated alias of `perform-action` and may be removed in a later version.
 
@@ -344,6 +346,36 @@ text:
 - `button.font_size` sets only the handle text; the handle icon follows `handle_size`. `button.color` also colors the icon.
 - Large sizes are cut off: bar text, timer info and handle text have `overflow: hidden`. Check the result on the dashboard.
 
+### Scale
+
+Tick marks across the bar, drawn under the handle. Without `scale:` nothing is drawn.
+
+```yaml
+type: custom:slabton-card
+entity: sensor.battery_soc
+preset: soc
+scale:
+  ticks: 5
+  position: top
+  size: 10
+  color: "#888"
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `ticks` | 10 (clock: 24) | Segments, 1 to 100. The scale draws one tick more than segments, one at each end |
+| `position` | `bottom` (vertical: `right`) | Edge across the bar: `top` / `bottom` (horizontal) or `left` / `right` (vertical). `start`, `center`, `end` also work: `start` is top or left, `end` bottom or right |
+| `size` | 8 px | Tick length in px, 2 up to the bar `thickness` |
+| `color` | text color at 45 % | Any CSS color that `styles:` accepts |
+
+- `scale: true` takes all defaults. `scale: false` or a missing block means off.
+- Ticks sit on the handle's travel: the tick for value i/ticks is exactly under the handle at that value. `direction: rtl` mirrors them.
+- Clock: one tick per hour (24). With `clock.hour_format: "12"` there are 12 ticks, two hours apart. `auto` gives 24 ticks even in a 12-hour locale. An explicit `ticks` wins over both.
+- Invalid values are ignored with a console warning and the default applies. Unknown keys are warned about and ignored.
+- The key `enabled` exists only as the editor switch. In YAML it is warned about and ignored.
+- Not drawn yet: labels and hour / minute hands. Planned for later releases.
+- Visual editor: section "Scale" with a "Show scale" switch. Switching it off removes all scale options; switching it on again starts with the defaults.
+
 ## Languages
 
 Texts (editor labels, timer status, units) are English or German, taken from the Home Assistant
@@ -351,7 +383,7 @@ language of the user. Other languages fall back to English. Config errors and co
 
 ## Reserved names
 
-`thresholds`, `scale`, `shape` and `control` are reserved for later releases. They are accepted, ignored
+`thresholds`, `shape` and `control` are reserved for later releases. They are accepted, ignored
 and logged with a warning. Several bars or buttons in one card (`bars:`) are not part of the schema.
 
 ## Styling
@@ -372,6 +404,8 @@ The [`text:` block](#text-appearance) sets these variables. `styles:` can set th
 `--slabton-header-size`, `--slabton-header-color`, `--slabton-header-icon-color`,
 `--slabton-bar-text-size`, `--slabton-bar-text-color`, `--slabton-info-size`, `--slabton-info-color`,
 `--slabton-button-size`, `--slabton-button-color`. Size defaults: header 14 px, bar 13 px, info 13 px, button 14 px.
+
+Scale: `--slabton-scale-size` and `--slabton-scale-color` are set by `scale.size` and `scale.color`; `styles:` can override them.
 
 ## Development
 
@@ -396,7 +430,7 @@ checks that every language has the same keys and placeholders as English.
 ## Roadmap
 
 Planned as separate follow-ups: setting a counter by dragging; thresholds with color change;
-card lock; circle and 3/4 circle; multiple bars and handles; select dropdown; analog clock; other calendars.
+card lock; circle and 3/4 circle; multiple bars and handles; select dropdown; analog clock; scale labels and hands; other calendars.
 
 ## License
 

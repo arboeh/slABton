@@ -65,6 +65,71 @@ describe("renderCard", () => {
   });
 });
 
+describe("scale", () => {
+  const tickValues = (shadow) => [...shadow.querySelectorAll(".scale .tick")].map((t) => t.style.getPropertyValue("--slabton-tick-e"));
+
+  it("renders nothing without scale:", () => {
+    const { shadow } = setup();
+    expect(shadow.querySelector(".scale")).toBeNull();
+  });
+
+  it("renders ticks + 1 marks that sit on the handle centre positions", () => {
+    const { shadow } = setup({ scale: { ticks: 4 } });
+    expect(shadow.querySelectorAll(".scale .tick")).toHaveLength(5);
+    expect(tickValues(shadow)).toEqual(["0", "0.25", "0.5", "0.75", "1"]);
+  });
+
+  it("defaults to 10 segments at the end edge", () => {
+    const { shadow } = setup({ scale: true });
+    const scale = shadow.querySelector(".scale");
+    expect(scale.querySelectorAll(".tick")).toHaveLength(11);
+    expect(scale.classList.contains("sc-end")).toBe(true);
+  });
+
+  it("encodes the position as a class, aliases resolved", () => {
+    const classOf = (extra, position) => setup({ ...extra, scale: { position } }).shadow.querySelector(".scale").className;
+    expect(classOf({}, "start")).toContain("sc-start");
+    expect(classOf({}, "top")).toContain("sc-start");
+    expect(classOf({}, "bottom")).toContain("sc-end");
+    expect(classOf({}, "center")).toContain("sc-center");
+    expect(classOf({ orientation: "vertical" }, "left")).toContain("sc-start");
+    expect(classOf({ orientation: "vertical" }, "right")).toContain("sc-end");
+  });
+
+  it("mirrors the ticks for rtl and vertical like the handle", () => {
+    expect(tickValues(setup({ direction: "rtl", scale: { ticks: 4 } }).shadow)).toEqual(["1", "0.75", "0.5", "0.25", "0"]);
+    expect(tickValues(setup({ orientation: "vertical", scale: { ticks: 4 } }).shadow)).toEqual(["1", "0.75", "0.5", "0.25", "0"]);
+    expect(tickValues(setup({ orientation: "vertical", direction: "rtl", scale: { ticks: 4 } }).shadow)).toEqual(["0", "0.25", "0.5", "0.75", "1"]);
+  });
+
+  it("rounds odd fractions to a short number", () => {
+    expect(tickValues(setup({ scale: { ticks: 3 } }).shadow)).toEqual(["0", "0.3333", "0.6667", "1"]);
+  });
+
+  it("renders one tick per hour on a clock", () => {
+    const day = setup({ entity: undefined, mode: "clock", scale: true }).shadow;
+    expect(day.querySelectorAll(".tick")).toHaveLength(25);
+    const half = setup({ entity: undefined, mode: "clock", scale: true, clock: { hour_format: "12" } }).shadow;
+    expect(half.querySelectorAll(".tick")).toHaveLength(13);
+  });
+
+  it("sits after the fill and before the text, hidden from assistive technology", () => {
+    const { shadow, refs } = setup({ entity: "timer.a", bar_text: "x", scale: true });
+    const scale = shadow.querySelector(".bar > .scale");
+    expect(scale.previousElementSibling.classList.contains("fill-clip")).toBe(true);
+    expect(scale.nextElementSibling).toBe(refs.barText);
+    expect(scale.getAttribute("aria-hidden")).toBe("true");
+  });
+
+  it("keeps the scale when the view updates", () => {
+    const { config, shadow, refs } = setup({ scale: { ticks: 2 } });
+    const before = shadow.querySelector(".scale");
+    updateView(refs, config, stateMode.view(config, modeState));
+    expect(shadow.querySelector(".scale")).toBe(before);
+    expect(tickValues(shadow)).toEqual(["0", "0.5", "1"]);
+  });
+});
+
 describe("rootClasses", () => {
   it("encodes orientation, direction, shape, animation and drag", () => {
     const c = normalizeConfig({ entity: "sensor.t", orientation: "vertical", direction: "rtl", handle_shape: "oval", animation: "pulse" });
