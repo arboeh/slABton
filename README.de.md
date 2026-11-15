@@ -89,3 +89,10 @@ Quellcode-Aufbau und das Hinzufügen einer Sprache stehen in der [Referenz](http
 ## Lizenz
 
 [Mozilla Public License 2.0](LICENSE) (MPL-2.0)
+
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-dark.svg">
+    <img alt="AB Logo" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-light.svg" height="64">
+  </picture>
+</p>
