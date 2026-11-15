@@ -1,0 +1,43 @@
+site_name: slABton
+site_description: Slider button bar card for Home Assistant
+site_url: https://slabton.de/
+repo_url: https://github.com/arboeh/slABton
+repo_name: arboeh/slABton
+edit_uri: edit/main/docs/
+strict: true
+
+theme:
+  name: material
+  language: en
+  features:
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+    - content.action.edit
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      toggle:
+        icon: material/weather-night
+        name: Dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      toggle:
+        icon: material/weather-sunny
+        name: Light mode
+
+markdown_extensions:
+  - tables
+  - admonition
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.highlight
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Configuration: configuration.md
+  - Modes: modes.md
+  - Appearance: appearance.md
+  - Reference: reference.md
