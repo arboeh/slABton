@@ -3,9 +3,9 @@
   "version": "0.3.0",
   "private": true,
   "type": "module",
-  "description": "Slider button bar card for Home Assistant: a bar with a movable handle button for states, swipe-to-lock/unlock and value display",
+  "description": "Slider button bar card for Home Assistant: movable handle, states, swipe-to-lock, value display",
   "engines": {
-    "node": ">=20"
+    "node": ">=22.12"
   },
   "author": "arboeh",
   "license": "MPL-2.0",

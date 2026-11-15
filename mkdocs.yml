@@ -1,5 +1,5 @@
 site_name: slABton
-site_description: Slider button bar card for Home Assistant
+site_description: "Slider button bar card for Home Assistant: movable handle, states, swipe-to-lock, value display"
 site_url: https://slabton.de/
 repo_url: https://github.com/arboeh/slABton
 repo_name: arboeh/slABton
