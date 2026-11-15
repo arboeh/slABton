@@ -56,22 +56,6 @@ Alle Optionen, Beispiele und Screenshots stehen auf der Website:
 
 Swipe zum Sperren / Entsperren ist eine Komfortgeste, **keine Sicherheitsgrenze**. Siehe [SECURITY.md](SECURITY.md).
 
-## Nicht verfügbare Entitäten
-
-Ist die Entität `unavailable` oder `unknown`, zeigt der Griff ein Warn-Icon. Der Grund steht im Tooltip und für
-Screenreader. Die Karte ist gesperrt: Ein Tippen öffnet more-info, Gesten und Pfeiltasten tun nichts.
-
-- `allow_unavailable_actions: true` (nur Modus `state`, Standard `false`) hält Tippen, Halten, Doppeltippen, Ziehen und
-  Pfeiltasten aktiv. Der Modus `lock` bleibt bewusst gesperrt; andere Modi ignorieren die Option mit einer Warnung.
-- Die Sperre gilt für `cycle`, `cycle_back` und `toggle` auf der Hauptentität. Eine selbst konfigurierte
-  `perform-action` ist nicht gesperrt, auch wenn sie die Hauptentität anspricht.
-- Bei aktiver Option sendet ein Tippen auf eine Toggle-Entität (`switch`, `light`, ...) in unbekanntem Zustand zuerst
-  `off` (der erste Zustand des Zyklus). Ein `select` ohne Optionsliste sendet nichts.
-- Der Griff bleibt im gesperrten Zustand fokussierbar (`aria-disabled="true"`), damit Enter / Leertaste more-info
-  öffnen kann.
-- Template-Entitäten: `availability` unabhängig von optionalen Hilfsentitäten halten. Fehlt eine Hilfsentität, ist die
-  Karte gesperrt.
-
 ## Entwicklung
 
 ```bash
