@@ -46,6 +46,9 @@ Texts are limited to 200 characters.
 
 ## Text appearance
 
+![custom text sizes and colors](assets/shots/text-appearance-light.png#only-light)
+![custom text sizes and colors](assets/shots/text-appearance-dark.png#only-dark)
+
 The `text:` block sets font size and color of five areas. Without it nothing changes.
 
 ```yaml
@@ -120,7 +123,26 @@ scale:
 - Visual editor: section "Scale" with a "Show scale" switch. Switching it off removes all scale options; switching it on again starts with the defaults.
 
 
+## Header
+
+`header_position` (`top`, `bottom`, `none`) and `header_icon_position` (`left`, `right`) place the header. `text.header` sets size, color and icon color (see [Text appearance](#text-appearance)).
+
+![header icon on the right](assets/shots/header-icon-right-light.png#only-light)
+![header icon on the right](assets/shots/header-icon-right-dark.png#only-dark)
+
+![header below the bar](assets/shots/header-bottom-light.png#only-light)
+![header below the bar](assets/shots/header-bottom-dark.png#only-dark)
+
+![header with custom font size and colors](assets/shots/header-text-light.png#only-light)
+![header with custom font size and colors](assets/shots/header-text-dark.png#only-dark)
+
 ## Styling
+
+![custom bar, fill and handle colors](assets/shots/colors-light.png#only-light)
+![custom bar, fill and handle colors](assets/shots/colors-dark.png#only-dark)
+
+![warm colors with a square handle](assets/shots/colors-warm-light.png#only-light)
+![warm colors with a square handle](assets/shots/colors-warm-dark.png#only-dark)
 
 Layout and colors use CSS variables on the card. Set them with `styles:` (keys without
 `--slabton-` prefix get it added) or with card-mod.

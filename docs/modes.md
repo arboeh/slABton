@@ -37,6 +37,12 @@ handle_overhang: true
 | `hold_reverse` | `false` | Hold steps backwards |
 | `drag` | `true` | Allow dragging (only with `handle_position: flex`) |
 
+![state mode, vertical](assets/shots/state-vertical-light.png#only-light)
+![state mode, vertical](assets/shots/state-vertical-dark.png#only-dark)
+
+![separate switches at start, mid and end](assets/shots/switches-light.png#only-light)
+![separate switches at start, mid and end](assets/shots/switches-dark.png#only-dark)
+
 ## Mode `lock`
 
 ![lock mode](assets/shots/lock-light.png#only-light)
@@ -169,6 +175,15 @@ the display can be off by that difference.
 Daylight saving time: a date and time that does not exist (spring forward) is shifted past the gap, one
 that exists twice (autumn) means the later time. Unknown time zone names are a configuration error.
 
+![paused timer](assets/shots/timer-paused-light.png#only-light)
+![paused timer](assets/shots/timer-paused-dark.png#only-dark)
+
+![countdown to a date](assets/shots/timer-date-light.png#only-light)
+![countdown to a date](assets/shots/timer-date-dark.png#only-dark)
+
+![vertical timer](assets/shots/timer-vertical-light.png#only-light)
+![vertical timer](assets/shots/timer-vertical-dark.png#only-dark)
+
 ## Mode `clock`
 
 ![digital clock](assets/shots/clock-digital-light.png#only-light)
@@ -212,3 +227,10 @@ clock:
   face:
     numbers: quarters
 ```
+
+![analog clock larger than the bar](assets/shots/clock-large-light.png#only-light)
+![analog clock larger than the bar](assets/shots/clock-large-dark.png#only-dark)
+
+![analog clock with custom colors](assets/shots/clock-colors-light.png#only-light)
+![analog clock with custom colors](assets/shots/clock-colors-dark.png#only-dark)
+

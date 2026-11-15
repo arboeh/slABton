@@ -6,6 +6,10 @@ on:
     paths:
       - "docs/**"
       - "mkdocs.yml"
+      - "src/**"
+      - "package.json"
+      - "package-lock.json"
+      - "esbuild.config.mjs"
       - "requirements-docs.txt"
       - ".github/workflows/docs.yml"
   workflow_dispatch:
@@ -22,6 +26,17 @@ jobs:
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build card for the live demo
+        run: |
+          npm ci
+          npm run build
+          cp dist/slabton.js docs/demo-app/slabton.js
 
       - uses: actions/setup-python@v5
         with:

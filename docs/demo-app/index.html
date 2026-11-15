@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>slABton demo</title>
+  <link rel="stylesheet" href="demo.css">
+</head>
+<body>
+  <main class="demo">
+    <section class="pane" aria-labelledby="config-title">
+      <div class="bar">
+        <h1 id="config-title">Configuration</h1>
+        <label class="sr-only" for="example">Example</label>
+        <select id="example"></select>
+      </div>
+      <textarea id="yaml" spellcheck="false" autocomplete="off" aria-label="Card configuration in YAML"></textarea>
+      <p id="error" class="error" role="alert" hidden></p>
+      <div class="bar">
+        <button id="copy" type="button">Copy YAML</button>
+        <button id="theme" type="button" aria-pressed="false">Dark</button>
+      </div>
+    </section>
+
+    <section class="pane preview" aria-labelledby="card-title">
+      <h1 id="card-title">Card</h1>
+      <div id="stage" class="stage"></div>
+      <h2>Service calls</h2>
+      <ul id="log" class="log" aria-live="polite"></ul>
+      <p class="hint">Demo data only, no Home Assistant needed. Drag, tap, double tap and hold work as in a dashboard.</p>
+    </section>
+  </main>
+
+  <script src="vendor/js-yaml.min.js"></script>
+  <script src="mock-hass.js"></script>
+  <script src="slabton.js"></script>
+  <script src="examples.js"></script>
+  <script src="demo.js"></script>
+</body>
+</html>

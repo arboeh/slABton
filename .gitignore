@@ -13,3 +13,4 @@ coverage/
 /.env.*
 /RELEASE_NOTES.md
 /site/
+/docs/demo-app/slabton.js
