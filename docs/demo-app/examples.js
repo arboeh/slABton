@@ -139,3 +139,12 @@ text:
 `,
   },
 ];
+
+// Translated example names (fallback: the English `label` above).
+window.SLABTON_EXAMPLE_LABELS = {
+  de: {
+    state: "Zustand (Select)", overhang: "Zustand, Griff-Überstand", vertical: "Zustand, vertikal",
+    lock: "Sperre (Swipe)", value: "Wert (Sensor)", draggable: "Wert (ziehbare Zahl)", counter: "Zähler",
+    timer: "Timer", clock: "Uhr (digital)", analog: "Uhr (analog)", styled: "Farben und Text",
+  },
+};

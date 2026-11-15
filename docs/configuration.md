@@ -48,3 +48,17 @@ everything else gives `state`. `input_datetime` / `input_date` and `clock` need 
 | `scale` | none | Tick marks in the bar, see [Scale](appearance.md#scale) |
 
 `call-service` (with `service` / `service_data`) is accepted as a deprecated alias of `perform-action` and may be removed in a later version.
+
+## Unavailable entities
+
+While the entity is `unavailable` or `unknown`, the handle shows a warning icon. The reason is in the tooltip and for
+screen readers. The card is locked: a tap opens more-info, gestures and arrow keys do nothing.
+
+- `allow_unavailable_actions: true` (mode `state` only, default `false`) keeps tap, hold, double tap, drag and arrow
+  keys active. Lock mode stays locked on purpose; other modes ignore the option with a warning.
+- The lock covers `cycle`, `cycle_back` and `toggle` on the main entity. A `perform-action` you configure yourself is
+  not blocked, even when it targets the main entity.
+- With the option on, a tap on a toggle entity (`switch`, `light`, ...) in an unknown state sends `off` first (the
+  first state of the cycle). A `select` without its option list sends nothing.
+- The handle stays focusable while locked (`aria-disabled="true"`) so Enter / Space can open more-info.
+- Template entities: keep `availability` independent of optional helper entities. A missing helper locks the card.

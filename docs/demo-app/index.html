@@ -10,27 +10,28 @@
   <main class="demo">
     <section class="pane" aria-labelledby="config-title">
       <div class="bar">
-        <h1 id="config-title">Configuration</h1>
-        <label class="sr-only" for="example">Example</label>
+        <h1 id="config-title" data-i18n="configuration">Configuration</h1>
+        <label class="sr-only" for="example" data-i18n="example">Example</label>
         <select id="example"></select>
       </div>
-      <textarea id="yaml" spellcheck="false" autocomplete="off" aria-label="Card configuration in YAML"></textarea>
+      <textarea id="yaml" spellcheck="false" autocomplete="off" data-i18n-aria="yamlLabel" aria-label="Card configuration in YAML"></textarea>
       <p id="error" class="error" role="alert" hidden></p>
       <div class="bar">
-        <button id="copy" type="button">Copy YAML</button>
+        <button id="copy" type="button" data-i18n="copy">Copy YAML</button>
         <button id="theme" type="button" aria-pressed="false">Dark</button>
       </div>
     </section>
 
     <section class="pane preview" aria-labelledby="card-title">
-      <h1 id="card-title">Card</h1>
+      <h1 id="card-title" data-i18n="card">Card</h1>
       <div id="stage" class="stage"></div>
-      <h2>Service calls</h2>
+      <h2 data-i18n="calls">Service calls</h2>
       <ul id="log" class="log" aria-live="polite"></ul>
-      <p class="hint">Demo data only, no Home Assistant needed. Drag, tap, double tap and hold work as in a dashboard.</p>
+      <p class="hint" data-i18n="hint">Demo data only, no Home Assistant needed. Drag, tap, double tap and hold work as in a dashboard.</p>
     </section>
   </main>
 
+  <script src="i18n.js"></script>
   <script src="vendor/js-yaml.min.js"></script>
   <script src="mock-hass.js"></script>
   <script src="slabton.js"></script>

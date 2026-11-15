@@ -1,6 +1,8 @@
 // Docs demo: YAML editor on the left, live slabton-card on the right.
 (function () {
   const EXAMPLES = window.SLABTON_EXAMPLES;
+  const i18n = window.SLABTON_I18N;
+  const EXAMPLE_LABELS = window.SLABTON_EXAMPLE_LABELS?.[i18n.language] ?? {};
   const { hass } = window.SLABTON_MOCK;
   const DEBOUNCE_MS = 300;
   const LOG_LIMIT = 6;
@@ -24,7 +26,7 @@
   function parseConfig(text) {
     const parsed = window.jsyaml.load(text);
     if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-      throw new Error("The configuration must be a YAML map.");
+      throw new Error(i18n.t("notAMap"));
     }
     return { type: "custom:slabton-card", ...parsed };
   }
@@ -80,7 +82,7 @@
   function applyTheme(dark) {
     document.body.classList.toggle("dark", dark);
     themeButton.setAttribute("aria-pressed", String(dark));
-    themeButton.textContent = dark ? "Light" : "Dark";
+    themeButton.textContent = i18n.t(dark ? "light" : "dark");
   }
 
   function initialTheme() {
@@ -92,18 +94,18 @@
   async function copyConfig() {
     try {
       await navigator.clipboard.writeText(editor.value);
-      copyButton.textContent = "Copied";
+      copyButton.textContent = i18n.t("copied");
     } catch {
       editor.select();
-      copyButton.textContent = "Select and copy";
+      copyButton.textContent = i18n.t("selectCopy");
     }
-    setTimeout(() => { copyButton.textContent = "Copy YAML"; }, 1500);
+    setTimeout(() => { copyButton.textContent = i18n.t("copy"); }, 1500);
   }
 
   for (const example of EXAMPLES) {
     const option = document.createElement("option");
     option.value = example.id;
-    option.textContent = example.label;
+    option.textContent = EXAMPLE_LABELS[example.id] ?? example.label;
     select.appendChild(option);
   }
 

@@ -8,7 +8,7 @@
 Slider-Button-Bar-Karte für Home Assistant: eine Bar mit verschiebbarem Griff-Button.
 Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzeigen.
 
-**[Dokumentation](https://slabton.de)** (englisch) · **[Live-Demo](https://slabton.de/demo/)** · [English version](README.md)
+**[Dokumentation](https://slabton.de/de/)** · **[Live-Demo](https://slabton.de/de/demo/)** · [English version](README.md)
 
 <img alt="Modus state" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/state-light.png" width="480">
 <img alt="Analoguhr" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/clock-analog-light.png" width="480">
@@ -47,12 +47,12 @@ Der Modus folgt der Domain der Entity: `lock` / `alarm_control_panel` ergeben `l
 `input_number` ergeben `value`, `counter` ergibt `counter`, `timer` ergibt `timer`, alles andere `state`.
 `input_datetime` / `input_date` und `clock` brauchen ein ausdrückliches `mode:`.
 
-Alle Optionen, Beispiele und Screenshots stehen auf der Website (englisch):
+Alle Optionen, Beispiele und Screenshots stehen auf der Website:
 
-- [Configuration](https://slabton.de/configuration/): allgemeine Optionen
-- [Modes](https://slabton.de/modes/): state, lock, value, counter, timer, clock
-- [Appearance](https://slabton.de/appearance/): Bar-Wert, Platzhalter, Text, Skala, Header, Styling
-- [Reference](https://slabton.de/reference/): Sprachen, reservierte Namen, Entwicklung, Roadmap
+- [Konfiguration](https://slabton.de/de/configuration/): allgemeine Optionen
+- [Modi](https://slabton.de/de/modes/): state, lock, value, counter, timer, clock
+- [Darstellung](https://slabton.de/de/appearance/): Bar-Wert, Platzhalter, Text, Skala, Header, Styling
+- [Referenz](https://slabton.de/de/reference/): Sprachen, reservierte Namen, Entwicklung, Roadmap
 
 Swipe zum Sperren / Entsperren ist eine Komfortgeste, **keine Sicherheitsgrenze**. Siehe [SECURITY.md](SECURITY.md).
 
@@ -82,7 +82,7 @@ npm run build
 ```
 
 `dist/slabton.js` ist die einzige Release-Datei. Die Quellen der Website liegen in `docs/` (MkDocs);
-Quellcode-Aufbau und das Hinzufügen einer Sprache stehen in der [Referenz](https://slabton.de/reference/).
+Quellcode-Aufbau und das Hinzufügen einer Sprache stehen in der [Referenz](https://slabton.de/de/reference/).
 
 ## Lizenz
 
