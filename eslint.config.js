@@ -3,7 +3,11 @@ import globals from "globals";
 
 export default [
   {
-    ignores: ["node_modules/", "coverage/", "dist/", ".kilocode/"],
+    // Generated or vendored: site/ (mkdocs output), the demo copy of the bundle and its libraries.
+    ignores: [
+      "node_modules/", "coverage/", "dist/", ".kilocode/", "site/",
+      "docs/demo-app/slabton.js", "docs/demo-app/vendor/",
+    ],
   },
 
   js.configs.recommended,
@@ -40,6 +44,16 @@ export default [
       "no-var": "error",
       "prefer-const": "error",
       eqeqeq: ["error", "always", { null: "ignore" }],
+    },
+  },
+
+  {
+    files: ["docs/demo-app/**/*.js"],
+    languageOptions: {
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+      },
     },
   },
 
