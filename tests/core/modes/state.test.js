@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { normalizeConfig } from "../../../src/core/config.js";
 import { cycleAction, defaultActions, isDraggable, onRelease, resolveStates, selectAction, view } from "../../../src/core/modes/state.js";
+import { unavailableReason } from "../../../src/core/util.js";
 import { makeState } from "../../helpers/mock-hass.js";
 
 const select = (extra = {}) => normalizeConfig({ entity: "input_select.mode", ...extra });
@@ -17,6 +18,45 @@ describe("resolveStates", () => {
     expect(resolveStates(climate, makeState("climate.room", "heat", { hvac_modes: ["off", "heat"] })).map((s) => s.value)).toEqual(["off", "heat"]);
     const sw = normalizeConfig({ entity: "switch.a" });
     expect(resolveStates(sw, makeState("switch.a", "on")).map((s) => s.value)).toEqual(["off", "on"]);
+  });
+});
+
+describe("resolveStates without the entity's list", () => {
+  it("returns no states for select, input_select and climate", () => {
+    const gone = (entity) => resolveStates(normalizeConfig({ entity }), makeState(entity, "unavailable"));
+    expect(gone("select.a")).toEqual([]);
+    expect(gone("input_select.a")).toEqual([]);
+    expect(gone("climate.a")).toEqual([]);
+    expect(resolveStates(select(), undefined)).toEqual([]);
+  });
+
+  it("sends nothing and cannot be dragged without a state list", () => {
+    const config = select();
+    const stateObj = makeState("input_select.mode", "unavailable");
+    expect(cycleAction(config, stateObj, 1)).toBeNull();
+    expect(onRelease({ frac: 1, config, stateObj })).toBeNull();
+    expect(isDraggable(config, stateObj)).toBe(false);
+  });
+
+  it("still derives the list while unavailable when the entity keeps its options", () => {
+    const stateObj = makeState("input_select.mode", "unavailable", modeState.attributes);
+    expect(resolveStates(select(), stateObj)).toHaveLength(4);
+  });
+
+  it("cycles configured states and toggle domains from an unavailable entity", () => {
+    const config = select({ states: ["a", "b"] });
+    expect(cycleAction(config, makeState("input_select.mode", "unavailable"), 1).value).toBe("a");
+    const sw = normalizeConfig({ entity: "switch.a" });
+    expect(cycleAction(sw, makeState("switch.a", "unavailable"), 1).value).toBe("off");
+  });
+});
+
+describe("unavailableReason", () => {
+  it("names why an entity is unavailable and is null for a usable state", () => {
+    expect(unavailableReason(undefined)).toBe("missing");
+    expect(unavailableReason(makeState("switch.a", "unavailable"))).toBe("unavailable");
+    expect(unavailableReason(makeState("switch.a", "unknown"))).toBe("unknown");
+    expect(unavailableReason(makeState("switch.a", "on"))).toBeNull();
   });
 });
 
@@ -59,6 +99,9 @@ describe("view", () => {
 
   it("flags unavailable and unknown states", () => {
     expect(view(select(), undefined).unavailable).toBe(true);
+    for (const state of ["unavailable", "unknown"]) {
+      expect(view(select(), makeState("input_select.mode", state, modeState.attributes)).unavailable, state).toBe(true);
+    }
     const v = view(select(), makeState("input_select.mode", "weird", { options: ["a", "b"] }));
     expect(v.positionText).toBe("–");
     expect(v.pos).toBe(0);

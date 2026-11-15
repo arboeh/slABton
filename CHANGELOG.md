@@ -5,6 +5,28 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- Unavailable or unknown entity: the handle shows a warning icon (`mdi:alert-circle-outline`, color
+  `--slabton-unavailable-color`). The reason (entity not found, unavailable, unknown state, no usable value) is in the
+  card tooltip and in `aria-valuetext`; English and German texts.
+- Option `allow_unavailable_actions` (default `false`): in mode `state`, tap, hold, double tap, drag and arrow keys keep
+  working while the entity is unavailable. Other modes ignore it with a warning; lock stays blocked on purpose.
+- Visual editor switch for `allow_unavailable_actions` in state mode.
+
+### Changed
+
+- Unavailable card: tap opens more-info of the entity instead of doing nothing. The handle stays focusable (Enter /
+  Space opens more-info). Hold, double tap, drag and arrow keys stay blocked.
+- Select, input select and climate entities without their option list (`options` / `hvac_modes`) offer no states
+  instead of `off` / `on`.
+
+### Fixed
+
+- Unavailable select, input select or climate entity no longer gets `select_option` / `set_hvac_mode` calls with
+  invented `off` / `on` values.
+- A drag that ends after the entity became unavailable no longer sends a service call.
+
 ## [0.3.0] - 2026-11-14
 
 ### Added

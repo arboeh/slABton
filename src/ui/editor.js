@@ -48,6 +48,7 @@ function modeFields(mode, lang, config) {
     [MODE.STATE]: [
       { name: "drag", selector: bool() },
       { name: "hold_reverse", selector: bool() },
+      { name: "allow_unavailable_actions", selector: bool() },
     ],
     [MODE.LOCK]: [
       { name: "swipe_threshold", selector: number(30, 100) },

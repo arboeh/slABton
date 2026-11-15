@@ -100,6 +100,186 @@ describe("setConfig", () => {
   });
 });
 
+describe("unavailable entity", () => {
+  const unavailable = (attributes = selectState().attributes) => ({ [SELECT]: makeState(SELECT, "unavailable", attributes) });
+  const key = (target, name) => target.dispatchEvent(new KeyboardEvent("keydown", { key: name, bubbles: true }));
+  const watchMoreInfo = (el) => {
+    const spy = vi.fn();
+    el.addEventListener("hass-more-info", spy);
+    return spy;
+  };
+
+  it("shows the hint: warning icon, reason as title and aria-valuetext", () => {
+    const { el } = create({}, unavailable());
+    expect(q(el, ".root").classList.contains("unavailable")).toBe(true);
+    expect(q(el, ".h-icon").getAttribute("icon")).toBe("mdi:alert-circle-outline");
+    expect(q(el, ".root").getAttribute("title")).toBe("Entity unavailable");
+    expect(q(el, ".handle").getAttribute("aria-valuetext")).toBe("Entity unavailable");
+  });
+
+  it("names the reason: missing entity, unknown state", () => {
+    expect(q(create({}, {}).el, ".root").getAttribute("title")).toBe("Entity not found");
+    const unknown = { [SELECT]: makeState(SELECT, "unknown", selectState().attributes) };
+    expect(q(create({}, unknown).el, ".root").getAttribute("title")).toBe("Entity state unknown");
+  });
+
+  it("names a value mode entity without a number as having no usable value", () => {
+    const states = { "sensor.t": makeState("sensor.t", "abc") };
+    expect(q(create({ entity: "sensor.t" }, states).el, ".root").getAttribute("title")).toBe("Entity has no usable value");
+  });
+
+  it("opens more-info on a tap instead of the tap action", () => {
+    const { el, hass } = create({}, unavailable());
+    const moreInfo = watchMoreInfo(el);
+    tap(q(el, ".handle"));
+    expect(moreInfo).toHaveBeenCalledTimes(1);
+    expect(moreInfo.mock.calls[0][0].detail).toEqual({ entityId: SELECT });
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+
+  it("opens more-info on Enter and ignores the arrow keys", () => {
+    const { el, hass } = create({}, unavailable());
+    const moreInfo = watchMoreInfo(el);
+    key(q(el, ".handle"), "ArrowRight");
+    key(q(el, ".handle"), "ArrowLeft");
+    expect(hass.callService).not.toHaveBeenCalled();
+    key(q(el, ".handle"), "Enter");
+    expect(moreInfo).toHaveBeenCalledTimes(1);
+  });
+
+  it("ignores hold and double tap, and does not delay the tap for a double tap", () => {
+    const action = { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: "script.x" } };
+    const { el, hass } = create({ hold_action: action, double_tap_action: action }, unavailable());
+    const moreInfo = watchMoreInfo(el);
+    // No hold timer runs, so a long press ends as a plain tap (more-info), never as the hold action.
+    pointer(q(el, ".handle"), "pointerdown");
+    vi.advanceTimersByTime(600);
+    pointer(q(el, ".handle"), "pointerup");
+    expect(hass.callService).not.toHaveBeenCalled();
+    // A second tap right after the first is not held back for a double tap either.
+    tap(q(el, ".handle"));
+    expect(moreInfo).toHaveBeenCalledTimes(2);
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+
+  it("only opens more-info in the other modes too", () => {
+    const states = { "lock.front": makeState("lock.front", "unavailable") };
+    const { el, hass } = create({ entity: "lock.front" }, states);
+    const moreInfo = watchMoreInfo(el);
+    tap(q(el, ".handle"));
+    expect(moreInfo.mock.calls[0][0].detail).toEqual({ entityId: "lock.front" });
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+
+  it("sends nothing when the entity became unavailable during a drag", () => {
+    const { el, hass } = create({});
+    const handle = q(el, ".handle");
+    mockRect(q(el, ".rail"), { left: 0, width: 200 });
+    pointer(handle, "pointerdown", { clientX: 20 });
+    pointer(handle, "pointermove", { clientX: 180 });
+    el.hass = withState(hass, SELECT, "unavailable", selectState().attributes);
+    pointer(handle, "pointerup", { clientX: 180 });
+    expect(hass.callService).not.toHaveBeenCalled();
+    expect(q(el, ".root").classList.contains("dragging")).toBe(false);
+  });
+
+  it("goes back to normal operation when the entity returns", () => {
+    const { el, hass } = create({}, unavailable());
+    el.hass = withState(hass, SELECT, "auto", selectState().attributes);
+    expect(q(el, ".root").hasAttribute("title")).toBe(false);
+    expect(q(el, ".root").classList.contains("unavailable")).toBe(false);
+    expect(q(el, ".handle").getAttribute("aria-valuetext")).toBe("auto");
+    tap(q(el, ".handle"));
+    expect(hass.callService).toHaveBeenLastCalledWith("input_select", "select_option", { option: "on" }, { entity_id: SELECT });
+  });
+
+  describe("separate switches on a locked card", () => {
+    const withSwitch = (sw) => ({ switches: { start: sw } });
+    const states = () => ({ ...unavailable(), "switch.a": makeState("switch.a", "on") });
+
+    it("ignores a switch without its own entity that cycles the main entity", () => {
+      const { el, hass } = create(withSwitch({ tap_action: { action: "cycle" } }), states());
+      tap(q(el, ".sw-start"));
+      expect(hass.callService).not.toHaveBeenCalled();
+    });
+
+    it("ignores a switch without its own entity that toggles the main entity", () => {
+      const { el, hass } = create(withSwitch({ tap_action: { action: "toggle" } }), states());
+      tap(q(el, ".sw-start"));
+      expect(hass.callService).not.toHaveBeenCalled();
+    });
+
+    it("keeps a switch with its own entity operable", () => {
+      const { el, hass } = create(withSwitch({ entity: "switch.a" }), states());
+      tap(q(el, ".sw-start"));
+      expect(hass.callService).toHaveBeenCalledWith("homeassistant", "toggle", { entity_id: "switch.a" }, undefined);
+    });
+
+    it("still cycles the main entity when the card is not locked", () => {
+      const { el, hass } = create(withSwitch({ tap_action: { action: "cycle" } }));
+      tap(q(el, ".sw-start"));
+      expect(hass.callService).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it("opens more-info for a single tap that was delayed for a double tap and fires after the entity became unavailable", () => {
+    const action = { action: "perform-action", perform_action: "script.turn_on", target: { entity_id: "script.x" } };
+    const { el, hass } = create({ double_tap_action: action });
+    const moreInfo = watchMoreInfo(el);
+    tap(q(el, ".handle"));
+    el.hass = withState(hass, SELECT, "unavailable", selectState().attributes);
+    vi.advanceTimersByTime(600);
+    expect(hass.callService).not.toHaveBeenCalled();
+    expect(moreInfo).toHaveBeenCalledTimes(1);
+  });
+
+  describe("with allow_unavailable_actions", () => {
+    it("runs the tap action from an unknown state: the first state", () => {
+      const { el, hass } = create({ allow_unavailable_actions: true }, unavailable());
+      tap(q(el, ".handle"));
+      expect(hass.callService).toHaveBeenLastCalledWith("input_select", "select_option", { option: "off" }, { entity_id: SELECT });
+      expect(q(el, ".handle").getAttribute("aria-disabled")).toBe("false");
+    });
+
+    it("steps with the arrow keys and runs hold_reverse", () => {
+      const { el, hass } = create({ allow_unavailable_actions: true, hold_reverse: true }, unavailable());
+      key(q(el, ".handle"), "ArrowRight");
+      expect(hass.callService).toHaveBeenCalledTimes(1);
+      pointer(q(el, ".handle"), "pointerdown");
+      vi.advanceTimersByTime(600);
+      expect(hass.callService).toHaveBeenCalledTimes(2);
+    });
+
+    it("keeps the hint visible", () => {
+      const { el } = create({ allow_unavailable_actions: true }, unavailable());
+      expect(q(el, ".h-icon").getAttribute("icon")).toBe("mdi:alert-circle-outline");
+      expect(q(el, ".root").getAttribute("title")).toBe("Entity unavailable");
+    });
+
+    it("sends nothing when the entity has no state list and no states are configured", () => {
+      const { el, hass } = create({ allow_unavailable_actions: true }, unavailable({}));
+      tap(q(el, ".handle"));
+      expect(hass.callService).not.toHaveBeenCalled();
+    });
+
+    it("cycles configured states on a dead select", () => {
+      const { el, hass } = create({ allow_unavailable_actions: true, states: ["low", "high"] }, unavailable({}));
+      tap(q(el, ".handle"));
+      expect(hass.callService).toHaveBeenLastCalledWith("input_select", "select_option", { option: "low" }, { entity_id: SELECT });
+    });
+
+    it("has no effect in lock mode: a tap only opens more-info", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      const states = { "lock.front": makeState("lock.front", "unavailable") };
+      const { el, hass } = create({ entity: "lock.front", allow_unavailable_actions: true }, states);
+      const moreInfo = watchMoreInfo(el);
+      tap(q(el, ".handle"));
+      expect(moreInfo).toHaveBeenCalledTimes(1);
+      expect(hass.callService).not.toHaveBeenCalled();
+    });
+  });
+});
+
 describe("state mode", () => {
   it("renders the current state", () => {
     const { el } = create({});

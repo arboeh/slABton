@@ -21,6 +21,14 @@ describe("buildSchema", () => {
     expect(n).not.toContain("swipe_threshold");
   });
 
+  it("offers allow_unavailable_actions in state mode only", () => {
+    expect(names(buildSchema({ entity: "input_select.a" }))).toContain("allow_unavailable_actions");
+    for (const entity of ["lock.a", "sensor.a", "counter.a", "timer.a"]) {
+      expect(names(buildSchema({ entity })), entity).not.toContain("allow_unavailable_actions");
+    }
+    expect(names(buildSchema({ mode: "clock" }))).not.toContain("allow_unavailable_actions");
+  });
+
   it("shows lock fields for locks and alarm panels", () => {
     expect(names(buildSchema({ entity: "lock.a" }))).toEqual(expect.arrayContaining(["swipe_threshold", "arm_service"]));
     expect(names(buildSchema({ entity: "alarm_control_panel.a" }))).toContain("swipe_threshold");

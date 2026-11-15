@@ -578,6 +578,23 @@ function normalizeClock(raw, layout) {
   };
 }
 
+/**
+ * `allow_unavailable_actions`: only the state mode can act on an unavailable entity (lock stays blocked on
+ * purpose, the other modes only display). Anything but a boolean, or `true` outside state mode, warns and gives false.
+ */
+function normalizeAllowUnavailable(value, mode) {
+  if (value == null) return false;
+  if (typeof value !== "boolean") {
+    warn("allow_unavailable_actions must be true or false and was ignored");
+    return false;
+  }
+  if (value && mode !== MODE.STATE) {
+    warn(`allow_unavailable_actions has no effect in mode "${mode}" and was ignored`);
+    return false;
+  }
+  return value;
+}
+
 /** Warn about reserved keys and about mode blocks that the active mode ignores. */
 function warnUnusedKeys(raw, mode) {
   for (const key of RESERVED_KEYS) {
@@ -636,6 +653,7 @@ export function normalizeConfig(raw) {
     ...normalizeTriggers(raw),
     states,
     hold_reverse: raw.hold_reverse === true,
+    allow_unavailable_actions: normalizeAllowUnavailable(raw.allow_unavailable_actions, mode),
     drag: raw.drag !== false && (mode !== MODE.VALUE || VALUE_SETTABLE_DOMAINS.includes(domain)),
     ...normalizeLock(raw),
     preset,

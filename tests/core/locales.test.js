@@ -17,6 +17,16 @@ describe("locale files", () => {
     expect(Object.keys(de).sort()).toEqual(Object.keys(en).sort());
   });
 
+  it("have the unavailable reasons and the editor label in both languages", () => {
+    for (const key of [
+      "unavailable.missing", "unavailable.unavailable", "unavailable.unknown", "unavailable.invalid",
+      "editor.allow_unavailable_actions",
+    ]) {
+      expect(typeof en[key], key).toBe("string");
+      expect(typeof de[key], key).toBe("string");
+    }
+  });
+
   it("only hold non-empty strings", () => {
     for (const dict of [en, de]) {
       for (const [key, value] of Object.entries(dict)) {

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { normalizeConfig } from "../../../src/core/config.js";
 import { defaultActions, isDraggable, isLocked, lockAction, onRelease, unlockAction, view } from "../../../src/core/modes/lock.js";
 import { makeState } from "../../helpers/mock-hass.js";
@@ -32,6 +32,18 @@ describe("view", () => {
   it("applies a pending override and flags unavailable", () => {
     expect(view(lock(), makeState("lock.front", "locked"), false).pos).toBe(1);
     expect(view(lock(), makeState("lock.front", "unavailable")).unavailable).toBe(true);
+  });
+});
+
+describe("unavailable lock", () => {
+  it("stays blocked even with allow_unavailable_actions", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const config = lock({ allow_unavailable_actions: true });
+    const stateObj = makeState("lock.front", "unavailable");
+    expect(config.allow_unavailable_actions).toBe(false);
+    expect(isDraggable(config, stateObj)).toBe(false);
+    expect(onRelease({ frac: 1, startPos: 0, config, stateObj })).toBeNull();
+    warn.mockRestore();
   });
 });
 

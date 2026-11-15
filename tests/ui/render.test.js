@@ -416,12 +416,67 @@ describe("updateView", () => {
     expect(refs.handle.getAttribute("aria-checked")).toBe("false");
   });
 
-  it("marks unavailable entities and removes focusability", () => {
+  it("marks unavailable entities as disabled but keeps them focusable for more-info", () => {
     const { config, refs } = setup();
     updateView(refs, config, stateMode.view(config, undefined));
     expect(refs.root.classList.contains("unavailable")).toBe(true);
-    expect(refs.handle.getAttribute("tabindex")).toBe("-1");
+    expect(refs.handle.getAttribute("tabindex")).toBe("0");
     expect(refs.handle.getAttribute("aria-disabled")).toBe("true");
+  });
+
+  describe("unavailable hint", () => {
+    const unavailableView = (config, extra = {}) => ({
+      ...stateMode.view(config, undefined), unavailableText: "Entity unavailable", ...extra,
+    });
+
+    it("shows the warning icon whatever handle_content says", () => {
+      for (const handle_content of ["icon", "position", "text", "none"]) {
+        const { config, refs } = setup({ handle_content, icon: "mdi:fan" });
+        updateView(refs, config, unavailableView(config));
+        expect(refs.icon.hidden, handle_content).toBe(false);
+        expect(refs.icon.getAttribute("icon"), handle_content).toBe("mdi:alert-circle-outline");
+        expect(refs.text.hidden, handle_content).toBe(true);
+        expect(refs.text.textContent, handle_content).toBe("");
+      }
+    });
+
+    it("puts the reason in the root title and in aria-valuetext", () => {
+      const { config, refs } = setup();
+      updateView(refs, config, unavailableView(config));
+      expect(refs.root.getAttribute("title")).toBe("Entity unavailable");
+      expect(refs.handle.getAttribute("aria-valuetext")).toBe("Entity unavailable");
+    });
+
+    it("also puts the reason in aria-description, because the switch role of lock mode has no aria-valuetext", () => {
+      const { config, refs } = setup();
+      updateView(refs, config, unavailableView(config));
+      expect(refs.handle.getAttribute("aria-description")).toBe("Entity unavailable");
+      updateView(refs, config, stateMode.view(config, modeState));
+      expect(refs.handle.hasAttribute("aria-description")).toBe(false);
+    });
+
+    it("goes back to the normal icon, text and title when the entity is available again", () => {
+      const { config, refs } = setup({ handle_content: "text" });
+      updateView(refs, config, unavailableView(config));
+      updateView(refs, config, stateMode.view(config, modeState));
+      expect(refs.root.hasAttribute("title")).toBe(false);
+      expect(refs.icon.hidden).toBe(true);
+      expect(refs.text.textContent).toBe("on");
+      expect(refs.handle.getAttribute("aria-valuetext")).toBe("on");
+    });
+
+    it("keeps the handle enabled with allow_unavailable_actions", () => {
+      const { config, refs } = setup({ allow_unavailable_actions: true });
+      updateView(refs, config, unavailableView(config));
+      expect(refs.root.classList.contains("allow-actions")).toBe(true);
+      expect(refs.handle.getAttribute("aria-disabled")).toBe("false");
+      expect(refs.handle.getAttribute("tabindex")).toBe("0");
+      expect(refs.icon.getAttribute("icon")).toBe("mdi:alert-circle-outline");
+    });
+
+    it("adds no allow-actions class by default", () => {
+      expect(setup().refs.root.classList.contains("allow-actions")).toBe(false);
+    });
   });
 
   it("applies and clears the state color", () => {

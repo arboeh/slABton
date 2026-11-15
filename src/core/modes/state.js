@@ -19,7 +19,7 @@
  * @property {boolean} [locked] - lock mode only
  */
 
-import { ACTION, MODE, OFF_VALUES, TOGGLE_DOMAINS } from "../constants.js";
+import { ACTION, ATTRIBUTE_STATE_DOMAINS, MODE, OFF_VALUES, TOGGLE_DOMAINS } from "../constants.js";
 import { isUnavailable, resolveHandlePosition } from "../util.js";
 
 export const id = MODE.STATE;
@@ -39,6 +39,8 @@ export function resolveStates(config, stateObj) {
   const attrs = stateObj?.attributes ?? {};
   const derived = domainOf(config) === "climate" ? attrs.hvac_modes : attrs.options;
   if (Array.isArray(derived) && derived.length) return derived.map((value) => plainState(String(value)));
+  // select / climate without their list (e.g. unavailable): off/on would be a wrong option, so no states.
+  if (ATTRIBUTE_STATE_DOMAINS.includes(domainOf(config))) return [];
   return ["off", "on"].map(plainState);
 }
 

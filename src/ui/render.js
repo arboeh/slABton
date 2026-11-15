@@ -6,7 +6,7 @@
 
 import { animationClass, playsOnChange, restartAnimation } from "./animations.js";
 import { SWITCH_SLOTS } from "../core/config.js";
-import { MODE, READ_ONLY_MODES } from "../core/constants.js";
+import { MODE, READ_ONLY_MODES, UNAVAILABLE_ICON } from "../core/constants.js";
 import { axisFraction, escapeHtml } from "../core/util.js";
 
 const SWITCH_POS = { start: 0, mid: 0.5, end: 1 };
@@ -136,6 +136,7 @@ export function rootClasses(config) {
   ];
   if (config.direction === "rtl") classes.push("rev");
   if (!config.drag || READ_ONLY_MODES.includes(config.mode)) classes.push("nodrag");
+  if (config.allow_unavailable_actions) classes.push("allow-actions");
   return classes.join(" ");
 }
 
@@ -222,20 +223,33 @@ function setRole(handle, config, view) {
     handle.setAttribute("aria-valuenow", String(view.ariaNow));
     handle.setAttribute("aria-orientation", config.orientation);
   }
-  if (view.ariaText != null) handle.setAttribute("aria-valuetext", String(view.ariaText));
+  const valueText = view.unavailable && view.unavailableText ? view.unavailableText : view.ariaText;
+  if (valueText != null) handle.setAttribute("aria-valuetext", String(valueText));
+  // The role "switch" (lock mode) has no aria-valuetext, so the reason also goes into aria-description.
+  if (view.unavailable && view.unavailableText) handle.setAttribute("aria-description", view.unavailableText);
+  else handle.removeAttribute("aria-description");
   handle.setAttribute("aria-label", config.name ?? config.entity ?? "slABton");
-  handle.setAttribute("aria-disabled", String(view.unavailable));
-  handle.setAttribute("tabindex", view.unavailable ? "-1" : "0");
+  handle.setAttribute("aria-disabled", String(view.unavailable && !config.allow_unavailable_actions));
+  // Stays focusable while locked: a tap (Enter / Space) opens more-info of the unavailable entity.
+  handle.setAttribute("tabindex", "0");
+}
+
+/** Tooltip with the reason on the whole card (the handle alone would be too small a target). */
+function setUnavailableTitle(root, view) {
+  if (view.unavailable && view.unavailableText) root.setAttribute("title", view.unavailableText);
+  else root.removeAttribute("title");
 }
 
 function setContent(refs, config, view) {
   const { icon, text } = refs;
   const kind = config.handle_content;
-  const showIcon = kind === "icon" && Boolean(view.icon);
+  // An unavailable entity shows the warning icon whatever `handle_content` says, otherwise the lock stays unexplained.
+  const warning = Boolean(view.unavailable);
+  const showIcon = warning || (kind === "icon" && Boolean(view.icon));
   // The dial replaces the text of the handle.
-  const label = refs.dial ? "" : kind === "position" ? view.positionText : kind === "text" ? view.text : "";
+  const label = warning || refs.dial ? "" : kind === "position" ? view.positionText : kind === "text" ? view.text : "";
   icon.hidden = !showIcon;
-  if (showIcon) icon.setAttribute("icon", view.icon);
+  if (showIcon) icon.setAttribute("icon", warning ? UNAVAILABLE_ICON : view.icon);
   text.hidden = label === "" || label == null;
   text.textContent = label ?? "";
 }
@@ -262,6 +276,7 @@ export function updateView(refs, config, view, options = {}) {
   else root.style.removeProperty("--slabton-active-color");
   root.classList.toggle("unavailable", Boolean(view.unavailable));
   root.classList.toggle("expired", Boolean(view.expired));
+  setUnavailableTitle(root, view);
 
   if (refs.barText) setText(refs.barText, view.barText);
   if (refs.info) {

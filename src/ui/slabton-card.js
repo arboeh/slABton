@@ -13,7 +13,7 @@
 import { VERSION } from "../version.js";
 import { normalizeConfig } from "../core/config.js";
 import { ACTION, CARD_SIZE, CARD_UNIT_PX, GRID, GRID_ROW_PX, MODE, NOTICE, TICK_MS, hasAction } from "../core/constants.js";
-import { resolveLanguage, resolveLocale } from "../core/i18n.js";
+import { resolveLanguage, resolveLocale, t } from "../core/i18n.js";
 import { Pulse } from "../core/pulse.js";
 import { createInteraction } from "./interaction.js";
 import * as clockMode from "../core/modes/clock.js";
@@ -25,7 +25,7 @@ import * as valueMode from "../core/modes/value.js";
 import { renderTemplate } from "../core/placeholders.js";
 import { renderCard, updateSwitches, updateView } from "./render.js";
 import { applyVars, buildCss, handleDimensions, handleExtra } from "./styles.js";
-import { safeUrl, warn } from "../core/util.js";
+import { safeUrl, unavailableReason, warn } from "../core/util.js";
 import { SlabtonCardEditor } from "./editor.js";
 
 export const CARD_TAG = "slabton-card";
@@ -63,6 +63,8 @@ export class SlabtonCard extends HTMLElement {
     this._pendingTimer = null;
     this._dragPos = null;
     this._dragStartPos = 0;
+    // True while the entity is unavailable and the config does not allow actions then (set by `_update`).
+    this._blocked = false;
     this._lastCall = { key: "", at: 0 };
     this._tick = null;
     this._pulse = new Pulse();
@@ -240,6 +242,7 @@ export class SlabtonCard extends HTMLElement {
     this._notify(view.notice);
     return {
       ...view,
+      unavailableText: view.unavailable ? t(ctx.lang, `unavailable.${unavailableReason(stateObj) ?? "invalid"}`) : null,
       fillPos: bar ? bar.frac : view.fillPos,
       expired: ctx.expired,
       barText: config.bar_text ? renderTemplate(config.bar_text, values, config.mode) : null,
@@ -260,6 +263,7 @@ export class SlabtonCard extends HTMLElement {
     const now = Date.now();
     this._advance(now);
     const view = this._view(now);
+    this._blocked = Boolean(view.unavailable) && !this._config.allow_unavailable_actions;
     updateView(this._refs, this._config, view, { dragPos: this._dragPos });
     updateSwitches(this._refs, this._config, this._hass);
     this._syncTick(view);
@@ -273,6 +277,7 @@ export class SlabtonCard extends HTMLElement {
     this._clearPending();
     this._stopTick();
     this._dragPos = null;
+    this._blocked = false;
     this._pulse.reset();
     this._noticed.clear();
   }
@@ -292,14 +297,16 @@ export class SlabtonCard extends HTMLElement {
       handle,
       rail,
       handleLength: handleDimensions(config).along,
-      isDraggable: () => this._mode.isDraggable(config, this._stateObj()),
-      hasDoubleTap: () => hasAction(this._actionFor("double_tap_action")),
-      hasHold: () => hasAction(this._actionFor("hold_action")),
-      onTap: () => {
-        if (!this._dismissExpired()) this._runAction(this._actionFor("tap_action"));
+      isDraggable: () => !this._blocked && this._mode.isDraggable(config, this._stateObj()),
+      hasDoubleTap: () => !this._blocked && hasAction(this._actionFor("double_tap_action")),
+      hasHold: () => !this._blocked && hasAction(this._actionFor("hold_action")),
+      onTap: () => this._handleTap(),
+      onDoubleTap: () => {
+        if (!this._blocked) this._runAction(this._actionFor("double_tap_action"));
       },
-      onDoubleTap: () => this._runAction(this._actionFor("double_tap_action")),
-      onHold: () => this._runAction(this._actionFor("hold_action")),
+      onHold: () => {
+        if (!this._blocked) this._runAction(this._actionFor("hold_action"));
+      },
       onDragStart: () => {
         this._dragStartPos = this._view().fillPos;
         this._refs.root.classList.add("dragging");
@@ -328,10 +335,24 @@ export class SlabtonCard extends HTMLElement {
     }
   }
 
+  /**
+   * Tap on the handle. A locked unavailable card only opens more-info (read-only, cannot misfire).
+   * A single tap delayed for double-tap detection that fires after the entity became unavailable
+   * ends up here too, so it opens more-info instead of the tap action (harmless).
+   */
+  _handleTap() {
+    if (this._blocked) {
+      if (this._config.entity) this._runAction({ action: ACTION.MORE_INFO });
+      return;
+    }
+    if (!this._dismissExpired()) this._runAction(this._actionFor("tap_action"));
+  }
+
   _endDrag(frac) {
     this._refs.root.classList.remove("dragging");
     this._dragPos = null;
-    if (frac != null) this._release(frac, this._dragStartPos);
+    // The entity may have become unavailable during the drag.
+    if (frac != null && !this._blocked) this._release(frac, this._dragStartPos);
     this._update();
   }
 
@@ -351,6 +372,7 @@ export class SlabtonCard extends HTMLElement {
 
   /** Arrow keys. Lock mode ignores them on purpose: one stray key press must not (un)lock. */
   _step(direction) {
+    if (this._blocked) return;
     if (this._mode.id === MODE.STATE) this._cycle(direction);
     else if (this._mode.id === MODE.VALUE) this._stepValue(direction);
   }
@@ -370,7 +392,7 @@ export class SlabtonCard extends HTMLElement {
   }
 
   _cycle(step) {
-    if (this._mode.id !== MODE.STATE) return;
+    if (this._mode.id !== MODE.STATE || this._blocked) return;
     const result = stateMode.cycleAction(this._config, this._stateObj(), step, this._pendingValue() ?? undefined);
     if (!result) return;
     this._runAction(result.action);
@@ -388,9 +410,13 @@ export class SlabtonCard extends HTMLElement {
       case ACTION.CYCLE_BACK:
         this._cycle(-1);
         break;
-      case ACTION.TOGGLE:
-        this._call("homeassistant", "toggle", { entity_id: action.entity ?? entity });
+      case ACTION.TOGGLE: {
+        const target = action.entity ?? entity;
+        // A switch without its own entity would act on the locked main entity.
+        if (this._blocked && target === this._config.entity) break;
+        this._call("homeassistant", "toggle", { entity_id: target });
         break;
+      }
       case ACTION.PERFORM: {
         const [domain, service] = action.perform_action.split(".");
         this._call(domain, service, action.data ?? {}, action.target);

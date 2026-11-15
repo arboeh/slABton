@@ -242,7 +242,9 @@ export function buildCss() {
     .sw.active { color: var(--primary-color, #03a9f4); border-color: var(--primary-color, #03a9f4); }
 
     .unavailable .bar { opacity: 0.5; }
-    .unavailable .handle { pointer-events: none; }
+    /* The lock lives in the card (it blocks every gesture but a tap); the handle stays tappable for more-info. */
+    .unavailable:not(.allow-actions) .handle { cursor: pointer; touch-action: auto; }
+    .unavailable .h-icon { color: var(--slabton-unavailable-color, var(--warning-color, #ffa600)); }
     ${animationCss()}
   `;
 }

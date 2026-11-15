@@ -27,6 +27,48 @@ describe("normalizeConfig defaults", () => {
   });
 });
 
+describe("allow_unavailable_actions", () => {
+  const warnSpy = () => vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  it("defaults to false", () => {
+    expect(normalizeConfig(base).allow_unavailable_actions).toBe(false);
+  });
+
+  it("keeps true in state mode without a warning", () => {
+    const warn = warnSpy();
+    expect(normalizeConfig({ ...base, allow_unavailable_actions: true }).allow_unavailable_actions).toBe(true);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("is false and warns for true in every other mode", () => {
+    for (const entity of ["lock.a", "sensor.a", "counter.a", "timer.a"]) {
+      const warn = warnSpy();
+      expect(normalizeConfig({ entity, allow_unavailable_actions: true }).allow_unavailable_actions, entity).toBe(false);
+      expect(warn, entity).toHaveBeenCalledWith(expect.stringMatching(/allow_unavailable_actions has no effect in mode/));
+      warn.mockRestore();
+    }
+    const warn = warnSpy();
+    expect(normalizeConfig({ mode: "clock", allow_unavailable_actions: true }).allow_unavailable_actions).toBe(false);
+    expect(warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("warns about a non-boolean value and falls back to false", () => {
+    for (const value of ["yes", 1]) {
+      const warn = warnSpy();
+      expect(normalizeConfig({ ...base, allow_unavailable_actions: value }).allow_unavailable_actions).toBe(false);
+      expect(warn).toHaveBeenCalledWith(expect.stringMatching(/allow_unavailable_actions must be true or false/));
+      warn.mockRestore();
+    }
+  });
+
+  it("does not mutate the input", () => {
+    const raw = { ...base, allow_unavailable_actions: "yes" };
+    warnSpy();
+    normalizeConfig(raw);
+    expect(raw.allow_unavailable_actions).toBe("yes");
+  });
+});
+
 describe("validation", () => {
   it("rejects non-objects and missing entities", () => {
     expect(() => normalizeConfig(null)).toThrow(/invalid configuration/);

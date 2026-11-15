@@ -123,6 +123,14 @@ export function parseNumericState(stateObj) {
   return Number(raw);
 }
 
+/** Why an entity is unavailable: `missing`, `unavailable`, `unknown`, or null when its state is usable. */
+export function unavailableReason(stateObj) {
+  if (!stateObj) return "missing";
+  if (stateObj.state === "unavailable") return "unavailable";
+  if (stateObj.state === "unknown") return "unknown";
+  return null;
+}
+
 export function isUnavailable(stateObj) {
-  return !stateObj || stateObj.state === "unavailable" || stateObj.state === "unknown";
+  return unavailableReason(stateObj) !== null;
 }

@@ -48,6 +48,12 @@ export const TOGGLE_DOMAINS = Object.freeze(["switch", "input_boolean", "light",
 /** State values that count as "off". */
 export const OFF_VALUES = Object.freeze(["off", "unavailable", "unknown", "none", "closed"]);
 
+/** Domains whose states come from an entity attribute (options / hvac_modes): nothing to cycle without it. */
+export const ATTRIBUTE_STATE_DOMAINS = Object.freeze(["select", "input_select", "climate"]);
+
+/** Handle icon shown while the entity is unavailable. */
+export const UNAVAILABLE_ICON = "mdi:alert-circle-outline";
+
 /** Matches "domain.object_id" (entities) and "domain.service" (actions). */
 export const DOT_ID_RE = /^[a-z0-9_]+\.[a-z0-9_]+$/;
 

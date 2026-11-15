@@ -369,6 +369,17 @@ describe("buildCss", () => {
     expect(dial).not.toMatch(/transition|animation|transform/);
   });
 
+  it("dims an unavailable bar but keeps the handle tappable for more-info", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.unavailable \.bar \{[^}]*opacity: 0\.5/);
+    expect(css).not.toMatch(/\.unavailable[^{]*\.handle \{[^}]*pointer-events: none/);
+    expect(css).toMatch(/\.unavailable:not\(\.allow-actions\) \.handle \{[^}]*cursor: pointer/);
+  });
+
+  it("colors the unavailable icon with a variable and a warning fallback", () => {
+    expect(buildCss()).toMatch(/\.unavailable \.h-icon \{[^}]*color: var\(--slabton-unavailable-color, var\(--warning-color, #ffa600\)\)/);
+  });
+
   it("colors the header title and icon independently", () => {
     const css = buildCss();
     expect(css).toMatch(/\.title \{[^}]*color: var\(--slabton-header-color, inherit\)/);
