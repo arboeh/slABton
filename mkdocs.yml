@@ -9,6 +9,8 @@ strict: true
 theme:
   name: material
   language: en
+  icon:
+    alternate: material/earth
   features:
     - navigation.sections
     - navigation.top
