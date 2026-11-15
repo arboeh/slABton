@@ -23,6 +23,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 - Visual editor shows hint lines under the form for values the card ignores or clamps: color values it rejects,
   `step` of 0 or below `1e-9`, `scale.size` above the bar thickness or below 2. Typed values stay as entered; a
   `scale.size` above the bar is set to the new thickness when `thickness` is lowered.
+- Sections and masonry layouts reserve rows and card size from the card's real height need (bar, handle and, vertically,
+  the handle overhang along the bar), not from the handle's rounded-up excess. Cards with a thin bar and a handle slightly
+  larger than the bar can get one row less; masonry cards with a large handle on a thin bar can get smaller.
 
 ### Fixed
 
@@ -41,6 +44,10 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 - Value mode: a handle that cannot be dragged no longer blocks touch scrolling.
 - Visual editor: the `drag` switch is hidden for sensors and for entities with their own `bar.entity`; `step` no longer
   accepts 0.
+- Sections: a handle slightly larger than a thin bar (e.g. `thickness: 18`, `handle_size: 42`) no longer takes one row
+  too many.
+- Vertical card with `handle_overhang`: the overhang along the bar counts for the rows and the masonry size now; before,
+  a large handle could run out of the space the card reserved.
 
 ## [0.3.0] - 2026-11-14
 

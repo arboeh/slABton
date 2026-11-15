@@ -69,6 +69,12 @@ export const CARD_SIZE = Object.freeze({ horizontal: 2, vertical: 4 });
 /** One sections-view row including its gap, and one masonry card-size unit, in px. */
 export const GRID_ROW_PX = 64;
 export const CARD_UNIT_PX = 50;
+/** Gap between two sections-view rows: a card of r rows is `GRID_ROW_PX * r - GRID_ROW_GAP_PX` px high. */
+export const GRID_ROW_GAP_PX = 8;
+/** Card height besides the bar (and the handle's excess over it): ha-card padding (2 x 12) plus its border, in px. */
+export const CARD_CHROME_PX = 26;
+/** Overshoot of the content over the row budget that still counts as fitting (rounding, theme differences), in px. */
+export const GRID_FIT_TOLERANCE_PX = 2;
 
 /**
  * The `text:` block: every area with its options and the CSS variable each one

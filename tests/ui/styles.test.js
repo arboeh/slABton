@@ -1,8 +1,43 @@
 import { describe, expect, it, vi } from "vitest";
 import { normalizeConfig } from "../../src/core/config.js";
-import { applyVars, buildCss, buildVars, handleDimensions, handleExtra } from "../../src/ui/styles.js";
+import {
+  applyVars, buildCss, buildVars, cardHeightPx, handleDimensions, handleExtra, handleOverhang,
+} from "../../src/ui/styles.js";
 
 const cfg = (extra = {}) => normalizeConfig({ entity: "input_select.x", ...extra });
+
+describe("cardHeightPx", () => {
+  it("is the chrome plus the larger of bar and handle (horizontal)", () => {
+    // Seen in the Home Assistant default theme (screenshot): 74, 68 and 96 px high. A theme with a different
+    // card padding or border changes the chrome; these tests pin the formula, not the theme.
+    expect(cardHeightPx(cfg({ thickness: 48, handle_size: 40 }))).toBe(74);
+    expect(cardHeightPx(cfg({ thickness: 18, handle_size: 42 }))).toBe(68);
+    expect(cardHeightPx(cfg({ thickness: 18, handle_size: 70 }))).toBe(96);
+  });
+
+  it("is the bar length plus the chrome plus the overhang at both ends (vertical)", () => {
+    const vertical = { orientation: "vertical" };
+    expect(cardHeightPx(cfg({ ...vertical, thickness: 48, handle_size: 40 }))).toBe(186);
+    expect(cardHeightPx(cfg({ ...vertical, thickness: 32, handle_size: 40 }))).toBe(194);
+    expect(cardHeightPx(cfg({ ...vertical, thickness: 48, handle_size: 40, handle_overhang: true }))).toBe(226);
+    expect(cardHeightPx(cfg({ ...vertical, length: 200 }))).toBe(226);
+  });
+});
+
+describe("handleOverhang", () => {
+  it("is the larger of half the handle length (with handle_overhang) and its excess over the bar", () => {
+    expect(handleOverhang(cfg({ thickness: 48, handle_size: 40 }))).toBe(0);
+    expect(handleOverhang(cfg({ thickness: 18, handle_size: 70 }))).toBe(26);
+    expect(handleOverhang(cfg({ thickness: 48, handle_size: 40, handle_overhang: true }))).toBe(20);
+    expect(handleOverhang(cfg({ thickness: 18, handle_size: 70, handle_overhang: true }))).toBe(35);
+  });
+
+  it("uses the longer side of an oval handle for the overhang", () => {
+    const oval = cfg({ thickness: 48, handle_size: 40, handle_shape: "oval", handle_overhang: true });
+    expect(handleOverhang(oval)).toBe(handleDimensions(oval).along / 2);
+    expect(handleOverhang(oval)).toBeGreaterThan(20);
+  });
+});
 
 describe("switch size", () => {
   // jsdom does not compute min() / calc(): check the rule text and the variables it reads.

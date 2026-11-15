@@ -6,7 +6,7 @@
 
 import { animationCss } from "./animations.js";
 import {
-  DEFAULT_SCALE_SIZE, DEFAULT_VERTICAL_LENGTH, OVAL_RATIO, PILL_RADIUS, SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO,
+  CARD_CHROME_PX, DEFAULT_SCALE_SIZE, DEFAULT_VERTICAL_LENGTH, OVAL_RATIO, PILL_RADIUS, SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO,
   TEXT_OPTIONS,
 } from "../core/constants.js";
 
@@ -24,6 +24,25 @@ export function handleDimensions(config) {
  */
 export function handleExtra(config) {
   return Math.max(0, (config.handle_size - config.thickness) / 2);
+}
+
+/**
+ * How far the handle sticks out of the stage along the bar, on each end, in px: half its length with
+ * `handle_overhang` (the centre travels edge to edge), never less than its excess across the bar.
+ */
+export function handleOverhang(config) {
+  const { along } = handleDimensions(config);
+  return Math.max(config.handle_overhang === true ? along / 2 : 0, handleExtra(config));
+}
+
+/**
+ * Height the card needs in px (without a header): horizontal, the chrome plus the larger of bar and handle;
+ * vertical, the bar length (or its default) plus the chrome plus the overhang at both ends.
+ */
+export function cardHeightPx(config) {
+  if (config.orientation !== "vertical") return CARD_CHROME_PX + Math.max(config.thickness, config.handle_size);
+  const length = config.length > 0 ? config.length : DEFAULT_VERTICAL_LENGTH;
+  return length + CARD_CHROME_PX + 2 * handleOverhang(config);
 }
 
 /** Variables for the configured `text:` options only; unset options keep the CSS default. */
@@ -58,7 +77,7 @@ export function buildVars(config) {
     "--slabton-pad": `${pad}px`,
     // Room the stage keeps free for the handle: along the bar the larger of overhang and
     // the handle's excess over the bar, across the bar the excess only.
-    "--slabton-overhang": `${Math.max(overhang ? along / 2 : 0, extra)}px`,
+    "--slabton-overhang": `${handleOverhang(config)}px`,
     "--slabton-cross-extra": `${extra}px`,
     "--slabton-bar-radius": `${barRadius}px`,
     "--slabton-handle-radius": square ? `${Math.round(cross * SQUARE_HANDLE_RADIUS_RATIO)}px` : PILL_RADIUS,

@@ -83,13 +83,74 @@ describe("setConfig", () => {
     expect(el.getGridOptions().rows).toBe(2);
   });
 
-  it("grows card size and rows for a handle larger than the bar", () => {
-    const { el } = create({ thickness: 18, handle_size: 70 });
-    expect(el.getGridOptions().rows).toBe(3);
-    expect(el.getCardSize()).toBe(4);
+  it("grows card size and rows for a handle much larger than the bar", () => {
+    const { el } = create({ thickness: 18, handle_size: 120 });
+    expect(el.getGridOptions().rows).toBe(3); // need 146
+    expect(el.getCardSize()).toBe(3);
+    el.setConfig({ entity: SELECT, orientation: "vertical", thickness: 18, handle_size: 120 });
+    expect(el.getGridOptions().rows).toBe(5); // need 160 + 26 + 2 x 51 = 288
+    expect(el.getCardSize()).toBe(6); // masonry: 4 units of 50 px = 200 px base
+  });
+
+  it("measures the masonry size against units of 50 px, not against the sections rows", () => {
+    // Horizontal need 122: fits 2 rows (120 + 2) but not 2 masonry units (100 + 2).
+    const { el } = create({ thickness: 18, handle_size: 96 });
+    expect(el.getGridOptions().rows).toBe(2);
+    expect(el.getCardSize()).toBe(3);
+    // Vertical need 186 (default): within 4 units (200 + 2).
+    expect(create({ orientation: "vertical" }).el.getCardSize()).toBe(4);
+  });
+
+  it("keeps two rows for a thin bar whose handle still fits the base rows (G1)", () => {
+    const { el } = create({ thickness: 18, handle_size: 42 });
+    expect(el.getGridOptions().rows).toBe(2);
+    expect(el.getCardSize()).toBe(2);
+    el.setConfig({ entity: SELECT, thickness: 32, handle_size: 40 });
+    expect(el.getGridOptions().rows).toBe(2);
+    el.setConfig({ entity: SELECT, thickness: 48, handle_size: 70 });
+    expect(el.getGridOptions().rows).toBe(2);
+    el.setConfig({ entity: SELECT, thickness: 18, handle_size: 70 });
+    expect(el.getGridOptions().rows).toBe(2);
+  });
+
+  it("keeps four rows for vertical bars whose handle still fits the base rows (G1)", () => {
+    const { el } = create({ orientation: "vertical", thickness: 32, handle_size: 40 });
+    expect(el.getGridOptions().rows).toBe(4);
+    el.setConfig({ entity: SELECT, orientation: "vertical", thickness: 48, handle_size: 70 });
+    expect(el.getGridOptions().rows).toBe(4);
     el.setConfig({ entity: SELECT, orientation: "vertical", thickness: 18, handle_size: 70 });
-    expect(el.getGridOptions().rows).toBe(5);
-    expect(el.getCardSize()).toBe(6);
+    expect(el.getGridOptions().rows).toBe(4);
+  });
+
+  it("adds a row only when the height need passes the base rows plus the tolerance", () => {
+    // Horizontal need = 26 + max(thickness, handle_size); budget 120, tolerance 2.
+    const rows = (config) => create(config).el.getGridOptions().rows;
+    expect(rows({ thickness: 18, handle_size: 96 })).toBe(2); // 122
+    expect(rows({ thickness: 18, handle_size: 97 })).toBe(3); // 123
+    // Vertical need = 160 + 26 + 2 x excess; budget 248, tolerance 2.
+    expect(rows({ orientation: "vertical", thickness: 18, handle_size: 82 })).toBe(4); // 250
+    expect(rows({ orientation: "vertical", thickness: 18, handle_size: 83 })).toBe(5); // 251 (half-pixel excess 32.5)
+    expect(rows({ orientation: "vertical", thickness: 18, handle_size: 84 })).toBe(5); // 252
+  });
+
+  it("uses a configured bar length for the vertical need", () => {
+    const rows = (config) => create({ orientation: "vertical", ...config }).el.getGridOptions().rows;
+    expect(rows({ length: 224 })).toBe(4); // 224 + 26 = 250
+    expect(rows({ length: 225 })).toBe(5); // 251
+  });
+
+  it("ignores a handle smaller than the bar and uses the longer side of an oval handle", () => {
+    const rows = (config) => create({ orientation: "vertical", ...config }).el.getGridOptions().rows;
+    expect(rows({ thickness: 80, handle_size: 40 })).toBe(4); // no excess, need 186
+    expect(rows({ thickness: 48, handle_size: 60, handle_overhang: true })).toBe(4); // round: 160 + 26 + 60 = 246
+    expect(rows({ thickness: 48, handle_size: 60, handle_shape: "oval", handle_overhang: true })).toBe(5); // 282
+  });
+
+  it("follows a config change with the rows", () => {
+    const { el } = create({ thickness: 18, handle_size: 120 });
+    expect(el.getGridOptions().rows).toBe(3);
+    el.setConfig({ entity: SELECT, thickness: 18, handle_size: 42 });
+    expect(el.getGridOptions().rows).toBe(2);
   });
 
   it("reports the default card size and grid options before a config is set", () => {
@@ -98,16 +159,22 @@ describe("setConfig", () => {
     expect(el.getGridOptions()).toEqual({ columns: 6, rows: 2, min_columns: 3, min_rows: 1 });
   });
 
-  it("counts only the handle's excess across the bar for the rows, not the overhang along it (vertical)", () => {
-    const base = { orientation: "vertical", thickness: 48, handle_size: 40 };
+  it("counts the overhang along the bar for the rows (vertical, E5)", () => {
+    const base = { orientation: "vertical", thickness: 80, handle_size: 70 };
     const plain = create(base).el;
     const overhang = create({ ...base, handle_overhang: true }).el;
-    expect(overhang.getGridOptions().rows).toBe(plain.getGridOptions().rows);
-    expect(overhang.getCardSize()).toBe(plain.getCardSize());
-    expect(overhang.getGridOptions().rows).toBe(4);
-    const large = create({ orientation: "vertical", thickness: 18, handle_size: 70, handle_overhang: true }).el;
-    expect(large.getGridOptions().rows).toBe(5);
-    expect(large.getCardSize()).toBe(6);
+    expect(plain.getGridOptions().rows).toBe(4);
+    expect(plain.getCardSize()).toBe(4);
+    expect(overhang.getGridOptions().rows).toBe(5); // need 160 + 26 + 2 x 35 = 256 > 248 + 2
+    expect(overhang.getCardSize()).toBe(6); // masonry: 256 - 2 > 200
+    // A small overhang still fits the base rows.
+    const small = create({ orientation: "vertical", thickness: 48, handle_size: 40, handle_overhang: true }).el;
+    expect(small.getGridOptions().rows).toBe(4); // 226
+  });
+
+  it("does not let the overhang change a horizontal card", () => {
+    const { el } = create({ thickness: 48, handle_size: 40, handle_overhang: true });
+    expect(el.getGridOptions().rows).toBe(2);
   });
 
   it("does not change the shared grid defaults", () => {
