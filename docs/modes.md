@@ -2,6 +2,12 @@
 
 ## Mode `state`
 
+![state mode](assets/shots/state-light.png#only-light)
+![state mode](assets/shots/state-dark.png#only-dark)
+
+![state mode with handle overhang](assets/shots/state-overhang-light.png#only-light)
+![state mode with handle overhang](assets/shots/state-overhang-dark.png#only-dark)
+
 Click cycles through the states. Dragging snaps to the nearest state.
 States come from `states:`, else from the entity (`options`, `hvac_modes`), else `off` / `on`.
 
@@ -33,6 +39,9 @@ handle_overhang: true
 
 ## Mode `lock`
 
+![lock mode](assets/shots/lock-light.png#only-light)
+![lock mode](assets/shots/lock-dark.png#only-dark)
+
 Swipe the handle across the bar to unlock or lock.
 
 ```yaml
@@ -59,6 +68,9 @@ Do not store alarm codes in the config. See [SECURITY.md](https://github.com/arb
 
 ## Mode `value`
 
+![value mode, thermometer](assets/shots/value-light.png#only-light)
+![value mode, thermometer](assets/shots/value-dark.png#only-dark)
+
 The bar fills by value, the value shows in the handle. For `input_number` and `number` the handle can be dragged or moved with the arrow keys; the card calls `<domain>.set_value` on release, not while dragging. `sensor` stays read-only.
 
 ```yaml
@@ -81,6 +93,9 @@ Arrow keys move the value one step (without a step: 1 % of the range). A range w
 
 ## Mode `counter`
 
+![counter mode](assets/shots/counter-light.png#only-light)
+![counter mode](assets/shots/counter-dark.png#only-dark)
+
 Shows a `counter.*` entity. The bar fills between the minimum and maximum.
 Tap adds one, double tap subtracts one (`counter.increment` / `counter.decrement`).
 There is no default reset; add `hold_action: {action: perform-action, perform_action: counter.reset, target: {entity_id: counter.guests}}` if you want one.
@@ -102,6 +117,9 @@ Range priority: `counter.min/max`, then `bar.min/max` (or flat `min` / `max`), t
 attributes `minimum` / `maximum`, then 0 / 100. Dragging the handle to set a value is not supported yet.
 
 ## Mode `timer`
+
+![timer mode](assets/shots/timer-light.png#only-light)
+![timer mode](assets/shots/timer-dark.png#only-dark)
 
 Two sources:
 
@@ -152,6 +170,12 @@ Daylight saving time: a date and time that does not exist (spring forward) is sh
 that exists twice (autumn) means the later time. Unknown time zone names are a configuration error.
 
 ## Mode `clock`
+
+![digital clock](assets/shots/clock-digital-light.png#only-light)
+![digital clock](assets/shots/clock-digital-dark.png#only-dark)
+
+![analog clock](assets/shots/clock-analog-light.png#only-light)
+![analog clock](assets/shots/clock-analog-dark.png#only-dark)
 
 Clock, no entity needed. The handle shows the time (digital) or a dial (analog), the bar fills with the progress of the day.
 

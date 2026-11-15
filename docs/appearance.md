@@ -2,6 +2,9 @@
 
 ## Bar value
 
+![bar from another entity](assets/shots/bar-entity-light.png#only-light)
+![bar from another entity](assets/shots/bar-entity-dark.png#only-dark)
+
 By default the bar shows the same entity as the button. The `bar:` block separates them: the bar
 shows a numeric entity, the handle stays with `entity`.
 
@@ -81,6 +84,9 @@ text:
 - Large sizes are cut off: bar text, timer info and handle text have `overflow: hidden`. Check the result on the dashboard.
 
 ## Scale
+
+![scale with labels](assets/shots/value-scale-light.png#only-light)
+![scale with labels](assets/shots/value-scale-dark.png#only-dark)
 
 Tick marks across the bar, drawn under the handle. Without `scale:` nothing is drawn.
 
