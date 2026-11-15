@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { normalizeConfig } from "../../../src/core/config.js";
 import { NOTICE } from "../../../src/core/constants.js";
 import {
@@ -7,6 +7,39 @@ import {
 import { makeState } from "../../helpers/mock-hass.js";
 
 const sensor = (extra = {}) => normalizeConfig({ entity: "sensor.t", ...extra });
+
+describe("tiny steps and many decimals", () => {
+  const input = (extra = {}) => normalizeConfig({ entity: "input_number.v", ...extra });
+  const stateOf = (attributes) => makeState("input_number.v", "0", attributes);
+
+  it("treats a step attribute below the minimum as stepless instead of throwing", () => {
+    const stateObj = stateOf({ min: 0, max: 100, step: 1e-101 });
+    expect(resolveStep(input(), stateObj)).toBeNull();
+    expect(() => valueAt(input(), stateObj, 0.5)).not.toThrow();
+    expect(valueAt(input(), stateObj, 0.5)).toBe(50);
+    expect(() => stepRelease({ direction: 1, config: input(), stateObj })).not.toThrow();
+  });
+
+  it("drops a tiny step option with a warning", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const config = input({ step: 1e-101 });
+    expect(config.step).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/step/));
+    expect(() => valueAt(config, stateOf({ min: 0, max: 100 }), 0.5)).not.toThrow();
+    warn.mockRestore();
+  });
+
+  it("keeps steps from the minimum upwards", () => {
+    expect(resolveStep(input(), stateOf({ step: 1e-9 }))).toBe(1e-9);
+    expect(resolveStep(input(), stateOf({ step: 0 }))).toBeNull();
+  });
+
+  it("does not throw for a minimum with more decimals than toFixed accepts", () => {
+    const stateObj = stateOf({ min: 1e-101, max: 10, step: 1 });
+    expect(() => valueAt(input(), stateObj, 0.5)).not.toThrow();
+    expect(valueAt(input(), stateObj, 0.5)).toBe(5);
+  });
+});
 
 describe("view", () => {
   it("maps the value onto the range", () => {

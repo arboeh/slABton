@@ -25,7 +25,7 @@ import * as valueMode from "../core/modes/value.js";
 import { renderTemplate } from "../core/placeholders.js";
 import { renderCard, updateSwitches, updateView } from "./render.js";
 import { applyVars, buildCss, handleDimensions, handleExtra } from "./styles.js";
-import { safeUrl, unavailableReason, warn } from "../core/util.js";
+import { isUnavailable, safeUrl, unavailableReason, warn } from "../core/util.js";
 import { SlabtonCardEditor } from "./editor.js";
 
 export const CARD_TAG = "slabton-card";
@@ -231,7 +231,8 @@ export class SlabtonCard extends HTMLElement {
 
   _decorate(view, stateObj, ctx) {
     const config = this._config;
-    const bar = config.bar_entity ? valueMode.measure(config, this._hass?.states?.[config.bar_entity]) : null;
+    const barState = config.bar_entity ? this._hass?.states?.[config.bar_entity] : null;
+    const bar = config.bar_entity ? valueMode.measure(config, barState) : null;
     const values = {
       name: config.name ?? stateObj?.attributes?.friendly_name ?? "",
       state: stateObj?.state ?? "",
@@ -244,10 +245,26 @@ export class SlabtonCard extends HTMLElement {
       ...view,
       unavailableText: view.unavailable ? t(ctx.lang, `unavailable.${unavailableReason(stateObj) ?? "invalid"}`) : null,
       fillPos: bar ? bar.frac : view.fillPos,
+      scaleLabels: this._boundScaleLabels(barState),
       expired: ctx.expired,
       barText: config.bar_text ? renderTemplate(config.bar_text, values, config.mode) : null,
       info: config.timer.info ? renderTemplate(config.timer.info, values, config.mode) : null,
     };
+  }
+
+  /**
+   * Texts of the scale labels that follow the range of the bar entity (its `min` / `max` attributes), or null
+   * when no label does. A range that is not valid (max <= min) leaves both texts empty. Without a usable bar state
+   * (missing or unavailable: HA drops its attributes) the labels keep their last text instead of falling back to
+   * the configured range.
+   */
+  _boundScaleLabels(barState) {
+    const config = this._config;
+    if (!config.scale?.labels?.some((label) => label.bound)) return null;
+    if (!barState || isUnavailable(barState)) return null;
+    const { min, max } = valueMode.range(config, { entity_id: config.bar_entity, ...barState });
+    if (!(max > min)) return { min: "", max: "" };
+    return { min: min.toFixed(config.decimals), max: max.toFixed(config.decimals) };
   }
 
   /** Log a mode notice once per config. */
@@ -265,8 +282,19 @@ export class SlabtonCard extends HTMLElement {
     const view = this._view(now);
     this._blocked = Boolean(view.unavailable) && !this._config.allow_unavailable_actions;
     updateView(this._refs, this._config, view, { dragPos: this._dragPos });
+    this._syncNoDrag();
     updateSwitches(this._refs, this._config, this._hass);
     this._syncTick(view);
+  }
+
+  /**
+   * Value mode: `nodrag` (normal touch scrolling over the handle) follows what can really be dragged now, not only
+   * the config: a read-only bar, a fixed handle or an invalid range cannot be dragged either. Only the cursor and
+   * `touch-action` change, never a size.
+   */
+  _syncNoDrag() {
+    if (this._mode.id !== MODE.VALUE) return;
+    this._refs.root.classList.toggle("nodrag", !this._mode.isDraggable(this._config, this._stateObj()));
   }
 
   // --- interaction --------------------------------------------------------

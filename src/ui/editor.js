@@ -11,11 +11,11 @@ import {
   HEADER_ICON_POSITIONS, HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, inferMode,
 } from "../core/config.js";
 import {
-  ANIMATIONS, MAX_FONT_SIZE, MAX_SCALE_TICKS, MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_THICKNESS, MODE, MODES,
-  SCALE_ALIASES, TEXT_AREAS, TEXT_OPTIONS, scalePositionsFor,
+  ANIMATIONS, DEFAULT_FACE_TICKS, MAX_FONT_SIZE, MAX_SCALE_TICKS, MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS,
+  MIN_STEP, MIN_THICKNESS, MODE, MODES, SCALE_ALIASES, TEXT_AREAS, TEXT_OPTIONS, VALUE_SETTABLE_DOMAINS, scalePositionsFor,
 } from "../core/constants.js";
 import { DEFAULT_LANGUAGE, hasTranslation, resolveLanguage, t } from "../core/i18n.js";
-import { isPlainObject, toNumber, warn } from "../core/util.js";
+import { isPlainObject, safeCss, toNumber, warn } from "../core/util.js";
 
 const select = (options) => ({
   select: { mode: "dropdown", options: options.map((value) => ({ value, label: value })) },
@@ -42,6 +42,16 @@ function clockFaceFields(config, lang) {
   }];
 }
 
+/**
+ * The value mode can be dragged only for a settable entity (input_number, number) that is its own bar:
+ * with a sensor or a separate bar entity the `drag` switch would do nothing.
+ */
+function canDrag(config) {
+  const domain = typeof config.entity === "string" ? config.entity.split(".")[0] : "";
+  const ownBar = !(isPlainObject(config.bar) && config.bar.entity);
+  return VALUE_SETTABLE_DOMAINS.includes(domain) && ownBar;
+}
+
 /** Fields that only apply to one mode. */
 function modeFields(mode, lang, config) {
   return {
@@ -55,12 +65,12 @@ function modeFields(mode, lang, config) {
       { name: "arm_service", selector: select(ARM_SERVICES) },
     ],
     [MODE.VALUE]: [
-      { name: "drag", selector: bool() },
+      ...(canDrag(config) ? [{ name: "drag", selector: bool() }] : []),
       { name: "preset", selector: select(PRESET_NAMES) },
       { type: "grid", name: "", schema: [
         { name: "min", selector: number(-1e9, 1e9) },
         { name: "max", selector: number(-1e9, 1e9) },
-        { name: "step", selector: number(0, 1e9, "any") },
+        { name: "step", selector: number(MIN_STEP, 1e9, "any") },
         { name: "unit", selector: text() },
         { name: "decimals", selector: number(0, 6) },
       ] },
@@ -242,7 +252,17 @@ const isAnalog = (config) => isPlainObject(config.clock) && config.clock.display
 function withFaceDefaults(config) {
   if (!isAnalog(config)) return config;
   const face = isPlainObject(config.clock.face) ? config.clock.face : {};
-  return { ...config, clock: { ...config.clock, face: { ticks: true, ...face } } };
+  return { ...config, clock: { ...config.clock, face: { ticks: DEFAULT_FACE_TICKS, ...face } } };
+}
+
+/** The editor stores no default: `face.ticks` equal to the default goes (the form shows it on anyway). */
+function withoutDefaultFace(config) {
+  const face = isPlainObject(config.clock) ? config.clock.face : undefined;
+  if (!isPlainObject(face) || face.ticks !== DEFAULT_FACE_TICKS) return config;
+  const rest = omit(face, "ticks");
+  const clock = Object.keys(rest).length > 0 ? { ...config.clock, face: rest } : omit(config.clock, "face");
+  const others = omit(config, "clock");
+  return Object.keys(clock).length > 0 ? { ...others, clock } : others;
 }
 
 /** `clock.face` only means something for an analog clock; drop it when the display goes back to digital. */
@@ -286,6 +306,53 @@ function scaleForOrientation(scale, from, to) {
   return { ...scale, position: mapScalePosition(scale.position, from, to) };
 }
 
+/** `scale.size` after the bar thickness changed from `from` to `to`: a tick longer than the bar is shortened to it. */
+function scaleForThickness(scale, from, to) {
+  if (from === to || !isPlainObject(scale)) return scale;
+  const size = toNumber(scale.size, null, -Infinity, Infinity);
+  return size != null && size > to ? { ...scale, size: to } : scale;
+}
+
+/** Top-level color options (same list as `COLOR_KEYS` in config.js). */
+const COLOR_FIELDS = ["bar_color", "fill_color", "handle_color", "text_color", "border_color"];
+
+const isSet = (value) => value !== undefined && value !== null && value !== "";
+
+/** Names (as written in YAML) of the color options in `config` that the card would not accept. */
+function invalidColorFields(config) {
+  const entries = COLOR_FIELDS.map((name) => [name, config[name]]);
+  if (isPlainObject(config.scale)) entries.push(["scale.color", config.scale.color]);
+  if (isPlainObject(config.text)) {
+    for (const [area, options] of Object.entries(config.text)) {
+      if (!isPlainObject(options)) continue;
+      for (const name of ["color", "icon_color"]) entries.push([`text.${area}.${name}`, options[name]]);
+    }
+  }
+  return entries.filter(([, value]) => isSet(value) && safeCss(value, null) === null).map(([name]) => name);
+}
+
+/**
+ * Notes on values the card would ignore (with a warning in the console). The values stay in the form so that
+ * typing a longer value is not cut off; the note disappears once the value is usable.
+ * @returns {string[]} texts in the language `lang`
+ */
+export function validationHints(config, lang = DEFAULT_LANGUAGE) {
+  const hints = invalidColorFields(config).map((field) => t(lang, "editor.hint_color", { field }));
+
+  // The card takes `bar.step` over the flat `step` (resolveBar) and reads both within +-1e9 (normalizeStep).
+  const barStep = isPlainObject(config.bar) ? config.bar.step : undefined;
+  const step = isSet(barStep) ? barStep : config.step;
+  if (isSet(step) && !(toNumber(step, NaN, -1e9, 1e9) >= MIN_STEP)) {
+    hints.push(t(lang, "editor.hint_step", { min: MIN_STEP }));
+  }
+
+  const thickness = thicknessOf(config);
+  const size = isPlainObject(config.scale) ? toNumber(config.scale.size, null, -Infinity, Infinity) : null;
+  if (size != null && size > thickness) hints.push(t(lang, "editor.hint_scale_size", { size, thickness }));
+  else if (size != null && size < MIN_SCALE_SIZE) hints.push(t(lang, "editor.hint_scale_size_min", { size, min: MIN_SCALE_SIZE }));
+  return hints;
+}
+
 export class SlabtonCardEditor extends HTMLElement {
   constructor() {
     super();
@@ -293,6 +360,7 @@ export class SlabtonCardEditor extends HTMLElement {
     this._config = {};
     this._hass = null;
     this._form = null;
+    this._hints = null;
     this._waiting = false;
     this._computeLabel = (item) => this._label(item);
   }
@@ -336,6 +404,7 @@ export class SlabtonCardEditor extends HTMLElement {
   _render() {
     if (!customElements.get("ha-form")) {
       this._form = null;
+      this._hints = null;
       const hint = document.createElement("p");
       hint.textContent = t(resolveLanguage(this._hass), "editor.no_form");
       this.shadowRoot.replaceChildren(hint);
@@ -353,20 +422,38 @@ export class SlabtonCardEditor extends HTMLElement {
       this._form = document.createElement("ha-form");
       this._form.computeLabel = this._computeLabel;
       this._form.addEventListener("value-changed", (event) => this._onChanged(event));
-      this.shadowRoot.appendChild(this._form);
+      this._hints = document.createElement("div");
+      this._hints.className = "hints";
+      this._hints.setAttribute("role", "status");
+      const style = document.createElement("style");
+      style.textContent = ".hints p { margin: 8px 0 0; font-size: 12px; color: var(--error-color, #db4437); }";
+      this.shadowRoot.append(this._form, style, this._hints);
     }
     this._form.hass = this._hass;
     this._form.data = formData(this._config);
     this._form.schema = this._schema();
+    this._renderHints();
+  }
+
+  /** Show the notes of `validationHints` (text only) below the form. */
+  _renderHints() {
+    if (!this._hints) return;
+    const notes = validationHints(this._config, resolveLanguage(this._hass)).map((text) => {
+      const note = document.createElement("p");
+      note.textContent = text;
+      return note;
+    });
+    this._hints.replaceChildren(...notes);
   }
 
   _onChanged(event) {
     event.stopPropagation();
     const { scale: formScale, ...rest } = event.detail.value ?? {};
-    const cleaned = withoutUnusedFace(cleanConfig(rest));
-    const scale = scaleForOrientation(
+    const cleaned = withoutUnusedFace(withoutDefaultFace(cleanConfig(rest)));
+    const resolved = scaleForOrientation(
       resolveScale(formScale, this._config.scale), orientationOf(this._config), orientationOf(cleaned),
     );
+    const scale = scaleForThickness(resolved, thicknessOf(this._config), thicknessOf(cleaned));
     this._config = scale === undefined ? cleaned : { ...cleaned, scale };
     this.dispatchEvent(new CustomEvent("config-changed", {
       detail: { config: this._config }, bubbles: true, composed: true,
@@ -374,5 +461,6 @@ export class SlabtonCardEditor extends HTMLElement {
     // Keep the form in step with the stored config, whether or not HA calls setConfig back.
     this._form.data = formData(this._config);
     this._form.schema = this._schema();
+    this._renderHints();
   }
 }

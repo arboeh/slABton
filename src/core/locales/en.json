@@ -92,5 +92,9 @@
   "editor.font_size": "Font size in px",
   "editor.color": "Color",
   "editor.icon_color": "Icon color",
+  "editor.hint_color": "{field}: this value is not accepted as a color and is ignored by the card.",
+  "editor.hint_step": "Step size: must be at least {min}; the card ignores a smaller value.",
+  "editor.hint_scale_size": "Tick length ({size} px) is larger than the bar thickness ({thickness} px); the card uses the default length.",
+  "editor.hint_scale_size_min": "Tick length ({size} px) is below the minimum of {min} px; the card uses the default length.",
   "editor.no_form": "The visual editor needs Home Assistant's form component. Use the YAML editor instead."
 }

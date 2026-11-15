@@ -308,6 +308,83 @@ describe("value mode: step and drag", () => {
   });
 });
 
+describe("step minimum", () => {
+  it("ignores a step below 1e-9 with a warning and accepts the limit and small steps above it", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ entity: "input_number.v", step: 1e-101 }).step).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/step must be a number of at least/));
+    expect(normalizeConfig({ entity: "input_number.v", step: 1e-9 }).step).toBe(1e-9);
+    expect(normalizeConfig({ entity: "input_number.v", step: 1e-7 }).step).toBe(1e-7);
+  });
+});
+
+describe("styles values", () => {
+  it("accepts finite numbers and drops NaN and Infinity with a warning", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const c = normalizeConfig({ ...base, styles: { "scale-size": 12, "bar-opacity": Infinity, "x-nan": NaN } });
+    expect(c.styles).toEqual({ "--slabton-scale-size": "12" });
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it("checks the keys that override scale options like every other value", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const c = normalizeConfig({
+      ...base,
+      styles: { "scale-color": "red;}", "--slabton-scale-size": "url(x)", "scale-label-color": "red" },
+    });
+    expect(c.styles).toEqual({ "--slabton-scale-label-color": "red" });
+  });
+});
+
+describe("scale labels with a bar entity", () => {
+  const quiet = () => vi.spyOn(console, "warn").mockImplementation(() => {});
+  const labelsOf = (config) => normalizeConfig({ ...config, scale: { labels: true } }).scale.labels;
+
+  it("follow the range of the bar entity at runtime when it is settable and not fully configured", () => {
+    const warn = quiet();
+    expect(labelsOf({ entity: "sensor.x", bar: { entity: "input_number.y" } })).toEqual([
+      { index: 0, text: "0.0", bound: "min" },
+      { index: 10, text: "100.0", bound: "max" },
+    ]);
+    expect(labelsOf({ entity: "sensor.x", min: 5, bar: { entity: "number.y" } }).map((l) => l.bound)).toEqual(["min", "max"]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("keep fixed labels for a non-settable bar entity, even when the main entity is settable", () => {
+    const warn = quiet();
+    expect(labelsOf({ entity: "input_number.x", bar: { entity: "sensor.y" } })).toEqual([
+      { index: 0, text: "0.0" },
+      { index: 10, text: "100.0" },
+    ]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("keep fixed labels when min and max are both configured", () => {
+    expect(labelsOf({ entity: "sensor.x", min: 0, max: 50, decimals: 0, bar: { entity: "input_number.y" } })).toEqual([
+      { index: 0, text: "0" },
+      { index: 10, text: "50" },
+    ]);
+  });
+
+  it("apply to the counter mode too, with the decimals of the bar", () => {
+    const warn = quiet();
+    expect(labelsOf({ entity: "counter.c", min: 0, max: 20, decimals: 0, bar: { entity: "sensor.y" } })).toEqual([
+      { index: 0, text: "0" },
+      { index: 10, text: "20" },
+    ]);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("do not change without a bar entity", () => {
+    quiet();
+    expect(labelsOf({ entity: "input_number.v" })).toBeNull();
+    expect(labelsOf({ entity: "sensor.t", min: 0, max: 10, decimals: 0 })).toEqual([
+      { index: 0, text: "0" },
+      { index: 10, text: "10" },
+    ]);
+  });
+});
+
 describe("new modes", () => {
   it("allows the clock without an entity but nothing else", () => {
     const c = normalizeConfig({ mode: "clock" });

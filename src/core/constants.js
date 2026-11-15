@@ -137,6 +137,16 @@ export const CLOCK_FACE_OPTIONS = Object.freeze(["numbers", "ticks"]);
 export const MIN_ANALOG_HANDLE_SIZE = 32;
 export const MIN_DIAL_QUARTERS_SIZE = 48;
 export const MIN_DIAL_NUMBERS_SIZE = 72;
+/** `clock.face.ticks` default (the editor does not store a value that equals it). */
+export const DEFAULT_FACE_TICKS = true;
+
+/**
+ * Smallest accepted `step` (value mode); smaller values are rejected. Matches the tolerance used
+ * when counting steps, and keeps `toFixed` far below its limit of 100 digits.
+ */
+export const MIN_STEP = 1e-9;
+/** Upper limit of the decimals `snap` rounds to (`toFixed` throws above 100). */
+export const MAX_SNAP_DECIMALS = 20;
 
 /** Positions the `scale.position` option accepts for an orientation (editor list). */
 export function scalePositionsFor(orientation) {

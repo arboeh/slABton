@@ -4,6 +4,28 @@ import { applyVars, buildCss, buildVars, handleDimensions, handleExtra } from ".
 
 const cfg = (extra = {}) => normalizeConfig({ entity: "input_select.x", ...extra });
 
+describe("switch size", () => {
+  // jsdom does not compute min() / calc(): check the rule text and the variables it reads.
+  const css = buildCss();
+
+  it("is 28px but never larger than the inside of the bar", () => {
+    expect(css).toContain(
+      "--slabton-sw-d: var(--slabton-switch-size, max(10px, min(28px, calc(var(--slabton-thickness) - 2 * var(--slabton-border-width)))));",
+    );
+    expect(css).toContain("width: var(--slabton-sw-d); height: var(--slabton-sw-d);");
+  });
+
+  it("scales the icon with the switch, up to 16px", () => {
+    expect(css).toContain("--mdc-icon-size: min(16px, calc(var(--slabton-sw-d) * 0.6))");
+  });
+
+  it("gets the thickness and the border width as variables to read", () => {
+    const v = buildVars(cfg({ thickness: 14, border_width: 2 }));
+    expect(v["--slabton-thickness"]).toBe("14px");
+    expect(v["--slabton-border-width"]).toBe("2px");
+  });
+});
+
 describe("handleDimensions", () => {
   it("round and square are as long as wide, oval is longer", () => {
     expect(handleDimensions(cfg({ handle_size: 40 }))).toEqual({ cross: 40, along: 40 });

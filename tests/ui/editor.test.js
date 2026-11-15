@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { SlabtonCardEditor, buildSchema, cleanConfig } from "../../src/ui/editor.js";
+import { SlabtonCardEditor, buildSchema, cleanConfig, validationHints } from "../../src/ui/editor.js";
 
 if (!customElements.get("slabton-card-editor")) customElements.define("slabton-card-editor", SlabtonCardEditor);
 
@@ -39,10 +39,12 @@ describe("buildSchema", () => {
     expect(names(buildSchema({ entity: "sensor.a", mode: "lock" }))).toContain("swipe_threshold");
   });
 
-  it("offers step and the drag switch in value mode", () => {
-    const schema = buildSchema({ entity: "input_number.a" });
-    expect(names(schema)).toEqual(expect.arrayContaining(["drag", "step"]));
-    expect(names(buildSchema({ entity: "sensor.a" }))).toEqual(expect.arrayContaining(["drag", "step"]));
+  it("offers step in value mode and the drag switch only where dragging can act", () => {
+    expect(names(buildSchema({ entity: "input_number.a" }))).toEqual(expect.arrayContaining(["drag", "step"]));
+    expect(names(buildSchema({ entity: "number.a" }))).toContain("drag");
+    expect(names(buildSchema({ entity: "sensor.a" }))).toContain("step");
+    expect(names(buildSchema({ entity: "sensor.a" }))).not.toContain("drag");
+    expect(names(buildSchema({ entity: "input_number.a", bar: { entity: "sensor.b" } }))).not.toContain("drag");
     expect(names(buildSchema({ entity: "lock.a" }))).not.toContain("step");
     expect(names(buildSchema({ entity: "input_select.a" }))).not.toContain("step");
   });
@@ -50,7 +52,7 @@ describe("buildSchema", () => {
   it("lets the step take decimals", () => {
     const flat = (items) => items.flatMap((item) => (item.schema ? flat(item.schema) : [item]));
     const step = flat(buildSchema({ entity: "input_number.a" })).find((f) => f.name === "step");
-    expect(step.selector.number).toMatchObject({ min: 0, step: "any", mode: "box" });
+    expect(step.selector.number).toMatchObject({ min: 1e-9, step: "any", mode: "box" });
   });
 
   it("only offers fixed_position for the fixed handle position", () => {
@@ -513,6 +515,75 @@ describe("SlabtonCardEditor", () => {
     editor.addEventListener("config-changed", handler);
     form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { entity: "switch.a", name: "N", scale: {} } } }));
     expect(handler.mock.calls[0][0].detail.config).toEqual({ entity: "switch.a", name: "N" });
+  });
+
+  it("does not store the default dial tick marks, but keeps other face options and ticks: false", () => {
+    const { form, send } = setup({ mode: "clock", clock: { display: "analog" } });
+    expect(send({ mode: "clock", name: "N", clock: { display: "analog", face: { ticks: true } } }))
+      .toEqual({ mode: "clock", name: "N", clock: { display: "analog" } });
+    expect(form.data.clock.face).toEqual({ ticks: true });
+    expect(send({ mode: "clock", clock: { display: "analog", face: { numbers: "all", ticks: true } } }))
+      .toEqual({ mode: "clock", clock: { display: "analog", face: { numbers: "all" } } });
+    expect(send({ mode: "clock", clock: { display: "analog", face: { ticks: false } } }))
+      .toEqual({ mode: "clock", clock: { display: "analog", face: { ticks: false } } });
+    expect(send({ mode: "clock", clock: { display: "analog", face: { ticks: true } } }))
+      .toEqual({ mode: "clock", clock: { display: "analog" } });
+  });
+
+  describe("notes under the form", () => {
+    const hintsOf = (editor) => [...editor.shadowRoot.querySelectorAll(".hints p")].map((p) => p.textContent);
+
+    it("report a color the card would ignore, keep the value and clear the note once it is usable", () => {
+      const { editor, send } = setup({ entity: "switch.a" });
+      expect(hintsOf(editor)).toEqual([]);
+      expect(send({ entity: "switch.a", scale: { enabled: true, color: "red;}" } }).scale).toEqual({ color: "red;}" });
+      expect(hintsOf(editor)).toEqual(["scale.color: this value is not accepted as a color and is ignored by the card."]);
+      send({ entity: "switch.a", scale: { enabled: true, color: "red" } });
+      expect(hintsOf(editor)).toEqual([]);
+    });
+
+    it("are produced by validationHints in the language asked for, for every color field", () => {
+      expect(validationHints({ bar_color: "red;}" }, "de"))
+        .toEqual(["bar_color: Dieser Wert wird nicht als Farbe akzeptiert und von der Karte ignoriert."]);
+      expect(validationHints({ text: { header: { icon_color: "url(x)" }, bar: { color: "red" } } })).toEqual([
+        "text.header.icon_color: this value is not accepted as a color and is ignored by the card.",
+      ]);
+      expect(validationHints({ bar_color: "red", step: "", scale: { size: 20, color: "var(--x)" } })).toEqual([]);
+    });
+
+    it("report an unusable step", () => {
+      const { editor, send } = setup({ entity: "input_number.a" });
+      expect(send({ entity: "input_number.a", step: 0 })).toEqual({ entity: "input_number.a", step: 0 });
+      expect(hintsOf(editor)).toEqual([expect.stringMatching(/Step size: must be at least/)]);
+      send({ entity: "input_number.a", step: 0.5 });
+      expect(hintsOf(editor)).toEqual([]);
+    });
+
+    it("judge the step the card really uses: bar.step wins over the flat step", () => {
+      expect(validationHints({ step: 0, bar: { step: 0.5 } })).toEqual([]);
+      expect(validationHints({ step: 0.5, bar: { step: 0 } })).toEqual([expect.stringMatching(/Step size: must be at least/)]);
+      expect(validationHints({ step: 0, bar: { step: "" } })).toEqual([expect.stringMatching(/Step size: must be at least/)]);
+      // The card clamps to 1e9 instead of ignoring a huge step.
+      expect(validationHints({ step: 1e10 })).toEqual([]);
+    });
+
+    it("note a tick length below the minimum", () => {
+      expect(validationHints({ scale: { size: 1 } })).toEqual([expect.stringMatching(/Tick length \(1 px\) is below the minimum of 2 px/)]);
+      expect(validationHints({ scale: { size: 2 } })).toEqual([]);
+      expect(validationHints({ scale: { size: 1 } }, "de")).toEqual([expect.stringMatching(/liegt unter dem Minimum von 2 px/)]);
+    });
+
+    it("shorten a stored tick length when the thickness is lowered below it", () => {
+      const { send } = setup({ entity: "switch.a", thickness: 48, scale: { size: 30 } });
+      expect(send({ entity: "switch.a", thickness: 20, scale: { enabled: true, size: 30 } }).scale).toEqual({ size: 20 });
+    });
+
+    it("leave an existing too long tick length alone and note it", () => {
+      const { editor, send } = setup({ entity: "switch.a", thickness: 20, scale: { size: 30 } });
+      expect(hintsOf(editor)).toEqual([expect.stringMatching(/Tick length \(30 px\)/)]);
+      expect(send({ entity: "switch.a", thickness: 20, name: "N", scale: { enabled: true, size: 30 } }).scale)
+        .toEqual({ size: 30 });
+    });
   });
 
   it("forwards hass updates to the form", () => {

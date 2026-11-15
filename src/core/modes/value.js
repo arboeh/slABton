@@ -8,7 +8,7 @@
  * Step: `step` option, then the attribute `step`, else stepless.
  */
 
-import { ACTION, MODE, NOTICE, VALUE_SETTABLE_DOMAINS, infoActions } from "../constants.js";
+import { ACTION, MAX_SNAP_DECIMALS, MIN_STEP, MODE, NOTICE, VALUE_SETTABLE_DOMAINS, infoActions } from "../constants.js";
 import { clamp, formatValue, isUnavailable, parseNumericState, resolveHandlePosition } from "../util.js";
 
 export const id = MODE.VALUE;
@@ -42,7 +42,7 @@ export function range(config, stateObj) {
 export function resolveStep(config, stateObj) {
   if (config.step != null) return config.step;
   const step = finite(stateObj?.attributes?.step);
-  return step != null && step > 0 ? step : null;
+  return step != null && step >= MIN_STEP ? step : null;
 }
 
 /** Fraction (0..1), formatted text and validity of a numeric entity against its range. */
@@ -64,7 +64,9 @@ function snap(config, stateObj, raw) {
   if (step == null) return Number(clamp(raw, min, max).toFixed(config.decimals));
   const lastIndex = Math.floor((max - min) / step + STEP_EPSILON);
   const index = clamp(Math.round((raw - min) / step), 0, lastIndex);
-  return Number((min + index * step).toFixed(Math.max(decimalPlaces(step), decimalPlaces(min))));
+  // `toFixed` throws above 100 digits: cap the decimals (a `min` like 1e-101 would reach it).
+  const decimals = Math.min(MAX_SNAP_DECIMALS, Math.max(decimalPlaces(step), decimalPlaces(min)));
+  return Number((min + index * step).toFixed(decimals));
 }
 
 /** Value (rounded to step or decimals, within the range) at a logical position 0..1. */

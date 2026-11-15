@@ -5,6 +5,7 @@ import { renderCard, rootClasses, updateSwitches, updateView } from "../../src/u
 import { buildCss } from "../../src/ui/styles.js";
 import * as stateMode from "../../src/core/modes/state.js";
 import * as lockMode from "../../src/core/modes/lock.js";
+import * as valueMode from "../../src/core/modes/value.js";
 import { createHass, makeState } from "../helpers/mock-hass.js";
 
 function setup(extra = {}) {
@@ -63,6 +64,30 @@ describe("renderCard", () => {
     expect(rtl.refs.switches.start.style.getPropertyValue("--slabton-sw-e")).toBe("1");
     const vertical = setup({ orientation: "vertical", switches: { start: {} } });
     expect(vertical.refs.switches.start.style.getPropertyValue("--slabton-sw-e")).toBe("1");
+  });
+});
+
+describe("scale labels that follow the bar entity", () => {
+  const options = { entity: "sensor.x", scale: { ticks: 4, labels: true }, bar: { entity: "input_number.y" } };
+  const texts = (shadow) => [...shadow.querySelectorAll(".tick-label")].map((label) => label.textContent);
+
+  it("remembers the bound labels and rewrites only their text", () => {
+    const { config, shadow, refs } = setup(options);
+    expect(refs.boundLabels.map((label) => label.bound)).toEqual(["min", "max"]);
+    const first = shadow.querySelector(".tick-label");
+    const view = valueMode.view(config, makeState("sensor.x", "5"));
+
+    updateView(refs, config, { ...view, scaleLabels: { min: "10", max: "80" } });
+    expect(texts(shadow)).toEqual(["10", "80"]);
+    expect(shadow.querySelector(".tick-label")).toBe(first);
+
+    updateView(refs, config, view);
+    expect(texts(shadow)).toEqual(["10", "80"]);
+  });
+
+  it("has no bound labels without a bar entity or without labels", () => {
+    expect(setup({ entity: "sensor.x", scale: { labels: true }, min: 0, max: 10 }).refs.boundLabels).toEqual([]);
+    expect(setup({ entity: "sensor.x", bar: { entity: "input_number.y" } }).refs.boundLabels).toEqual([]);
   });
 });
 

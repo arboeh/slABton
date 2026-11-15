@@ -27,6 +27,14 @@ describe("locale files", () => {
     }
   });
 
+  it("have the editor notes with the same placeholders in both languages", () => {
+    const expected = { "editor.hint_color": ["field"], "editor.hint_step": ["min"], "editor.hint_scale_size": ["size", "thickness"], "editor.hint_scale_size_min": ["min", "size"] };
+    for (const [key, names] of Object.entries(expected)) {
+      expect(tokens(en[key]), key).toEqual(names);
+      expect(tokens(de[key]), key).toEqual(names);
+    }
+  });
+
   it("only hold non-empty strings", () => {
     for (const dict of [en, de]) {
       for (const [key, value] of Object.entries(dict)) {

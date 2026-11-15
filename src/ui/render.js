@@ -54,18 +54,24 @@ function placeTicks(shadow, config) {
   });
 }
 
-/** Add the tick labels (`scale.labels`): plain text, on the same track as the ticks. */
+/**
+ * Add the tick labels (`scale.labels`): plain text, on the same track as the ticks.
+ * @returns {{bound: string, el: HTMLElement}[]} the labels whose text follows the bar entity's range (see `updateView`)
+ */
 function placeLabels(shadow, config) {
   const scale = shadow.querySelector(".scale");
   const labels = config.scale?.labels;
-  if (!scale || !labels?.length) return;
-  for (const { index, text } of labels) {
+  const bound = [];
+  if (!scale || !labels?.length) return bound;
+  for (const { index, text, bound: name } of labels) {
     const label = shadow.ownerDocument.createElement("span");
     label.className = "tick-label";
     label.textContent = text;
     label.style.setProperty("--slabton-tick-e", tickEdge(config, index));
     scale.appendChild(label);
+    if (name) bound.push({ bound: name, el: label });
   }
+  return bound;
 }
 
 // --- analog dial ------------------------------------------------------------
@@ -182,7 +188,7 @@ export function renderCard(shadow, config, css) {
 
   const q = (selector) => shadow.querySelector(selector);
   placeTicks(shadow, config);
-  placeLabels(shadow, config);
+  const boundLabels = placeLabels(shadow, config);
   const switches = {};
   for (const button of shadow.querySelectorAll(".sw")) {
     const slot = button.dataset.slot;
@@ -207,6 +213,7 @@ export function renderCard(shadow, config, css) {
     dial: dialRefs(q, config),
     barText: q(".bar-text"),
     info: q(".info"),
+    boundLabels,
     switches,
     signature: null,
   };
@@ -254,6 +261,15 @@ function setContent(refs, config, view) {
   text.textContent = label ?? "";
 }
 
+/** Scale labels that show the range of the bar entity: text only, written when it changed. */
+function updateBoundLabels(refs, view) {
+  if (!refs.boundLabels?.length || !view.scaleLabels) return;
+  for (const { bound, el } of refs.boundLabels) {
+    const text = view.scaleLabels[bound];
+    if (text != null && el.textContent !== text) el.textContent = text;
+  }
+}
+
 /**
  * Apply a view model to the DOM.
  * @param {object} refs - result of renderCard
@@ -284,6 +300,7 @@ export function updateView(refs, config, view, options = {}) {
     refs.info.classList.toggle("info-right", edge < 0.5);
   }
 
+  updateBoundLabels(refs, view);
   setRole(handle, config, view);
 
   // Timer and clock text changes every second; only the icon (state) change replays an animation.

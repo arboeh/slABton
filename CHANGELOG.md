@@ -20,12 +20,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   Space opens more-info). Hold, double tap, drag and arrow keys stay blocked.
 - Select, input select and climate entities without their option list (`options` / `hvac_modes`) offer no states
   instead of `off` / `on`.
+- Visual editor shows hint lines under the form for values the card ignores or clamps: color values it rejects,
+  `step` of 0 or below `1e-9`, `scale.size` above the bar thickness or below 2. Typed values stay as entered; a
+  `scale.size` above the bar is set to the new thickness when `thickness` is lowered.
 
 ### Fixed
 
 - Unavailable select, input select or climate entity no longer gets `select_option` / `set_hvac_mode` calls with
   invented `off` / `on` values.
 - A drag that ends after the entity became unavailable no longer sends a service call.
+- Visual editor no longer writes the default `clock.face.ticks: true` into the configuration after a change; `ticks: false`
+  is kept.
+- Scale labels with their own `bar.entity` and no `min` / `max` show that entity's range instead of 0 to 100. The labels
+  keep their last text while the entity is unavailable. Labels also appear when the main entity is `input_number` and the
+  bar entity is a sensor.
+- Value mode: a tiny `step` (e.g. `1e-101`) or tiny `min` no longer throws a `RangeError` that freezes the handle. Steps
+  below `1e-9` are ignored with a warning.
+- `styles:` values `NaN` and `Infinity` are dropped with a warning.
+- Switches on a bar thinner than 28 px no longer stick out of the bar; they follow the bar height. Default size unchanged.
+- Value mode: a handle that cannot be dragged no longer blocks touch scrolling.
+- Visual editor: the `drag` switch is hidden for sensors and for entities with their own `bar.entity`; `step` no longer
+  accepts 0.
 
 ## [0.3.0] - 2026-11-14
 

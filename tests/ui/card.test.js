@@ -92,11 +92,81 @@ describe("setConfig", () => {
     expect(el.getCardSize()).toBe(6);
   });
 
+  it("reports the default card size and grid options before a config is set", () => {
+    const el = document.createElement("slabton-card");
+    expect(el.getCardSize()).toBe(2);
+    expect(el.getGridOptions()).toEqual({ columns: 6, rows: 2, min_columns: 3, min_rows: 1 });
+  });
+
+  it("counts only the handle's excess across the bar for the rows, not the overhang along it (vertical)", () => {
+    const base = { orientation: "vertical", thickness: 48, handle_size: 40 };
+    const plain = create(base).el;
+    const overhang = create({ ...base, handle_overhang: true }).el;
+    expect(overhang.getGridOptions().rows).toBe(plain.getGridOptions().rows);
+    expect(overhang.getCardSize()).toBe(plain.getCardSize());
+    expect(overhang.getGridOptions().rows).toBe(4);
+    const large = create({ orientation: "vertical", thickness: 18, handle_size: 70, handle_overhang: true }).el;
+    expect(large.getGridOptions().rows).toBe(5);
+    expect(large.getCardSize()).toBe(6);
+  });
+
   it("does not change the shared grid defaults", () => {
     const { el } = create({ thickness: 18, handle_size: 70 });
     el.getGridOptions();
     el.setConfig({ entity: SELECT });
     expect(el.getGridOptions().rows).toBe(2);
+  });
+});
+
+describe("scale labels with a bar entity", () => {
+  const BAR = "input_number.bar";
+  const labels = (el) => [...el.shadowRoot.querySelectorAll(".tick-label")].map((label) => label.textContent);
+  const states = (attributes) => ({ "sensor.main": makeState("sensor.main", "10"), [BAR]: makeState(BAR, "5", attributes) });
+  const config = { entity: "sensor.main", decimals: 0, scale: { ticks: 4, labels: true }, bar: { entity: BAR } };
+
+  it("shows the range attributes of the bar entity", () => {
+    const { el } = create(config, states({ min: 0, max: 50 }));
+    expect(labels(el)).toEqual(["0", "50"]);
+  });
+
+  it("follows a range change of the bar entity at runtime and keeps the label elements", () => {
+    const { el, hass } = create(config, states({ min: 0, max: 50 }));
+    const before = [...el.shadowRoot.querySelectorAll(".tick-label")];
+    el.hass = withState(hass, BAR, "5", { min: 10, max: 80 });
+    expect(labels(el)).toEqual(["10", "80"]);
+    expect(el.shadowRoot.querySelectorAll(".tick-label")[0]).toBe(before[0]);
+    expect(el.shadowRoot.querySelectorAll(".tick-label")).toHaveLength(2);
+  });
+
+  it("uses the configured range for a bound that is set, and the default for the missing one", () => {
+    const { el } = create({ ...config, min: 5 }, { "sensor.main": makeState("sensor.main", "10") });
+    expect(labels(el)).toEqual(["5", "100"]);
+  });
+
+  it("shows empty labels for an invalid range of the bar entity", () => {
+    const { el } = create(config, states({ min: 50, max: 10 }));
+    expect(labels(el)).toEqual(["", ""]);
+  });
+
+  it("keeps the last labels while the bar entity is unavailable or missing, and follows it again afterwards", () => {
+    const { el, hass } = create(config, states({ min: 10, max: 80 }));
+    expect(labels(el)).toEqual(["10", "80"]);
+    el.hass = withState(hass, BAR, "unavailable", {});
+    expect(labels(el)).toEqual(["10", "80"]);
+    el.hass = withState(hass, BAR, "5", { min: 20, max: 60 });
+    expect(labels(el)).toEqual(["20", "60"]);
+    const { states: all } = el.hass;
+    const { [BAR]: removed, ...rest } = all;
+    el.hass = { ...el.hass, states: rest };
+    expect(removed).toBeDefined();
+    expect(labels(el)).toEqual(["20", "60"]);
+  });
+
+  it("keeps fixed labels for a non-settable bar entity", () => {
+    const { el } = create({ ...config, bar: { entity: "sensor.bar" } }, {
+      "sensor.main": makeState("sensor.main", "10"), "sensor.bar": makeState("sensor.bar", "5", { min: 0, max: 50 }),
+    });
+    expect(labels(el)).toEqual(["0", "100"]);
   });
 });
 
@@ -493,6 +563,56 @@ describe("value mode", () => {
       dragTo(el, 60);
       expect(hass.callService).not.toHaveBeenCalled();
       expect(q(el, ".h-text").textContent).toBe("20");
+    });
+
+    it("drops the pending value when the entity reports a different value", () => {
+      const { el, hass } = setup();
+      dragTo(el, 120);
+      expect(q(el, ".h-text").textContent).toBe("50");
+      el.hass = withState(hass, NUM, "30", { min: 0, max: 100, step: 5 });
+      expect(q(el, ".h-text").textContent).toBe("30");
+      vi.advanceTimersByTime(PENDING_TIMEOUT_MS + 1);
+      expect(q(el, ".h-text").textContent).toBe("30");
+    });
+
+    it("follows a range change of the entity at runtime", () => {
+      const { el, hass } = setup({}, numStates("50"));
+      expect(q(el, ".root").style.getPropertyValue("--slabton-p")).toBe("0.5");
+      el.hass = withState(hass, NUM, "50", { min: 0, max: 200, step: 5 });
+      expect(q(el, ".root").style.getPropertyValue("--slabton-p")).toBe("0.25");
+      el.hass = withState(hass, NUM, "50", { min: 0, max: 50, step: 5 });
+      expect(q(el, ".root").style.getPropertyValue("--slabton-p")).toBe("1");
+    });
+
+    it("drags a vertical bar upwards", () => {
+      const { el, hass } = create({ entity: NUM, decimals: 0, orientation: "vertical" }, numStates());
+      mockRect(q(el, ".rail"), { top: 0, height: 200 });
+      const handle = q(el, ".handle");
+      pointer(handle, "pointerdown", { clientY: 20 });
+      pointer(handle, "pointermove", { clientY: 60 });
+      pointer(handle, "pointerup", { clientY: 60 });
+      expect(hass.callService).toHaveBeenCalledWith("input_number", "set_value", { value: 80 }, { entity_id: NUM });
+    });
+
+    it("drags a right-to-left bar from the right", () => {
+      const { el, hass } = setup({ direction: "rtl" });
+      const handle = q(el, ".handle");
+      pointer(handle, "pointerdown", { clientX: 180 });
+      pointer(handle, "pointermove", { clientX: 60 });
+      pointer(handle, "pointerup", { clientX: 60 });
+      expect(hass.callService).toHaveBeenCalledWith("input_number", "set_value", { value: 80 }, { entity_id: NUM });
+    });
+
+    it("takes nodrag from what can be dragged now, not only from the config", () => {
+      vi.spyOn(console, "warn").mockImplementation(() => {});
+      expect(q(setup().el, ".root").classList.contains("nodrag")).toBe(false);
+      expect(q(setup({ handle_position: "end" }).el, ".root").classList.contains("nodrag")).toBe(true);
+      expect(q(setup({ bar: { entity: "sensor.b" } }).el, ".root").classList.contains("nodrag")).toBe(true);
+
+      const invalid = setup({}, numStates("20", { min: 100, max: 0, step: 5 }));
+      expect(q(invalid.el, ".root").classList.contains("nodrag")).toBe(true);
+      invalid.el.hass = withState(invalid.hass, NUM, "20", { min: 0, max: 100, step: 5 });
+      expect(q(invalid.el, ".root").classList.contains("nodrag")).toBe(false);
     });
 
     it("does not drag with drag: false", () => {

@@ -7,10 +7,10 @@
 
 import {
   ACTION, ACTION_TYPES, ANIMATIONS, CLOCK_FACE_NUMBERS, CLOCK_FACE_OPTIONS, CLOCK_LABEL_STEP,
-  CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, DEFAULT_ANIMATION, DEFAULT_SCALE_POSITION,
+  CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, DEFAULT_ANIMATION, DEFAULT_FACE_TICKS, DEFAULT_SCALE_POSITION,
   DEFAULT_SCALE_TICKS, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES, MAX_FONT_SIZE, MAX_SCALE_TICKS,
   MAX_THICKNESS, MIN_ANALOG_HANDLE_SIZE, MIN_DIAL_NUMBERS_SIZE, MIN_DIAL_QUARTERS_SIZE, MIN_FONT_SIZE, MIN_LABEL_THICKNESS,
-  MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_THICKNESS, OFF_VALUES, READ_ONLY_MODES, SCALE_ALIASES, SCALE_AXIS_POSITIONS,
+  MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_STEP, MIN_THICKNESS, OFF_VALUES, READ_ONLY_MODES, SCALE_ALIASES, SCALE_AXIS_POSITIONS,
   SCALE_OPTIONS, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS, VALUE_SETTABLE_DOMAINS,
 } from "./constants.js";
 import { unknownPlaceholders } from "./placeholders.js";
@@ -162,6 +162,9 @@ function warnUnreachableStates(states, domain) {
   }
 }
 
+/** Text of a finite number, else null (YAML `.nan` / `.inf` give no usable CSS value). */
+const finiteText = (value) => (Number.isFinite(value) ? String(value) : null);
+
 function normalizeStyles(raw) {
   if (raw == null) return {};
   if (!isPlainObject(raw)) throw new Error("slabton-card: styles must be a map");
@@ -171,7 +174,7 @@ function normalizeStyles(raw) {
       warn(`ignored styles key "${key}"`);
       continue;
     }
-    const css = typeof value === "number" ? String(value) : safeCss(value, null);
+    const css = typeof value === "number" ? finiteText(value) : safeCss(value, null);
     if (css == null) {
       warn(`ignored unsafe styles value for "${key}"`);
       continue;
@@ -233,12 +236,12 @@ function normalizeLook(raw) {
   return look;
 }
 
-/** Step size (value mode): a positive number, else null (warns about an unusable value). */
+/** Step size (value mode): a number of at least MIN_STEP, else null (warns about an unusable value). */
 function normalizeStep(value) {
   if (isBlank(value)) return null;
   const n = toNumber(value, null, -1e9, 1e9);
-  if (n != null && n > 0) return n;
-  warn("step must be a number greater than 0 and was ignored");
+  if (n != null && n >= MIN_STEP) return n;
+  warn(`step must be a number of at least ${MIN_STEP} and was ignored`);
   return null;
 }
 
@@ -402,8 +405,14 @@ function clockLabels(ticks) {
  * Range the config alone fixes, or null. An entity may bring its own range (attributes of an
  * input_number / number, of a counter); then only explicitly configured limits are known.
  */
-function fixedRange(mode, { domain, range, counter }) {
+function fixedRange(mode, { domain, range, counter, barEntity }) {
   const both = range.range_set.min && range.range_set.max;
+  if (barEntity) {
+    // The bar measures its own entity with the value-mode rules, whatever the mode of the card is.
+    // A settable bar entity without both limits brings them in its attributes: known only at runtime (`runtime`).
+    const runtime = VALUE_SETTABLE_DOMAINS.includes(barEntity.split(".")[0]) && !both;
+    return { min: range.min, max: range.max, decimals: range.decimals, runtime };
+  }
   if (mode === MODE.VALUE) {
     if (VALUE_SETTABLE_DOMAINS.includes(domain) && !both) return null;
     return { min: range.min, max: range.max, decimals: range.decimals };
@@ -413,13 +422,17 @@ function fixedRange(mode, { domain, range, counter }) {
   return min != null && max != null ? { min, max, decimals: 0 } : null;
 }
 
-/** Minimum at the first and maximum at the last tick (number with `decimals`, no unit). */
+/**
+ * Minimum at the first and maximum at the last tick (number with `decimals`, no unit). Labels with `bound`
+ * ("min" / "max") start with the configured range and are replaced by the card once the bar entity's range is known.
+ */
 function rangeLabels(ticks, mode, context) {
   const limits = fixedRange(mode, context);
   if (!limits) return null;
+  const bound = (name) => (limits.runtime ? { bound: name } : {});
   return [
-    { index: 0, text: limits.min.toFixed(limits.decimals) },
-    { index: ticks, text: limits.max.toFixed(limits.decimals) },
+    { index: 0, text: limits.min.toFixed(limits.decimals), ...bound("min") },
+    { index: ticks, text: limits.max.toFixed(limits.decimals), ...bound("max") },
   ];
 }
 
@@ -470,7 +483,7 @@ function scaleLabels(value, ticks, mode, context) {
 /**
  * The `scale:` block (tick marks in the bar): `true` = defaults, missing/`false` = off (null).
  * Anything else than a boolean or a map is an error; invalid option values warn and fall back.
- * `context`: clock, orientation, thickness, domain, range, counter and states of the resolved config.
+ * `context`: clock, orientation, thickness, domain, range, counter, states and bar entity of the resolved config.
  */
 function normalizeScale(raw, mode, context) {
   if (isBlank(raw) || raw === false) return null;
@@ -497,7 +510,7 @@ function normalizeTimeZone(value, key) {
 
 const COUNTER_DEFAULTS = Object.freeze({ min: null, max: null });
 const TIMER_DEFAULTS = Object.freeze({ pulse: true, pulse_seconds: 10, info: null, time_zone: null, span: 30 });
-const CLOCK_FACE_DEFAULTS = Object.freeze({ numbers: "none", ticks: true });
+const CLOCK_FACE_DEFAULTS = Object.freeze({ numbers: "none", ticks: DEFAULT_FACE_TICKS });
 const CLOCK_DEFAULTS = Object.freeze({
   display: "digital", face: CLOCK_FACE_DEFAULTS, time_zone: null, hour_format: "auto", seconds: false,
 });
@@ -648,7 +661,7 @@ export function normalizeConfig(raw) {
     timer: mode === MODE.TIMER ? normalizeTimer(raw) : { ...TIMER_DEFAULTS },
     clock,
     ...layout,
-    scale: normalizeScale(raw.scale, mode, { clock, counter, range, domain, states, ...layout }),
+    scale: normalizeScale(raw.scale, mode, { clock, counter, range, domain, states, barEntity, ...layout }),
     ...normalizeLook(raw),
     ...normalizeTriggers(raw),
     states,

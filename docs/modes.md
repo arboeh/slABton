@@ -92,7 +92,7 @@ preset: thermometer
 | `min`, `max` | preset or 0 / 100 | Value range. Without them, `input_number` / `number` use the entity's `min` / `max` attributes |
 | `unit` | preset | Unit text |
 | `decimals` | preset or 1 | Decimal places |
-| `step` | entity `step` attribute | Step size (also `bar.step`); without any step the value is only rounded to `decimals` |
+| `step` | entity `step` attribute | Step size (also `bar.step`), at least `1e-9` (a smaller value is ignored with a warning); without any step the value is only rounded to `decimals` |
 | `drag` | `true` | Dragging and arrow keys for `input_number` / `number`. `false` turns them off. No dragging with `handle_position` other than `flex`, with a separate `bar.entity`, or when max is not greater than min |
 
 Arrow keys move the value one step (without a step: 1 % of the range). A range with max not greater than min leaves the bar empty, logs a console warning and disables dragging.

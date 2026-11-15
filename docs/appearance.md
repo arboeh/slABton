@@ -110,7 +110,7 @@ scale:
 | `position` | `bottom` (vertical: `right`) | Edge across the bar: `top` / `bottom` (horizontal) or `left` / `right` (vertical). `start`, `center`, `end` also work: `start` is top or left, `end` bottom or right |
 | `size` | 8 px | Tick length in px, 2 up to the bar `thickness` |
 | `color` | text color at 45 % | Any CSS color that `styles:` accepts |
-| `labels` | `false` | Labels at the ticks. Clock: hours 0, 6, 12, 18, 24. Value and counter: minimum and maximum, only with a fixed range (`min` and `max`, or `counter`). State: names of the configured `states` (at least two). Needs a bar thickness of 28 px; otherwise no labels, with a warning |
+| `labels` | `false` | Labels at the ticks. Clock: hours 0, 6, 12, 18, 24. Value and counter: minimum and maximum, only with a fixed range (`min` and `max`, or `counter`) or with a separate `bar.entity` of the domain `input_number` / `number` (its `min` / `max` attributes). State: names of the configured `states` (at least two). Needs a bar thickness of 28 px; otherwise no labels, with a warning |
 
 - `scale: true` takes all defaults. `scale: false` or a missing block means off.
 - Ticks sit on the handle's travel: the tick for value i/ticks is exactly under the handle at that value. `direction: rtl` mirrors them.
@@ -118,8 +118,9 @@ scale:
 - Invalid values are ignored with a console warning and the default applies. Unknown keys are warned about and ignored.
 - The key `enabled` exists only as the editor switch. In YAML it is warned about and ignored.
 - Not drawn yet: hour / minute hands on the scale. Planned for later releases. The analog clock's hands sit in the handle (`clock.display: analog`).
-- Known limits of `scale.labels`: with a separate `bar.entity` the labels of value mode use the configured `min` and `max` (or 0 and 100), not the range of the bar entity; set `min` and `max` yourself. State names need `states` in the config (options of the entity are not used). Long names or a large `scale.size` can overlap on thin bars.
-- Visual editor, analog clock: once any field is changed the editor stores `clock.face.ticks: true` (the default value).
+- With a separate `bar.entity` the labels follow that entity, not the main entity: an `input_number` / `number` without `min` and `max` in the config shows its attribute range and updates when the attributes change; while the entity is unavailable the labels keep their last text. Any other bar entity uses the configured `min` and `max` (or 0 and 100).
+- Known limits of `scale.labels`: State names need `states` in the config (options of the entity are not used). Long names or a large `scale.size` can overlap on thin bars.
+- Visual editor: default values are not stored (for the analog clock, `clock.face.ticks: true` stays out; `ticks: false` is kept). Under the form, hint lines name values the card ignores or clamps: colors it rejects, a `step` below `1e-9`, a `scale.size` above the bar thickness or below 2. A `scale.size` above the bar is set to the new thickness when `thickness` is lowered.
 - Visual editor: section "Scale" with a "Show scale" switch. Switching it off removes all scale options; switching it on again starts with the defaults.
 
 

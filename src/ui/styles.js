@@ -230,7 +230,9 @@ export function buildCss() {
 
     .sw {
       position: absolute; pointer-events: auto; box-sizing: border-box; padding: 0;
-      width: var(--slabton-switch-size, 28px); height: var(--slabton-switch-size, 28px);
+      /* 28 px, but never larger than the inside of the bar (a thin bar would otherwise be overlapped). */
+      --slabton-sw-d: var(--slabton-switch-size, max(10px, min(28px, calc(var(--slabton-thickness) - 2 * var(--slabton-border-width)))));
+      width: var(--slabton-sw-d); height: var(--slabton-sw-d);
       display: flex; align-items: center; justify-content: center;
       border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2)); border-radius: 999px;
       background: var(--card-background-color, #fff); color: var(--secondary-text-color, #727272);
@@ -238,7 +240,7 @@ export function buildCss() {
     }
     .o-h .sw { top: 50%; left: calc(var(--slabton-sw-e) * 100%); }
     .o-v .sw { left: 50%; top: calc(var(--slabton-sw-e) * 100%); }
-    .sw ha-icon { --mdc-icon-size: 16px; }
+    .sw ha-icon { --mdc-icon-size: min(16px, calc(var(--slabton-sw-d) * 0.6)); }
     .sw.active { color: var(--primary-color, #03a9f4); border-color: var(--primary-color, #03a9f4); }
 
     .unavailable .bar { opacity: 0.5; }

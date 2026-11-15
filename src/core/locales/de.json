@@ -92,5 +92,9 @@
   "editor.font_size": "Schriftgröße in px",
   "editor.color": "Farbe",
   "editor.icon_color": "Symbolfarbe",
+  "editor.hint_color": "{field}: Dieser Wert wird nicht als Farbe akzeptiert und von der Karte ignoriert.",
+  "editor.hint_step": "Schrittweite: mindestens {min}; die Karte ignoriert einen kleineren Wert.",
+  "editor.hint_scale_size": "Strichlänge ({size} px) ist größer als die Balkendicke ({thickness} px); die Karte nimmt die Standardlänge.",
+  "editor.hint_scale_size_min": "Strichlänge ({size} px) liegt unter dem Minimum von {min} px; die Karte nimmt die Standardlänge.",
   "editor.no_form": "Der visuelle Editor braucht die Formular-Komponente von Home Assistant. Nutze stattdessen den YAML-Editor."
 }
