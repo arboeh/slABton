@@ -34,6 +34,54 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("grid size with scale labels outside", () => {
+  const SENSOR = "sensor.x";
+  const sized = (thickness, placement) => create(
+    { entity: SENSOR, mode: "value", min: 0, max: 100, thickness, scale: { labels: true, ...(placement ? { labels_placement: placement } : {}) } },
+    { [SENSOR]: makeState(SENSOR, "5") },
+  ).el;
+
+  it("counts the label height: 83 still fits two rows, 84 needs a third", () => {
+    expect(sized(83, "outside").getGridOptions().rows).toBe(2);
+    expect(sized(84, "outside").getGridOptions().rows).toBe(3);
+  });
+
+  it("leaves labels inside as they were", () => {
+    expect(sized(84).getGridOptions().rows).toBe(2);
+    expect(sized(84, "inside").getGridOptions().rows).toBe(2);
+  });
+
+  it("grows the masonry card size with the same height need", () => {
+    // 120 px bar: 146 inside needs one extra unit of 50, 159 outside needs two.
+    expect(sized(120, "outside").getCardSize()).toBeGreaterThan(sized(120).getCardSize());
+  });
+});
+
+describe("grid size with scale ticks outside", () => {
+  const SENSOR = "sensor.x";
+  const sized = (thickness, scale) => create(
+    { entity: SENSOR, mode: "value", min: 0, max: 100, thickness, scale },
+    { [SENSOR]: makeState(SENSOR, "5") },
+  ).el;
+
+  it("counts the tick length: 88 still fits two rows, 89 needs a third", () => {
+    // Two rows hold 122 px (same limit as in the labels test: 26 chrome + 83 bar + 13 labels).
+    expect(sized(88, { ticks: 4, ticks_placement: "outside" }).getGridOptions().rows).toBe(2);
+    expect(sized(89, { ticks: 4, ticks_placement: "outside" }).getGridOptions().rows).toBe(3);
+    expect(sized(89, { ticks: 4 }).getGridOptions().rows).toBe(2);
+  });
+
+  it("leaves ticks inside as they were", () => {
+    expect(sized(84, { ticks: 4 }).getGridOptions().rows).toBe(2);
+    expect(sized(84, { ticks: 4, ticks_placement: "inside" }).getGridOptions().rows).toBe(2);
+  });
+
+  it("grows the card size with ticks outside", () => {
+    expect(sized(120, { ticks: 4, ticks_placement: "outside" }).getCardSize())
+      .toBeGreaterThan(sized(120, { ticks: 4 }).getCardSize());
+  });
+});
+
 describe("registration", () => {
   it("defines the elements and registers in customCards", () => {
     expect(customElements.get("slabton-card")).toBe(SlabtonCard);

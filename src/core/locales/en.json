@@ -80,6 +80,8 @@
   "editor.scale_size": "Tick length in px",
   "editor.scale_color": "Tick color",
   "editor.scale_labels": "Show labels at the ticks",
+  "editor.scale_labels_placement": "Labels inside or outside the bar",
+  "editor.scale_ticks_placement": "Ticks inside, outside the bar or hidden",
   "editor.section.clock_face": "Dial (analog)",
   "editor.clock_face_numbers": "Numbers on the dial",
   "editor.clock_face_ticks": "Tick marks on the dial",

@@ -67,6 +67,166 @@ describe("renderCard", () => {
   });
 });
 
+describe("scale labels outside the bar", () => {
+  const outside = (extra = {}, scale = {}) => setup({
+    entity: "sensor.x", mode: "value", min: 0, max: 100,
+    scale: { ticks: 4, labels: true, labels_placement: "outside", ...scale }, ...extra,
+  });
+  const texts = (shadow) => [...shadow.querySelectorAll(".scale-labels .tick-label")].map((label) => label.textContent);
+
+  it("builds a label container beside the bar and keeps the ticks in the bar", () => {
+    const { shadow } = outside();
+    const container = shadow.querySelector(".stage > .scale-labels");
+    expect(container).not.toBeNull();
+    expect(container.getAttribute("aria-hidden")).toBe("true");
+    expect(shadow.querySelectorAll(".bar .scale .tick")).toHaveLength(5);
+    expect(shadow.querySelector(".bar .tick-label")).toBeNull();
+    expect(texts(shadow)).toEqual(["0.0", "100.0"]);
+  });
+
+  it("puts the labels before the bar for start and center, after it for end", () => {
+    for (const position of ["start", "center"]) {
+      const { shadow } = outside({}, { position });
+      const stage = shadow.querySelector(".stage");
+      expect(stage.classList.contains("lbl-out")).toBe(true);
+      expect(stage.classList.contains("lbl-start")).toBe(true);
+      expect(stage.firstElementChild.classList.contains("scale-labels")).toBe(true);
+    }
+    const end = outside({}, { position: "end" }).shadow.querySelector(".stage");
+    expect(end.classList.contains("lbl-end")).toBe(true);
+    expect(end.lastElementChild.classList.contains("scale-labels")).toBe(true);
+  });
+
+  it("puts the labels on the tick track (mirrored for rtl)", () => {
+    const ltr = outside().shadow.querySelectorAll(".scale-labels .tick-label");
+    expect([...ltr].map((l) => l.style.getPropertyValue("--slabton-tick-e"))).toEqual(["0", "1"]);
+    const rtl = outside({ direction: "rtl" }).shadow.querySelectorAll(".scale-labels .tick-label");
+    expect([...rtl].map((l) => l.style.getPropertyValue("--slabton-tick-e"))).toEqual(["1", "0"]);
+  });
+
+  it("works for a vertical bar", () => {
+    const { shadow } = outside({ orientation: "vertical" }, { position: "left" });
+    expect(shadow.querySelector(".stage").classList.contains("lbl-start")).toBe(true);
+    expect(texts(shadow)).toEqual(["0.0", "100.0"]);
+  });
+
+  it("updates bound labels in the outside container", () => {
+    const { config, shadow, refs } = setup({
+      entity: "sensor.x", scale: { ticks: 4, labels: true, labels_placement: "outside" }, bar: { entity: "input_number.y" },
+    });
+    expect(refs.boundLabels.map((label) => label.bound)).toEqual(["min", "max"]);
+    const view = valueMode.view(config, makeState("sensor.x", "5"));
+    updateView(refs, config, { ...view, scaleLabels: { min: "10", max: "80" } });
+    expect(texts(shadow)).toEqual(["10", "80"]);
+  });
+
+  it("changes nothing for labels inside", () => {
+    const { shadow } = setup({ entity: "sensor.x", mode: "value", min: 0, max: 100, scale: { labels: true } });
+    expect(shadow.querySelector(".scale-labels")).toBeNull();
+    expect(shadow.querySelector(".stage").classList.contains("lbl-out")).toBe(false);
+    expect(shadow.querySelectorAll(".scale .tick-label")).toHaveLength(2);
+  });
+});
+
+describe("scale ticks outside the bar", () => {
+  const ticksOut = (extra = {}, scale = {}) => setup({
+    entity: "sensor.x", mode: "value", min: 0, max: 100,
+    scale: { ticks: 4, ticks_placement: "outside", ...scale }, ...extra,
+  });
+  const edges = (shadow) => [...shadow.querySelectorAll(".scale-ticks .tick")].map((t) => t.style.getPropertyValue("--slabton-tick-e"));
+
+  it("builds a tick container beside the bar and keeps nothing in the bar", () => {
+    const { shadow } = ticksOut();
+    const container = shadow.querySelector(".stage > .scale-ticks");
+    expect(container).not.toBeNull();
+    expect(container.getAttribute("aria-hidden")).toBe("true");
+    expect(container.querySelectorAll(".tick")).toHaveLength(5);
+    expect(shadow.querySelector(".bar .scale")).toBeNull();
+    expect(shadow.querySelector(".bar .tick")).toBeNull();
+  });
+
+  it("puts the ticks before the bar for start and center, after it for end", () => {
+    for (const position of ["start", "center"]) {
+      const stage = ticksOut({}, { position }).shadow.querySelector(".stage");
+      expect(stage.classList.contains("tk-out")).toBe(true);
+      expect(stage.classList.contains("tk-start")).toBe(true);
+      expect(stage.firstElementChild.classList.contains("scale-ticks")).toBe(true);
+    }
+    const end = ticksOut({}, { position: "end" }).shadow.querySelector(".stage");
+    expect(end.classList.contains("tk-end")).toBe(true);
+    expect(end.lastElementChild.classList.contains("scale-ticks")).toBe(true);
+  });
+
+  it("puts the ticks on the tick track (mirrored for rtl)", () => {
+    expect(edges(ticksOut().shadow)).toEqual(["0", "0.25", "0.5", "0.75", "1"]);
+    expect(edges(ticksOut({ direction: "rtl" }).shadow)).toEqual(["1", "0.75", "0.5", "0.25", "0"]);
+  });
+
+  it("works for a vertical bar", () => {
+    const { shadow } = ticksOut({ orientation: "vertical" }, { position: "left" });
+    expect(shadow.querySelector(".stage").classList.contains("tk-start")).toBe(true);
+    expect(shadow.querySelectorAll(".scale-ticks .tick")).toHaveLength(5);
+  });
+
+  it("stacks bar, ticks, labels outwards when both stand outside", () => {
+    const end = ticksOut({}, { position: "end", labels: true, labels_placement: "outside" }).shadow.querySelector(".stage");
+    expect([...end.children].map((c) => c.className.split(" ")[0])).toEqual(["bar", "scale-ticks", "scale-labels"]);
+    const start = ticksOut({}, { position: "start", labels: true, labels_placement: "outside" }).shadow.querySelector(".stage");
+    expect([...start.children].map((c) => c.className.split(" ")[0])).toEqual(["scale-labels", "scale-ticks", "bar"]);
+    expect(start.classList.contains("lbl-out") && start.classList.contains("tk-out")).toBe(true);
+  });
+
+  it("keeps labels inside in the bar next to ticks outside", () => {
+    const { shadow } = ticksOut({}, { labels: true });
+    const scale = shadow.querySelector(".bar .scale");
+    expect(scale.classList.contains("tk-out")).toBe(true);
+    expect(scale.querySelectorAll(".tick")).toHaveLength(0);
+    expect(scale.querySelectorAll(".tick-label")).toHaveLength(2);
+    expect(shadow.querySelectorAll(".scale-ticks .tick")).toHaveLength(5);
+  });
+
+  it("changes nothing for ticks inside", () => {
+    const { shadow } = setup({ entity: "sensor.x", mode: "value", min: 0, max: 100, scale: { ticks: 4 } });
+    expect(shadow.querySelector(".scale-ticks")).toBeNull();
+    expect(shadow.querySelector(".stage").classList.contains("tk-out")).toBe(false);
+    expect(shadow.querySelectorAll(".bar .scale .tick")).toHaveLength(5);
+  });
+});
+
+describe("scale without ticks (ticks_placement none)", () => {
+  const noTicks = (extra = {}, scale = {}) => setup({
+    entity: "sensor.x", mode: "value", min: 0, max: 100,
+    scale: { ticks: 4, labels: true, ticks_placement: "none", ...scale }, ...extra,
+  });
+  const labelTexts = (shadow) => [...shadow.querySelectorAll(".tick-label")].map((l) => l.textContent);
+
+  it("draws no ticks and keeps the labels in the bar", () => {
+    const { shadow } = noTicks();
+    expect(shadow.querySelector(".tick")).toBeNull();
+    expect(shadow.querySelector(".scale-ticks")).toBeNull();
+    const scale = shadow.querySelector(".bar .scale");
+    expect(scale.classList.contains("tk-out")).toBe(true);
+    expect(labelTexts(shadow)).toEqual(["0.0", "100.0"]);
+    expect(shadow.querySelector(".stage").classList.contains("tk-out")).toBe(false);
+  });
+
+  it("keeps the labels on the track of the tick positions", () => {
+    const labels = noTicks({ direction: "rtl" }).shadow.querySelectorAll(".tick-label");
+    expect([...labels].map((l) => l.style.getPropertyValue("--slabton-tick-e"))).toEqual(["1", "0"]);
+  });
+
+  it("puts the labels outside the bar without a tick container", () => {
+    const { shadow } = noTicks({}, { labels_placement: "outside" });
+    const stage = shadow.querySelector(".stage");
+    expect(shadow.querySelector(".tick")).toBeNull();
+    expect(shadow.querySelector(".bar .scale")).toBeNull();
+    expect(stage.classList.contains("lbl-out")).toBe(true);
+    expect(stage.classList.contains("tk-out")).toBe(false);
+    expect([...stage.children].map((c) => c.className.split(" ")[0])).toEqual(["bar", "scale-labels"]);
+    expect(labelTexts(shadow)).toEqual(["0.0", "100.0"]);
+  });
+});
+
 describe("scale labels that follow the bar entity", () => {
   const options = { entity: "sensor.x", scale: { ticks: 4, labels: true }, bar: { entity: "input_number.y" } };
   const texts = (shadow) => [...shadow.querySelectorAll(".tick-label")].map((label) => label.textContent);

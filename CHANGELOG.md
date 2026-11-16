@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-11-16
+
 ### Added
 
 - Unavailable or unknown entity: the handle shows a warning icon (`mdi:alert-circle-outline`, color
@@ -13,6 +15,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 - Option `allow_unavailable_actions` (default `false`): in mode `state`, tap, hold, double tap, drag and arrow keys keep
   working while the entity is unavailable. Other modes ignore it with a warning; lock stays blocked on purpose.
 - Visual editor switch for `allow_unavailable_actions` in state mode.
+- `scale.labels_placement`: `inside` (default) or `outside`. Outside, the labels stand next to the bar on the side
+  `scale.position` points to and need no minimum bar thickness.
+- `scale.ticks_placement`: `inside` (default), `outside` (ticks between bar and labels) or `none` (labels only, needs
+  `labels: true`).
+- Visual editor fields for both options; English and German texts.
+- Docs site and preview: examples with labels and ticks outside the bar.
 
 ### Changed
 
@@ -26,6 +34,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 - Sections and masonry layouts reserve rows and card size from the card's real height need (bar, handle and, vertically,
   the handle overhang along the bar), not from the handle's rounded-up excess. Cards with a thin bar and a handle slightly
   larger than the bar can get one row less; masonry cards with a large handle on a thin bar can get smaller.
+- Horizontal cards reserve height for scale labels and ticks outside the bar (label font size plus 3 px, tick length for
+  outside ticks). Vertical cards do not reserve width for them yet.
 
 ### Fixed
 

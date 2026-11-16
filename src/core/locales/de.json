@@ -80,6 +80,8 @@
   "editor.scale_size": "Strichlänge in px",
   "editor.scale_color": "Strichfarbe",
   "editor.scale_labels": "Beschriftung an den Strichen anzeigen",
+  "editor.scale_labels_placement": "Beschriftung innerhalb oder außerhalb des Balkens",
+  "editor.scale_ticks_placement": "Striche innerhalb, außerhalb des Balkens oder ausgeblendet",
   "editor.section.clock_face": "Zifferblatt (analog)",
   "editor.clock_face_numbers": "Ziffern auf dem Zifferblatt",
   "editor.clock_face_ticks": "Strichmarken auf dem Zifferblatt",

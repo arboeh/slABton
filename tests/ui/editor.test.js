@@ -5,6 +5,62 @@ if (!customElements.get("slabton-card-editor")) customElements.define("slabton-c
 
 const names = (schema) => schema.flatMap((item) => (item.schema ? names(item.schema) : [item.name]));
 
+describe("scale labels placement", () => {
+  const scaleSection = (config) => buildSchema(config).find((item) => item.name === "scale");
+
+  it("offers labels_placement with inside and outside", () => {
+    const field = scaleSection({ entity: "sensor.a" }).schema.find((item) => item.name === "labels_placement");
+    expect(field.labelKey).toBe("editor.scale_labels_placement");
+    expect(field.selector.select.options.map((o) => o.value)).toEqual(["inside", "outside"]);
+  });
+
+  it("offers ticks_placement with inside, outside and none", () => {
+    const field = scaleSection({ entity: "sensor.a" }).schema.find((item) => item.name === "ticks_placement");
+    expect(field.labelKey).toBe("editor.scale_ticks_placement");
+    expect(field.selector.select.options.map((o) => o.value)).toEqual(["inside", "outside", "none"]);
+  });
+
+  it("stores ticks_placement none", () => {
+    const el = document.createElement("slabton-card-editor");
+    el.setConfig({ entity: "sensor.a", scale: { labels: true } });
+    el._form = {};
+    const events = [];
+    el.addEventListener("config-changed", (e) => events.push(e.detail.config));
+    el._onChanged({ stopPropagation() {}, detail: { value: { entity: "sensor.a", scale: { enabled: true, labels: true, ticks_placement: "none" } } } });
+    expect(events.at(-1).scale).toEqual({ labels: true, ticks_placement: "none" });
+  });
+
+  it("stores ticks_placement outside and drops the default inside", () => {
+    const el = document.createElement("slabton-card-editor");
+    el.setConfig({ entity: "sensor.a", scale: { ticks_placement: "outside" } });
+    el._form = {};
+    const events = [];
+    el.addEventListener("config-changed", (e) => events.push(e.detail.config));
+    const change = (value) => el._onChanged({ stopPropagation() {}, detail: { value } });
+
+    change({ entity: "sensor.a", scale: { enabled: true, ticks_placement: "outside", position: "start" } });
+    expect(events.at(-1).scale).toEqual({ ticks_placement: "outside", position: "start" });
+
+    change({ entity: "sensor.a", scale: { enabled: true, ticks_placement: "inside", position: "start" } });
+    expect(events.at(-1).scale).toEqual({ position: "start" });
+  });
+
+  it("stores outside, drops the default inside and survives an orientation change", () => {
+    const el = document.createElement("slabton-card-editor");
+    el.setConfig({ entity: "sensor.a", scale: { labels: true, labels_placement: "outside", position: "top" } });
+    el._form = {}; // ha-form is not defined in jsdom; the handler only writes data and schema to it
+    const events = [];
+    el.addEventListener("config-changed", (e) => events.push(e.detail.config));
+    const change = (value) => el._onChanged({ stopPropagation() {}, detail: { value } });
+
+    change({ entity: "sensor.a", orientation: "vertical", scale: { enabled: true, labels: true, labels_placement: "outside", position: "top" } });
+    expect(events.at(-1).scale).toEqual({ labels: true, labels_placement: "outside", position: "left" });
+
+    change({ entity: "sensor.a", orientation: "vertical", scale: { enabled: true, labels: true, labels_placement: "inside", position: "left" } });
+    expect(events.at(-1).scale).toEqual({ labels: true, position: "left" });
+  });
+});
+
 describe("buildSchema", () => {
   it("always offers the common fields", () => {
     const n = names(buildSchema({ entity: "input_select.a" }));
@@ -141,7 +197,7 @@ describe("buildSchema", () => {
     for (const config of [{ entity: "switch.a" }, { entity: "lock.a" }, { entity: "sensor.a" }, { entity: "timer.a" }, { mode: "clock" }]) {
       const scale = buildSchema(config).find((item) => item.name === "scale");
       expect(scale.type).toBe("expandable");
-      expect(scale.schema.map((f) => f.name)).toEqual(["enabled", "ticks", "position", "size", "color", "labels"]);
+      expect(scale.schema.map((f) => f.name)).toEqual(["enabled", "ticks", "ticks_placement", "position", "size", "color", "labels", "labels_placement"]);
     }
   });
 
@@ -339,15 +395,15 @@ describe("SlabtonCardEditor", () => {
     expect(labelsOf("en")).toEqual({
       section: "Scale",
       fields: [
-        "Show scale", "Segments (ticks = segments + 1)", "Position across the bar", "Tick length in px", "Tick color",
-        "Show labels at the ticks",
+        "Show scale", "Segments (ticks = segments + 1)", "Ticks inside, outside the bar or hidden", "Position across the bar", "Tick length in px", "Tick color",
+        "Show labels at the ticks", "Labels inside or outside the bar",
       ],
     });
     expect(labelsOf("de")).toEqual({
       section: "Skala",
       fields: [
-        "Skala anzeigen", "Segmente (Striche = Segmente + 1)", "Position quer zum Balken", "Strichlänge in px", "Strichfarbe",
-        "Beschriftung an den Strichen anzeigen",
+        "Skala anzeigen", "Segmente (Striche = Segmente + 1)", "Striche innerhalb, außerhalb des Balkens oder ausgeblendet", "Position quer zum Balken", "Strichlänge in px", "Strichfarbe",
+        "Beschriftung an den Strichen anzeigen", "Beschriftung innerhalb oder außerhalb des Balkens",
       ],
     });
   });

@@ -91,7 +91,7 @@ text:
 ![Skala mit Beschriftung](assets/shots/value-scale-light.png#only-light)
 ![Skala mit Beschriftung](assets/shots/value-scale-dark.png#only-dark)
 
-Striche entlang der Bar, unter dem Griff gezeichnet. Ohne `scale:` wird nichts gezeichnet.
+Striche und Beschriftung, unter dem Griff gezeichnet. Striche und Beschriftung können jeweils innen oder außerhalb der Bar stehen, unabhängig voneinander. Ohne `scale:` wird nichts gezeichnet.
 
 ```yaml
 type: custom:slabton-card
@@ -110,7 +110,9 @@ scale:
 | `position` | `bottom` (vertikal: `right`) | Rand quer zur Bar: `top` / `bottom` (horizontal) oder `left` / `right` (vertikal). `start`, `center`, `end` gehen auch: `start` ist oben bzw. links, `end` unten bzw. rechts |
 | `size` | 8 px | Strichlänge in px, 2 bis zur Bar-Dicke `thickness` |
 | `color` | Textfarbe mit 45 % | Jede CSS-Farbe, die `styles:` akzeptiert |
-| `labels` | `false` | Beschriftung an den Strichen. Uhr: Stunden 0, 6, 12, 18, 24. Wert und Zähler: Minimum und Maximum, nur bei festem Bereich (`min` und `max`, bzw. `counter`) oder bei eigenem `bar.entity` der Domain `input_number` / `number` (dessen Attribute `min` / `max`). Zustand: Namen der konfigurierten `states` (mindestens zwei). Mindestens 28 px Bar-Dicke; sonst keine Beschriftung, mit Warnung |
+| `ticks_placement` | `inside` | `inside`: Striche in der Bar. `outside`: Striche zwischen Bar und Beschriftung, auf der Seite, auf die `position` zeigt; Länge `size`. `none`: keine Striche, nur die Beschriftung, auf der Spur, die die Striche gehabt hätten. `none` braucht `labels: true`, sonst wird es mit Warnung ignoriert |
+| `labels` | `false` | Beschriftung an den Strichen. Uhr: Stunden 0, 6, 12, 18, 24. Wert und Zähler: Minimum und Maximum, nur bei festem Bereich (`min` und `max`, bzw. `counter`) oder bei eigenem `bar.entity` der Domain `input_number` / `number` (dessen Attribute `min` / `max`). Zustand: Namen der konfigurierten `states` (mindestens zwei). Innen in der Bar: mindestens 28 px Bar-Dicke, sonst keine Beschriftung, mit Warnung |
+| `labels_placement` | `inside` | `inside`: Beschriftung in der Bar neben den Strichen. `outside`: Beschriftung neben der Bar, auf der Seite, auf die `position` zeigt (oben bzw. links bei `start` und `center`, unten bzw. rechts bei `end`); ohne Mindestdicke. Braucht `labels: true`, sonst wird es mit Warnung ignoriert |
 
 - `scale: true` übernimmt alle Standardwerte. `scale: false` oder fehlender Block: aus.
 - Die Striche liegen auf dem Laufweg des Griffs: der Strich für Wert i/ticks steht genau unter dem Griff bei diesem Wert. `direction: rtl` spiegelt sie.
@@ -119,7 +121,12 @@ scale:
 - Der Schlüssel `enabled` existiert nur als Schalter im Editor. In YAML wird er gewarnt und ignoriert.
 - Noch nicht enthalten: Stunden- und Minutenzeiger auf der Skala. Folgen in späteren Versionen. Die Zeiger der Analoguhr liegen im Griff (`clock.display: analog`).
 - Mit eigenem `bar.entity` folgen die Labels diesem Entity, nicht dem Haupt-Entity: Ein `input_number` / `number` ohne `min` und `max` in der Konfiguration zeigt seinen Attributbereich und aktualisiert sich bei Änderungen der Attribute; solange das Entity nicht verfügbar ist, behalten die Labels ihren letzten Text. Jedes andere Bar-Entity nutzt die konfigurierten `min` und `max` (oder 0 und 100).
-- Bekannte Grenzen von `scale.labels`: Zustandsnamen brauchen `states` in der Konfiguration (Optionen des Entities werden nicht genutzt). Lange Namen oder ein großes `scale.size` können sich auf dünnen Bars überlappen.
+- Reihenfolge von der Bar nach außen: Bar, Striche, Beschriftung. Sind Striche außen und die Beschriftung innen, steht die Beschriftung in der Bar auf der Seite der Striche, ohne Striche in der Bar.
+- `position: center` setzt außen liegende Striche und Beschriftung auf die Startseite (oben bzw. links), da die Mitte der Bar keine Außenseite hat.
+- Der Abstand zwischen Bar und außen liegender Beschriftung folgt dem Griff-Überstand, plus 3 px. Waagerechte Karten reservieren dafür Höhe (Schriftgröße der Beschriftung plus 3 px, bei außen liegenden Strichen zusätzlich `size`). Senkrechte Karten reservieren dafür noch keine Breite; das Ergebnis im Dashboard prüfen.
+- Beschriftung am ersten und letzten Strich ist darauf zentriert und kann über den Kartenrand ragen. Die Größe aus `styles:` (`--slabton-scale-label-size`) zählt nicht in die Kartenhöhe; mit `text.scale.font_size` setzen.
+- Bekannte Grenzen von `scale.labels`: Zustandsnamen brauchen `states` in der Konfiguration (Optionen des Entities werden nicht genutzt). Innen in der Bar können lange Namen oder ein großes `scale.size` auf dünnen Bars überlappen; außen liegende Beschriftung vermeidet das.
+- Visueller Editor: Felder `ticks_placement` und `labels_placement` (`inside` wird nicht gespeichert).
 - Visueller Editor: Standardwerte werden nicht gespeichert (bei der Analoguhr bleibt `clock.face.ticks: true` draußen; `ticks: false` bleibt erhalten). Unter dem Formular nennen Hinweiszeilen Werte, die die Karte ignoriert oder begrenzt: abgelehnte Farben, ein `step` unter `1e-9`, ein `scale.size` über der Bar-Dicke oder unter 2. Ein `scale.size` über der Bar wird auf die neue Dicke gesetzt, wenn `thickness` verkleinert wird.
 - Visueller Editor: Abschnitt „Skala“ mit Schalter „Skala anzeigen“. Ausschalten entfernt alle Skala-Optionen; Einschalten startet mit den Standardwerten.
 

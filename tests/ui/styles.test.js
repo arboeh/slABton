@@ -24,6 +24,128 @@ describe("cardHeightPx", () => {
   });
 });
 
+describe("cardHeightPx with scale labels outside", () => {
+  const outside = (extra = {}, scale = {}) => cfg({
+    entity: "sensor.x", mode: "value", min: 0, max: 100,
+    scale: { ticks: 4, labels: true, labels_placement: "outside", ...scale }, ...extra,
+  });
+
+  it("adds the label font size plus the gap (horizontal)", () => {
+    expect(cardHeightPx(outside({ thickness: 48, handle_size: 40 }))).toBe(87);
+    expect(cardHeightPx(outside({ thickness: 14, handle_size: 20 }))).toBe(59);
+    expect(cardHeightPx(outside({ thickness: 18, handle_size: 70 }))).toBe(109);
+  });
+
+  it("follows text.scale.font_size", () => {
+    expect(cardHeightPx(outside({ text: { scale: { font_size: 14 } } }))).toBe(91);
+  });
+
+  it("adds nothing for labels inside, without labels or in a vertical bar", () => {
+    const inside = cfg({ entity: "sensor.x", mode: "value", min: 0, max: 100, scale: { labels: true } });
+    expect(cardHeightPx(inside)).toBe(74);
+    expect(cardHeightPx(cfg({ entity: "sensor.x", mode: "value", scale: { ticks: 4 } }))).toBe(74);
+    expect(cardHeightPx(outside({ orientation: "vertical" }))).toBe(186);
+  });
+});
+
+describe("scale labels outside (css)", () => {
+  const css = buildCss();
+
+  it("keeps the gap to the bar at the handle's excess plus the label gap", () => {
+    expect(css).toContain("calc(var(--slabton-cross-extra, 0px) + 3px)");
+  });
+
+  it("takes the tick track as the margin of the label container", () => {
+    expect(css).toContain("calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2)");
+  });
+
+  it("frees the stage padding on the label side", () => {
+    expect(css).toContain(".o-h .stage.lbl-start { padding-top: 0; }");
+    expect(css).toContain(".o-h .stage.lbl-end { padding-bottom: 0; }");
+    expect(css).toContain(".o-v .stage.lbl-start { padding-left: 0; }");
+    expect(css).toContain(".o-v .stage.lbl-end { padding-right: 0; }");
+  });
+});
+
+describe("cardHeightPx with scale ticks outside", () => {
+  const ticksOut = (extra = {}, scale = {}) => cfg({
+    entity: "sensor.x", mode: "value", min: 0, max: 100,
+    scale: { ticks: 4, ticks_placement: "outside", ...scale }, ...extra,
+  });
+
+  it("adds the tick length (default 8, or scale.size) horizontally", () => {
+    expect(cardHeightPx(ticksOut({ thickness: 48, handle_size: 40 }))).toBe(82);
+    expect(cardHeightPx(ticksOut({ thickness: 14, handle_size: 20 }))).toBe(54);
+    expect(cardHeightPx(ticksOut({ thickness: 48, handle_size: 40 }, { size: 6 }))).toBe(80);
+  });
+
+  it("adds ticks and labels when both stand outside", () => {
+    expect(cardHeightPx(ticksOut({ thickness: 48, handle_size: 40 }, { labels: true, labels_placement: "outside" }))).toBe(95);
+    expect(cardHeightPx(ticksOut({ thickness: 14, handle_size: 20 }, { labels: true, labels_placement: "outside" }))).toBe(67);
+  });
+
+  it("adds only the ticks for ticks outside with labels inside", () => {
+    expect(cardHeightPx(ticksOut({ thickness: 48, handle_size: 40 }, { labels: true }))).toBe(82);
+  });
+
+  it("adds no tick length for none, only the labels outside", () => {
+    const none = (scale) => cfg({
+      entity: "sensor.x", mode: "value", min: 0, max: 100,
+      scale: { ticks: 4, labels: true, ticks_placement: "none", ...scale },
+    });
+    expect(cardHeightPx(none({}))).toBe(74);
+    expect(cardHeightPx(none({ labels_placement: "outside" }))).toBe(87);
+  });
+
+  it("adds nothing for ticks inside or in a vertical bar", () => {
+    expect(cardHeightPx(cfg({ entity: "sensor.x", mode: "value", scale: { ticks: 4 } }))).toBe(74);
+    expect(cardHeightPx(ticksOut({ orientation: "vertical" }))).toBe(186);
+  });
+});
+
+describe("scale ticks outside (css)", () => {
+  const css = buildCss();
+
+  it("lays the stage out as a grid for ticks outside too", () => {
+    expect(css).toContain(".stage.tk-out");
+  });
+
+  it("frees the stage padding on the tick side", () => {
+    expect(css).toContain(".o-h .stage.tk-start { padding-top: 0; }");
+    expect(css).toContain(".o-h .stage.tk-end { padding-bottom: 0; }");
+    expect(css).toContain(".o-v .stage.tk-start { padding-left: 0; }");
+    expect(css).toContain(".o-v .stage.tk-end { padding-right: 0; }");
+  });
+
+  it("takes the tick track as the margin of the tick container and the tick length as its size", () => {
+    expect(css).toContain(".o-h .scale-ticks { margin-inline: calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2);");
+    expect(css).toContain("height: var(--slabton-scale-size, 8px)");
+    expect(css).toContain("width: var(--slabton-scale-size, 8px)");
+  });
+
+  it("keeps the gap from the bar to the ticks at the handle's excess", () => {
+    expect(css).toContain(".o-h .scale-ticks.tk-start { margin-bottom: var(--slabton-cross-extra, 0px); }");
+    expect(css).toContain(".o-h .scale-ticks.tk-end { margin-top: var(--slabton-cross-extra, 0px); }");
+  });
+
+  it("puts labels inside next to the edge when the ticks are outside", () => {
+    expect(css).toContain(".o-h .scale.tk-out.sc-start .tick-label { top: 3px; }");
+    expect(css).toContain(".o-h .scale.tk-out.sc-end .tick-label { bottom: 3px; }");
+  });
+});
+
+describe("vertical info above scale outside the bar (css)", () => {
+  const css = buildCss();
+
+  it("keeps the info in its own row and puts ticks, labels and bar into the row below", () => {
+    expect(css).toContain(".o-v .stage.has-info.lbl-out, .o-v .stage.has-info.tk-out { grid-template-rows: auto var(--slabton-length); gap: 0; row-gap: 6px; align-items: stretch; }");
+    // `.o-v .stage.has-info` centres the items; the tick and label containers need the full row height, because
+    // their percentage `top` resolves against it (centred, the ticks collapse into one).
+    expect(css).toContain("> .info { grid-row: 1; grid-column: 1 / span 3; justify-self: center; }");
+    expect(css).toContain("> :not(.info) { grid-row: 2; }");
+  });
+});
+
 describe("handleOverhang", () => {
   it("is the larger of half the handle length (with handle_overhang) and its excess over the bar", () => {
     expect(handleOverhang(cfg({ thickness: 48, handle_size: 40 }))).toBe(0);

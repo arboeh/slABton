@@ -29,11 +29,41 @@ function switchesHtml(config) {
   return `<div class="switches">${buttons}</div>`;
 }
 
-/** Tick container of the `scale:` block; the tick positions are set after rendering (see `placeTicks`). */
+/** True when the scale's ticks stand outside the bar (`ticks_placement` is "outside"). */
+const ticksOutside = (config) => config.scale?.ticksPlacement === "outside";
+
+/** True when the scale's labels stand outside the bar (they exist and `labels_placement` is "outside"). */
+const labelsOutside = (config) => Boolean(config.scale?.labels?.length) && config.scale.labelsPlacement === "outside";
+
+/** Side of the ticks and labels outside: the side `scale.position` points to; centred scales use the start side. */
+const outsideSide = (config) => (config.scale.position === "end" ? "end" : "start");
+
+/**
+ * Container of the `scale:` block in the bar; the tick positions are set after rendering (see `placeTicks`).
+ * Ticks outside or hidden leave it without ticks; it stays only as the home of labels inside, otherwise it is not
+ * rendered.
+ */
 function scaleHtml(config) {
   if (!config.scale) return "";
+  const position = `sc-${config.scale.position}`;
+  if (config.scale.ticksPlacement !== "inside") {
+    const labelsInside = config.scale.labels?.length && !labelsOutside(config);
+    return labelsInside ? `<div class="scale ${position} tk-out" aria-hidden="true"></div>` : "";
+  }
   const ticks = '<span class="tick"></span>'.repeat(config.scale.ticks + 1);
-  return `<div class="scale sc-${config.scale.position}" aria-hidden="true">${ticks}</div>`;
+  return `<div class="scale ${position}" aria-hidden="true">${ticks}</div>`;
+}
+
+/** Container of the ticks outside the bar (beside it, between bar and labels). */
+function outsideTicksHtml(config) {
+  if (!ticksOutside(config)) return "";
+  const ticks = '<span class="tick"></span>'.repeat(config.scale.ticks + 1);
+  return `<div class="scale-ticks tk-${outsideSide(config)}" aria-hidden="true">${ticks}</div>`;
+}
+
+/** Container of the labels outside the bar; the labels are added after rendering (see `placeLabels`). */
+function outsideLabelsHtml(config) {
+  return labelsOutside(config) ? `<div class="scale-labels lbl-${outsideSide(config)}" aria-hidden="true"></div>` : "";
 }
 
 /** Tick positions are rounded to four decimals: far below a pixel on any bar. */
@@ -49,17 +79,18 @@ function tickEdge(config, index) {
 /** Put every tick at its share of the handle-centre travel, mirrored like the handle itself. */
 function placeTicks(shadow, config) {
   if (!config.scale) return;
-  shadow.querySelectorAll(".scale .tick").forEach((tick, i) => {
+  shadow.querySelectorAll(".scale .tick, .scale-ticks .tick").forEach((tick, i) => {
     tick.style.setProperty("--slabton-tick-e", tickEdge(config, i));
   });
 }
 
 /**
- * Add the tick labels (`scale.labels`): plain text, on the same track as the ticks.
+ * Add the tick labels (`scale.labels`): plain text, on the same track as the ticks (in the scale, or in the
+ * container beside the bar for labels outside).
  * @returns {{bound: string, el: HTMLElement}[]} the labels whose text follows the bar entity's range (see `updateView`)
  */
 function placeLabels(shadow, config) {
-  const scale = shadow.querySelector(".scale");
+  const scale = shadow.querySelector(labelsOutside(config) ? ".scale-labels" : ".scale");
   const labels = config.scale?.labels;
   const bound = [];
   if (!scale || !labels?.length) return bound;
@@ -162,13 +193,21 @@ export function renderCard(shadow, config, css) {
   const hasInfo = config.mode === MODE.TIMER && Boolean(config.timer.info);
   const info = hasInfo ? '<div class="info" hidden></div>' : "";
   const barText = config.bar_text ? '<div class="bar-text" hidden></div>' : "";
+  // Outwards from the bar: ticks, then labels, on the side `scale.position` points to.
+  const outsideLabels = outsideLabelsHtml(config);
+  const outsideTicks = outsideTicksHtml(config);
+  const side = outsideLabels || outsideTicks ? outsideSide(config) : "";
+  const stageClass = `stage${hasInfo ? " has-info" : ""}${outsideLabels ? ` lbl-out lbl-${side}` : ""}${outsideTicks ? ` tk-out tk-${side}` : ""}`;
+  const outsideBefore = side === "start" ? outsideLabels + outsideTicks : "";
+  const outsideAfter = side === "end" ? outsideTicks + outsideLabels : "";
   shadow.innerHTML = `
     <style>${css}</style>
     <ha-card>
       <div class="${rootClasses(config)}">
         ${top}
-        <div class="stage${hasInfo ? " has-info" : ""}">
+        <div class="${stageClass}">
           ${horizontal ? "" : info}
+          ${outsideBefore}
           <div class="bar">
             <div class="fill-clip"><div class="fill"></div></div>
             ${scaleHtml(config)}
@@ -181,6 +220,7 @@ export function renderCard(shadow, config, css) {
               </div>
             </div></div>
           </div>
+          ${outsideAfter}
         </div>
         ${bottom}
       </div>

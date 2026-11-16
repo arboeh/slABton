@@ -12,7 +12,7 @@ import {
 } from "../core/config.js";
 import {
   ANIMATIONS, DEFAULT_FACE_TICKS, MAX_FONT_SIZE, MAX_SCALE_TICKS, MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS,
-  MIN_STEP, MIN_THICKNESS, MODE, MODES, SCALE_ALIASES, TEXT_AREAS, TEXT_OPTIONS, VALUE_SETTABLE_DOMAINS, scalePositionsFor,
+  MIN_STEP, MIN_THICKNESS, MODE, MODES, SCALE_ALIASES, SCALE_LABEL_PLACEMENTS, DEFAULT_SCALE_LABEL_PLACEMENT, SCALE_TICK_PLACEMENTS, DEFAULT_SCALE_TICK_PLACEMENT, TEXT_AREAS, TEXT_OPTIONS, VALUE_SETTABLE_DOMAINS, scalePositionsFor,
 } from "../core/constants.js";
 import { DEFAULT_LANGUAGE, hasTranslation, resolveLanguage, t } from "../core/i18n.js";
 import { isPlainObject, safeCss, toNumber, warn } from "../core/util.js";
@@ -162,10 +162,12 @@ function scaleFields(config) {
   return [
     { name: "enabled", labelKey: "editor.scale_enabled", selector: bool() },
     { name: "ticks", labelKey: "editor.scale_ticks", selector: number(MIN_SCALE_TICKS, MAX_SCALE_TICKS) },
+    { name: "ticks_placement", labelKey: "editor.scale_ticks_placement", selector: select(SCALE_TICK_PLACEMENTS) },
     { name: "position", labelKey: "editor.scale_position", selector: select(scalePositionsFor(config.orientation)) },
     { name: "size", labelKey: "editor.scale_size", selector: number(MIN_SCALE_SIZE, thicknessOf(config)) },
     { name: "color", labelKey: "editor.scale_color", selector: text() },
     { name: "labels", labelKey: "editor.scale_labels", selector: bool() },
+    { name: "labels_placement", labelKey: "editor.scale_labels_placement", selector: select(SCALE_LABEL_PLACEMENTS) },
   ];
 }
 
@@ -276,6 +278,14 @@ function withoutUnusedFace(config) {
 /** Copy of `map` without `key`. */
 const omit = (map, key) => Object.fromEntries(Object.entries(map).filter(([name]) => name !== key));
 
+/** The scale fields without a placement that equals its default (copy; the input stays as it is). */
+function dropDefaultPlacements(fields) {
+  const kept = { ...fields };
+  if (kept.labels_placement === DEFAULT_SCALE_LABEL_PLACEMENT) delete kept.labels_placement;
+  if (kept.ticks_placement === DEFAULT_SCALE_TICK_PLACEMENT) delete kept.ticks_placement;
+  return kept;
+}
+
 /**
  * Scale to store after a form change: the option map, `true` (defaults) or undefined (off).
  * A scale that was on stays on when its last option is cleared; setting an option switches it on.
@@ -285,7 +295,8 @@ function resolveScale(formScale, previous) {
   if (!isPlainObject(formScale)) return undefined;
   const { enabled, ...fields } = formScale;
   if (enabled === false) return undefined;
-  const options = pruneCleared(fields);
+  // The editor stores no default: `labels_placement: inside` and `ticks_placement: inside` go.
+  const options = pruneCleared(dropDefaultPlacements(fields));
   if (Object.keys(options).length > 0) return options;
   const wasOn = previous !== undefined && previous !== null && previous !== false;
   return enabled === true || wasOn ? true : undefined;

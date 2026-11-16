@@ -5,6 +5,133 @@ afterEach(() => vi.restoreAllMocks());
 
 const base = { type: "custom:slabton-card", entity: "input_select.mode" };
 
+describe("scale.labels_placement", () => {
+  const valueBase = { ...base, entity: "sensor.x", mode: "value", min: 0, max: 100 };
+  const scaleOf = (scale, extra = {}) => normalizeConfig({ ...valueBase, ...extra, scale }).scale;
+  const warnSpy = () => vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  it("defaults to inside", () => {
+    expect(scaleOf({ labels: true }).labelsPlacement).toBe("inside");
+    expect(scaleOf(true).labelsPlacement).toBe("inside");
+  });
+
+  it("accepts outside together with labels, without a warning", () => {
+    const warn = warnSpy();
+    const scale = scaleOf({ labels: true, labels_placement: "outside" });
+    expect(scale.labelsPlacement).toBe("outside");
+    expect(scale.labels).toHaveLength(2);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("warns about an invalid value and falls back to inside", () => {
+    const warn = warnSpy();
+    expect(scaleOf({ labels: true, labels_placement: "sideways" }).labelsPlacement).toBe("inside");
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain("scale.labels_placement");
+  });
+
+  it("warns and stays inside when outside has no labels to place", () => {
+    const warn = warnSpy();
+    expect(scaleOf({ labels_placement: "outside" }).labelsPlacement).toBe("inside");
+    expect(scaleOf({ labels: false, labels_placement: "outside" }).labelsPlacement).toBe("inside");
+    expect(warn).toHaveBeenCalledTimes(2);
+  });
+
+  it("drops the minimum bar thickness for labels outside", () => {
+    warnSpy();
+    expect(scaleOf({ labels: true }, { thickness: 14 }).labels).toBeNull();
+    const outside = scaleOf({ labels: true, labels_placement: "outside" }, { thickness: 14 });
+    expect(outside.labels).toHaveLength(2);
+    expect(outside.labelsPlacement).toBe("outside");
+  });
+
+  it("is not a reason for an unknown-option warning", () => {
+    const warn = warnSpy();
+    scaleOf({ labels: true, labels_placement: "outside" });
+    expect(warn.mock.calls.flat().join(" ")).not.toContain("not a known option");
+  });
+});
+
+describe("scale.ticks_placement", () => {
+  const valueBase = { ...base, entity: "sensor.x", mode: "value", min: 0, max: 100 };
+  const scaleOf = (scale, extra = {}) => normalizeConfig({ ...valueBase, ...extra, scale }).scale;
+  const warnSpy = () => vi.spyOn(console, "warn").mockImplementation(() => {});
+
+  it("defaults to inside", () => {
+    expect(scaleOf(true).ticksPlacement).toBe("inside");
+    expect(scaleOf({ ticks: 4 }).ticksPlacement).toBe("inside");
+  });
+
+  it("accepts outside without a warning, with and without labels", () => {
+    const warn = warnSpy();
+    expect(scaleOf({ ticks_placement: "outside" }).ticksPlacement).toBe("outside");
+    const both = scaleOf({ labels: true, ticks_placement: "outside", labels_placement: "outside" });
+    expect(both.ticksPlacement).toBe("outside");
+    expect(both.labelsPlacement).toBe("outside");
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("keeps the two placements independent", () => {
+    warnSpy();
+    const ticksOnly = scaleOf({ labels: true, ticks_placement: "outside" });
+    expect(ticksOnly.ticksPlacement).toBe("outside");
+    expect(ticksOnly.labelsPlacement).toBe("inside");
+    const labelsOnly = scaleOf({ labels: true, labels_placement: "outside" });
+    expect(labelsOnly.ticksPlacement).toBe("inside");
+    expect(labelsOnly.labelsPlacement).toBe("outside");
+  });
+
+  it("warns about an invalid value and falls back to inside", () => {
+    const warn = warnSpy();
+    expect(scaleOf({ ticks_placement: "sideways" }).ticksPlacement).toBe("inside");
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain("scale.ticks_placement");
+  });
+
+  it("is not a reason for an unknown-option warning", () => {
+    const warn = warnSpy();
+    scaleOf({ ticks_placement: "outside" });
+    expect(warn.mock.calls.flat().join(" ")).not.toContain("not a known option");
+  });
+
+  it("accepts none together with labels, without a warning", () => {
+    const warn = warnSpy();
+    const scale = scaleOf({ labels: true, ticks_placement: "none" });
+    expect(scale.ticksPlacement).toBe("none");
+    expect(scale.labels).toHaveLength(2);
+    expect(scale.ticks).toBe(10);
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("warns and stays inside when none has no labels to show", () => {
+    const warn = warnSpy();
+    expect(scaleOf({ ticks_placement: "none" }).ticksPlacement).toBe("inside");
+    expect(scaleOf({ labels: false, ticks_placement: "none" }).ticksPlacement).toBe("inside");
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls[0][0]).toContain("scale.ticks_placement");
+  });
+
+  it("gives one warning only when the labels were requested but rejected", () => {
+    const warn = warnSpy();
+    expect(scaleOf({ labels: true, ticks_placement: "none" }, { thickness: 14 }).ticksPlacement).toBe("inside");
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(warn.mock.calls[0][0]).toContain("scale.labels");
+  });
+
+  it("keeps none for labels outside on a thin bar", () => {
+    const warn = warnSpy();
+    const scale = scaleOf({ labels: true, ticks_placement: "none", labels_placement: "outside" }, { thickness: 14 });
+    expect(scale.ticksPlacement).toBe("none");
+    expect(scale.labelsPlacement).toBe("outside");
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("keeps the minimum bar thickness for labels inside next to ticks outside", () => {
+    warnSpy();
+    expect(scaleOf({ labels: true, ticks_placement: "outside" }, { thickness: 14 }).labels).toBeNull();
+  });
+});
+
 describe("normalizeConfig defaults", () => {
   it("resolves a minimal config", () => {
     const c = normalizeConfig(base);
@@ -485,14 +612,14 @@ describe("scale block", () => {
   });
 
   it("uses defaults for scale: true and an empty map", () => {
-    const expected = { ticks: 10, position: "end", size: null, color: null, labels: null };
+    const expected = { ticks: 10, position: "end", size: null, color: null, labels: null, labelsPlacement: "inside", ticksPlacement: "inside" };
     expect(scaleOf({}, true)).toEqual(expected);
     expect(scaleOf({}, {})).toEqual(expected);
   });
 
   it("keeps valid values", () => {
     expect(scaleOf({}, { ticks: 4, position: "center", size: 6, color: "#888" })).toEqual({
-      ticks: 4, position: "center", size: 6, color: "#888", labels: null,
+      ticks: 4, position: "center", size: 6, color: "#888", labels: null, labelsPlacement: "inside", ticksPlacement: "inside",
     });
     expect(scaleOf({}, { ticks: "20", size: "5" })).toMatchObject({ ticks: 20, size: 5 });
   });
@@ -548,7 +675,7 @@ describe("scale block", () => {
   it("does not warn about an empty position, ticks, size or color", () => {
     const warn = quiet();
     expect(scaleOf({}, { position: "", ticks: "", size: null, color: "", labels: "" })).toEqual({
-      ticks: 10, position: "end", size: null, color: null, labels: null,
+      ticks: 10, position: "end", size: null, color: null, labels: null, labelsPlacement: "inside", ticksPlacement: "inside",
     });
     expect(warn).not.toHaveBeenCalled();
   });
@@ -602,7 +729,7 @@ describe("scale block", () => {
   it("warns about unknown options and ignores them", () => {
     const warn = quiet();
     const scale = scaleOf({}, { ticks: 5, glow: true });
-    expect(scale).toEqual({ ticks: 5, position: "end", size: null, color: null, labels: null });
+    expect(scale).toEqual({ ticks: 5, position: "end", size: null, color: null, labels: null, labelsPlacement: "inside", ticksPlacement: "inside" });
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/scale\.glow/));
   });
 });

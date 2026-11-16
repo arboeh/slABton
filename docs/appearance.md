@@ -91,7 +91,7 @@ text:
 ![scale with labels](assets/shots/value-scale-light.png#only-light)
 ![scale with labels](assets/shots/value-scale-dark.png#only-dark)
 
-Tick marks across the bar, drawn under the handle. Without `scale:` nothing is drawn.
+Tick marks and labels, drawn under the handle. Ticks and labels each sit inside the bar or outside it, independent of each other. Without `scale:` nothing is drawn.
 
 ```yaml
 type: custom:slabton-card
@@ -110,7 +110,9 @@ scale:
 | `position` | `bottom` (vertical: `right`) | Edge across the bar: `top` / `bottom` (horizontal) or `left` / `right` (vertical). `start`, `center`, `end` also work: `start` is top or left, `end` bottom or right |
 | `size` | 8 px | Tick length in px, 2 up to the bar `thickness` |
 | `color` | text color at 45 % | Any CSS color that `styles:` accepts |
-| `labels` | `false` | Labels at the ticks. Clock: hours 0, 6, 12, 18, 24. Value and counter: minimum and maximum, only with a fixed range (`min` and `max`, or `counter`) or with a separate `bar.entity` of the domain `input_number` / `number` (its `min` / `max` attributes). State: names of the configured `states` (at least two). Needs a bar thickness of 28 px; otherwise no labels, with a warning |
+| `ticks_placement` | `inside` | `inside`: ticks in the bar. `outside`: ticks between the bar and the labels, on the side `position` points to; length `size`. `none`: no ticks, only labels, on the track the ticks would have had. `none` needs `labels: true`, otherwise ignored with a warning |
+| `labels` | `false` | Labels at the ticks. Clock: hours 0, 6, 12, 18, 24. Value and counter: minimum and maximum, only with a fixed range (`min` and `max`, or `counter`) or with a separate `bar.entity` of the domain `input_number` / `number` (its `min` / `max` attributes). State: names of the configured `states` (at least two). Inside the bar: needs a bar thickness of 28 px, otherwise no labels, with a warning |
+| `labels_placement` | `inside` | `inside`: labels in the bar next to the ticks. `outside`: labels next to the bar, on the side `position` points to (top or left for `start` and `center`, bottom or right for `end`); no minimum thickness. Needs `labels: true`, otherwise ignored with a warning |
 
 - `scale: true` takes all defaults. `scale: false` or a missing block means off.
 - Ticks sit on the handle's travel: the tick for value i/ticks is exactly under the handle at that value. `direction: rtl` mirrors them.
@@ -119,7 +121,12 @@ scale:
 - The key `enabled` exists only as the editor switch. In YAML it is warned about and ignored.
 - Not drawn yet: hour / minute hands on the scale. Planned for later releases. The analog clock's hands sit in the handle (`clock.display: analog`).
 - With a separate `bar.entity` the labels follow that entity, not the main entity: an `input_number` / `number` without `min` and `max` in the config shows its attribute range and updates when the attributes change; while the entity is unavailable the labels keep their last text. Any other bar entity uses the configured `min` and `max` (or 0 and 100).
-- Known limits of `scale.labels`: State names need `states` in the config (options of the entity are not used). Long names or a large `scale.size` can overlap on thin bars.
+- Order from the bar outwards: bar, ticks, labels. With ticks outside and labels inside, the labels sit in the bar on the side of the ticks, without tick marks in the bar.
+- `position: center` puts outside ticks and labels on the start side (top or left), because the middle of the bar has no outside.
+- The gap between the bar and outside labels follows the handle overhang, plus 3 px. Horizontal cards reserve height for the label font size (plus 3 px) and, for outside ticks, `size`. Vertical cards do not reserve width for them yet; check the result on the dashboard.
+- Labels at the first and last tick are centered on it and can run past the edge of the card. The size from `styles:` (`--slabton-scale-label-size`) is not counted in the card height; set it with `text.scale.font_size`.
+- Known limits of `scale.labels`: State names need `states` in the config (options of the entity are not used). With labels inside, long names or a large `scale.size` can overlap on thin bars; labels outside avoid that.
+- Visual editor: fields `ticks_placement` and `labels_placement` (`inside` is not stored).
 - Visual editor: default values are not stored (for the analog clock, `clock.face.ticks: true` stays out; `ticks: false` is kept). Under the form, hint lines name values the card ignores or clamps: colors it rejects, a `step` below `1e-9`, a `scale.size` above the bar thickness or below 2. A `scale.size` above the bar is set to the new thickness when `thickness` is lowered.
 - Visual editor: section "Scale" with a "Show scale" switch. Switching it off removes all scale options; switching it on again starts with the defaults.
 

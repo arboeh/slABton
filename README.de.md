@@ -37,7 +37,7 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Modi: `state`, `lock`, `value`, `counter`, `timer`, `clock` (digital und analog)
 - Griffformen, Griffpositionen und Überstand; horizontal und vertikal, `ltr` und `rtl`
 - Aktionen Klick, Doppelklick, Halten und Ziehen; Pfeiltasten bei `input_number` / `number`
-- Text in der Bar mit einfachen Platzhaltern (ohne Templates), Skala mit Beschriftung
+- Text in der Bar mit einfachen Platzhaltern (ohne Templates), Skala mit Beschriftung, innen oder außerhalb der Bar
 - Farben, Schriftgrößen und CSS-Variablen; Theme-fähig; beachtet reduzierte Bewegung
 - Texte auf Deutsch und Englisch, visueller Editor
 

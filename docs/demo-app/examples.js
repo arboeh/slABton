@@ -58,6 +58,39 @@ scale:
 `,
   },
   {
+    id: "labels-outside",
+    label: "Value, labels outside",
+    yaml: `type: custom:slabton-card
+entity: sensor.living_room_temperature
+mode: value
+preset: thermometer
+name: Labels outside
+thickness: 20
+scale:
+  ticks: 5
+  position: start
+  labels: true
+  labels_placement: outside
+`,
+  },
+  {
+    id: "ticks-outside",
+    label: "Value, ticks and labels outside",
+    yaml: `type: custom:slabton-card
+entity: sensor.living_room_temperature
+mode: value
+preset: thermometer
+name: Ticks outside
+thickness: 20
+scale:
+  ticks: 5
+  position: end
+  ticks_placement: outside
+  labels: true
+  labels_placement: outside
+`,
+  },
+  {
     id: "draggable",
     label: "Value (draggable number)",
     yaml: `type: custom:slabton-card
@@ -144,7 +177,7 @@ text:
 window.SLABTON_EXAMPLE_LABELS = {
   de: {
     state: "Zustand (Select)", overhang: "Zustand, Griff-Überstand", vertical: "Zustand, vertikal",
-    lock: "Sperre (Swipe)", value: "Wert (Sensor)", draggable: "Wert (ziehbare Zahl)", counter: "Zähler",
+    lock: "Sperre (Swipe)", value: "Wert (Sensor)", "labels-outside": "Wert, Beschriftung außen", "ticks-outside": "Wert, Striche und Beschriftung außen", draggable: "Wert (ziehbare Zahl)", counter: "Zähler",
     timer: "Timer", clock: "Uhr (digital)", analog: "Uhr (analog)", styled: "Farben und Text",
   },
 };

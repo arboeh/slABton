@@ -162,6 +162,40 @@
         scale: { ticks: 4, position: "top" },
         switches: { start: { icon: "mdi:power" }, mid: { icon: "mdi:cog" }, end: { icon: "mdi:fire" } },
       }],
+      ["scale, labels outside (top, thin bar)", {
+        entity: "sensor.temp", preset: "thermometer", name: "Living room", thickness: 20, scale: { ticks: 5, position: "top", labels: true, labels_placement: "outside" },
+      }],
+      ["scale, labels outside (bottom, overhang, rtl)", {
+        entity: "sensor.soc", preset: "soc", handle_overhang: true, direction: "rtl", scale: { ticks: 4, labels: true, labels_placement: "outside" },
+      }],
+      ["scale, ticks outside (bottom), labels inside", {
+        entity: "sensor.temp", preset: "thermometer", name: "Ticks outside", thickness: 28, scale: { ticks: 5, labels: true, ticks_placement: "outside" },
+      }],
+      ["scale, ticks and labels outside (top, thin bar)", {
+        entity: "sensor.temp", preset: "thermometer", name: "Both outside", thickness: 20, scale: { ticks: 5, position: "top", labels: true, ticks_placement: "outside", labels_placement: "outside" },
+      }],
+      ["scale, ticks and labels outside (bottom, overhang, rtl)", {
+        entity: "sensor.soc", preset: "soc", handle_overhang: true, direction: "rtl", scale: { ticks: 4, labels: true, ticks_placement: "outside", labels_placement: "outside" },
+      }],
+      ["scale, labels only (no ticks), inside", {
+        entity: "sensor.temp", preset: "thermometer", name: "Labels only", thickness: 28, scale: { ticks: 5, labels: true, ticks_placement: "none" },
+      }],
+      ["scale, labels only (no ticks), outside", {
+        entity: "sensor.temp", preset: "thermometer", name: "Labels only, outside", thickness: 20, scale: { ticks: 5, position: "top", labels: true, ticks_placement: "none", labels_placement: "outside" },
+      }],
+      ["scale, ticks outside, vertical timer with info", {
+        entity: "timer.sauna", name: "Sauna", orientation: "vertical", length: 200, timer: { info: "{state}" }, scale: { ticks: 4, position: "left", ticks_placement: "outside" },
+      }],
+      ["scale, ticks and labels outside, vertical", {
+        entity: "input_select.mode", orientation: "vertical", length: 200,
+        states: [{ value: "Off" }, { value: "Auto" }, { value: "On" }, { value: "Idle" }],
+        scale: { ticks: 3, position: "left", labels: true, ticks_placement: "outside", labels_placement: "outside" },
+      }],
+      ["scale, labels outside, vertical, state names", {
+        entity: "input_select.mode", orientation: "vertical", length: 200,
+        states: [{ value: "Off" }, { value: "Auto" }, { value: "On" }, { value: "Idle" }],
+        scale: { ticks: 3, position: "right", labels: true, labels_placement: "outside" },
+      }],
       ["clock with hourly scale (24 h)", { mode: "clock", name: "Berlin", clock: { time_zone: "Europe/Berlin" }, scale: true }],
       ["clock with scale (12 h = 12 ticks)", {
         mode: "clock", name: "New York", clock: { time_zone: "America/New_York", hour_format: "12" }, scale: { position: "center" },

@@ -118,8 +118,21 @@ export const SCALE_ALIASES = Object.freeze({
   horizontal: Object.freeze({ top: "start", bottom: "end" }),
   vertical: Object.freeze({ left: "start", right: "end" }),
 });
-export const SCALE_OPTIONS = Object.freeze(["ticks", "position", "size", "color", "labels"]);
-/** Smallest bar thickness (px) that has room for a tick plus its label. */
+export const SCALE_OPTIONS = Object.freeze(["ticks", "ticks_placement", "position", "size", "color", "labels", "labels_placement"]);
+/**
+ * Where the ticks stand: in the bar, outside it (on the side `scale.position` points to, between bar and labels),
+ * or not at all ("none": only the labels show, on the track the ticks would have had).
+ */
+export const SCALE_TICK_PLACEMENTS = Object.freeze(["inside", "outside", "none"]);
+export const DEFAULT_SCALE_TICK_PLACEMENT = "inside";
+/** Where the labels stand: in the bar next to the ticks, or outside the bar (above/below, left/right of it). */
+export const SCALE_LABEL_PLACEMENTS = Object.freeze(["inside", "outside"]);
+export const DEFAULT_SCALE_LABEL_PLACEMENT = "inside";
+/** Label font size in px without `text.scale.font_size` (also the CSS fallback). */
+export const DEFAULT_SCALE_LABEL_SIZE = 10;
+/** Gap between a label and its tick (inside) or between a label and the handle's reach (outside), in px. */
+export const SCALE_LABEL_GAP_PX = 3;
+/** Smallest bar thickness (px) that has room for a tick plus its label (labels inside only). */
 export const MIN_LABEL_THICKNESS = 28;
 /** Clock scale labels: every n-th hour of the 24 h day (the bar always shows 24 h, whatever `hour_format` says). */
 export const CLOCK_LABEL_STEP = 6;

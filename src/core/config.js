@@ -7,11 +7,12 @@
 
 import {
   ACTION, ACTION_TYPES, ANIMATIONS, CLOCK_FACE_NUMBERS, CLOCK_FACE_OPTIONS, CLOCK_LABEL_STEP,
-  CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, DEFAULT_ANIMATION, DEFAULT_FACE_TICKS, DEFAULT_SCALE_POSITION,
+  CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, DEFAULT_ANIMATION, DEFAULT_FACE_TICKS, DEFAULT_SCALE_LABEL_PLACEMENT,
+  DEFAULT_SCALE_POSITION, DEFAULT_SCALE_TICK_PLACEMENT,
   DEFAULT_SCALE_TICKS, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES, MAX_FONT_SIZE, MAX_SCALE_TICKS,
   MAX_THICKNESS, MIN_ANALOG_HANDLE_SIZE, MIN_DIAL_NUMBERS_SIZE, MIN_DIAL_QUARTERS_SIZE, MIN_FONT_SIZE, MIN_LABEL_THICKNESS,
   MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_STEP, MIN_THICKNESS, OFF_VALUES, READ_ONLY_MODES, SCALE_ALIASES, SCALE_AXIS_POSITIONS,
-  SCALE_OPTIONS, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS, VALUE_SETTABLE_DOMAINS,
+  SCALE_LABEL_PLACEMENTS, SCALE_OPTIONS, SCALE_TICK_PLACEMENTS, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS, VALUE_SETTABLE_DOMAINS,
 } from "./constants.js";
 import { unknownPlaceholders } from "./placeholders.js";
 import { isValidTimeZone } from "./time.js";
@@ -465,7 +466,8 @@ function scaleLabels(value, ticks, mode, context) {
     warn(`scale.labels is not available in mode "${mode}" and was ignored`);
     return null;
   }
-  if (context.thickness < MIN_LABEL_THICKNESS) {
+  // Labels outside the bar do not need room in it.
+  if (!context.outside && context.thickness < MIN_LABEL_THICKNESS) {
     warn(`scale.labels needs a bar thickness of at least ${MIN_LABEL_THICKNESS} (is ${context.thickness}) and was ignored`);
     return null;
   }
@@ -478,6 +480,43 @@ function scaleLabels(value, ticks, mode, context) {
   const labels = rangeLabels(ticks, mode, context);
   if (!labels) warn(`scale.labels needs a fixed range (set min and max) in mode "${mode}" and was ignored`);
   return labels;
+}
+
+/** `scale.labels_placement`: "inside" (default) or "outside"; an invalid value warns and falls back. */
+function scaleLabelPlacement(value) {
+  if (isBlank(value)) return DEFAULT_SCALE_LABEL_PLACEMENT;
+  if (SCALE_LABEL_PLACEMENTS.includes(value)) return value;
+  warn(`scale.labels_placement must be one of ${SCALE_LABEL_PLACEMENTS.join(", ")} and was ignored`);
+  return DEFAULT_SCALE_LABEL_PLACEMENT;
+}
+
+/** `scale.ticks_placement`: "inside" (default) or "outside"; an invalid value warns and falls back. */
+function scaleTickPlacement(value) {
+  if (isBlank(value)) return DEFAULT_SCALE_TICK_PLACEMENT;
+  if (SCALE_TICK_PLACEMENTS.includes(value)) return value;
+  warn(`scale.ticks_placement must be one of ${SCALE_TICK_PLACEMENTS.join(", ")} and was ignored`);
+  return DEFAULT_SCALE_TICK_PLACEMENT;
+}
+
+/**
+ * Tick placement that takes effect: "none" only with labels (without them nothing would show). Warns unless the
+ * labels were requested and already rejected with their own warning.
+ */
+function effectiveTickPlacement(placement, labels, requested) {
+  if (placement !== "none" || labels) return placement;
+  if (!requested) warn("scale.ticks_placement \"none\" has no effect without scale.labels: true and was ignored");
+  return DEFAULT_SCALE_TICK_PLACEMENT;
+}
+
+/**
+ * Placement that takes effect: "outside" only with labels. Without them it warns (nothing to place) unless
+ * the labels were requested and already rejected with their own warning.
+ */
+function effectivePlacement(placement, labels, requested) {
+  if (placement !== "outside") return DEFAULT_SCALE_LABEL_PLACEMENT;
+  if (labels) return placement;
+  if (!requested) warn("scale.labels_placement \"outside\" has no effect without scale.labels: true and was ignored");
+  return DEFAULT_SCALE_LABEL_PLACEMENT;
 }
 
 /**
@@ -493,12 +532,17 @@ function normalizeScale(raw, mode, context) {
     if (!SCALE_OPTIONS.includes(key)) warn(`scale.${key} is not a known option and was ignored`);
   }
   const ticks = scaleTicks(source.ticks, mode, context.clock);
+  const placement = scaleLabelPlacement(source.labels_placement);
+  const labels = scaleLabels(source.labels, ticks, mode, { ...context, outside: placement === "outside" });
+  const requested = !isBlank(source.labels) && source.labels !== false;
   return {
     ticks,
+    ticksPlacement: effectiveTickPlacement(scaleTickPlacement(source.ticks_placement), labels, requested),
     position: scalePosition(source.position, context.orientation),
     size: scaleSize(source.size, context.thickness),
     color: textColor(source.color, "scale.color"),
-    labels: scaleLabels(source.labels, ticks, mode, context),
+    labels,
+    labelsPlacement: effectivePlacement(placement, labels, requested),
   };
 }
 

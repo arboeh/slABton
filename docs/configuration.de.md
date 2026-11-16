@@ -45,7 +45,7 @@ alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein a
 | `tap_action`, `double_tap_action`, `hold_action` | nach Modus | HA-Aktionen plus `cycle`, `cycle_back` |
 | `switches` | keine | `start`, `mid`, `end`, je mit `entity`, `icon`, `name`, Aktionen |
 | `text` | Standardwerte | Schriftgröße und Farbe je Textbereich, siehe [Textdarstellung](appearance.md#textdarstellung) |
-| `scale` | keine | Striche in der Bar, siehe [Skala](appearance.md#skala) |
+| `scale` | keine | Striche und Beschriftung, je innen oder außerhalb der Bar, siehe [Skala](appearance.md#skala) |
 
 `call-service` (mit `service` / `service_data`) wird als veralteter Alias von `perform-action` akzeptiert und kann in einer späteren Version entfallen.
 

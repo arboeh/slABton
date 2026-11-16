@@ -6,8 +6,8 @@
 
 import { animationCss } from "./animations.js";
 import {
-  CARD_CHROME_PX, DEFAULT_SCALE_SIZE, DEFAULT_VERTICAL_LENGTH, OVAL_RATIO, PILL_RADIUS, SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO,
-  TEXT_OPTIONS,
+  CARD_CHROME_PX, DEFAULT_SCALE_LABEL_SIZE, DEFAULT_SCALE_SIZE, DEFAULT_VERTICAL_LENGTH, OVAL_RATIO, PILL_RADIUS, SCALE_LABEL_GAP_PX,
+  SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO, TEXT_OPTIONS,
 } from "../core/constants.js";
 
 /** Handle size across and along the bar axis, in px. */
@@ -36,11 +36,32 @@ export function handleOverhang(config) {
 }
 
 /**
- * Height the card needs in px (without a header): horizontal, the chrome plus the larger of bar and handle;
- * vertical, the bar length (or its default) plus the chrome plus the overhang at both ends.
+ * Height the scale labels outside the bar add to a horizontal card, in px: the label font size (one line,
+ * `line-height: 1`) plus the gap. Zero without labels outside. A `styles:` override of the font size is not seen here.
+ */
+function outsideLabelsPx(config) {
+  if (!config.scale?.labels || config.scale.labelsPlacement !== "outside") return 0;
+  return (config.text?.scale?.font_size ?? DEFAULT_SCALE_LABEL_SIZE) + SCALE_LABEL_GAP_PX;
+}
+
+/**
+ * Height the scale ticks outside the bar add to a horizontal card, in px: the tick length (`scale.size` or its
+ * default). Zero for ticks inside.
+ */
+function outsideTicksPx(config) {
+  if (config.scale?.ticksPlacement !== "outside") return 0;
+  return config.scale.size ?? DEFAULT_SCALE_SIZE;
+}
+
+/**
+ * Height the card needs in px (without a header): horizontal, the chrome plus the larger of bar and handle
+ * (plus the ticks and labels outside the bar); vertical, the bar length (or its default) plus the chrome plus the overhang
+ * at both ends (labels outside widen the card, they do not make it higher).
  */
 export function cardHeightPx(config) {
-  if (config.orientation !== "vertical") return CARD_CHROME_PX + Math.max(config.thickness, config.handle_size);
+  if (config.orientation !== "vertical") {
+    return CARD_CHROME_PX + Math.max(config.thickness, config.handle_size) + outsideTicksPx(config) + outsideLabelsPx(config);
+  }
   const length = config.length > 0 ? config.length : DEFAULT_VERTICAL_LENGTH;
   return length + CARD_CHROME_PX + 2 * handleOverhang(config);
 }
@@ -110,11 +131,11 @@ export function applyVars(host, config, previousKeys = []) {
  * that faces the middle of the bar (centred scales: at the start edge).
  */
 function scaleLabelCss() {
-  const clear = `calc(var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px) + 3px)`;
+  const clear = `calc(var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px) + ${SCALE_LABEL_GAP_PX}px)`;
   return `
     .tick-label {
       position: absolute; line-height: 1; white-space: nowrap; pointer-events: none;
-      font-size: var(--slabton-scale-label-size, 10px);
+      font-size: var(--slabton-scale-label-size, ${DEFAULT_SCALE_LABEL_SIZE}px);
       color: var(--slabton-scale-label-color, var(--slabton-text-color, var(--primary-text-color, #212121)));
     }
     .o-h .tick-label { left: calc(var(--slabton-tick-e, 0) * 100%); transform: translateX(-50%); }
@@ -124,7 +145,77 @@ function scaleLabelCss() {
     .o-h .sc-center .tick-label { top: 2px; }
     .o-v .sc-start .tick-label { left: ${clear}; }
     .o-v .sc-end .tick-label { right: ${clear}; }
-    .o-v .sc-center .tick-label { left: 3px; }`;
+    .o-v .sc-center .tick-label { left: 3px; }
+    .o-h .scale.tk-out.sc-start .tick-label { top: ${SCALE_LABEL_GAP_PX}px; }
+    .o-h .scale.tk-out.sc-end .tick-label { bottom: ${SCALE_LABEL_GAP_PX}px; }
+    .o-v .scale.tk-out.sc-start .tick-label { left: ${SCALE_LABEL_GAP_PX}px; }
+    .o-v .scale.tk-out.sc-end .tick-label { right: ${SCALE_LABEL_GAP_PX}px; }
+    ${outsideLabelCss()}
+    ${outsideTickCss()}`;
+}
+
+/**
+ * Labels outside the bar (`scale.labels_placement: outside`). The stage becomes a grid with the labels and the
+ * bar in flow, so the card grows by itself. The label container leaves the same margin as the tick track (border,
+ * handle padding and half the handle length), so every label stands exactly over its tick. The gap to the bar is
+ * the handle's reach out of the bar plus a little air; the stage padding on the label side is dropped.
+ */
+function outsideLabelCss() {
+  const gap = `calc(var(--slabton-cross-extra, 0px) + ${SCALE_LABEL_GAP_PX}px)`;
+  const track = "calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2)";
+  return `
+    .stage.lbl-out, .stage.tk-out { display: grid; justify-content: center; }
+    .o-h .stage.lbl-out, .o-h .stage.tk-out { grid-template-columns: var(--slabton-length); }
+    .o-v .stage.lbl-out, .o-v .stage.tk-out { grid-template-rows: var(--slabton-length); grid-auto-flow: column; }
+    .o-h .stage.lbl-start { padding-top: 0; }
+    .o-h .stage.lbl-end { padding-bottom: 0; }
+    .o-v .stage.lbl-start { padding-left: 0; }
+    .o-v .stage.lbl-end { padding-right: 0; }
+    .o-h .scale-labels.lbl-start { margin-bottom: ${gap}; }
+    .o-h .scale-labels.lbl-end { margin-top: ${gap}; }
+    .o-v .scale-labels.lbl-start { margin-right: ${gap}; }
+    .o-v .scale-labels.lbl-end { margin-left: ${gap}; }
+    .o-h .stage.tk-out .scale-labels.lbl-start { margin-bottom: ${SCALE_LABEL_GAP_PX}px; }
+    .o-h .stage.tk-out .scale-labels.lbl-end { margin-top: ${SCALE_LABEL_GAP_PX}px; }
+    .o-v .stage.tk-out .scale-labels.lbl-start { margin-right: ${SCALE_LABEL_GAP_PX}px; }
+    .o-v .stage.tk-out .scale-labels.lbl-end { margin-left: ${SCALE_LABEL_GAP_PX}px; }
+    .scale-labels { display: grid; pointer-events: none; }
+    .o-h .scale-labels { margin-inline: ${track}; }
+    .o-v .scale-labels { margin-block: ${track}; }
+    .scale-labels .tick-label { position: relative; grid-area: 1 / 1; }
+    .o-h .scale-labels .tick-label { justify-self: start; }
+    .o-v .scale-labels .tick-label { align-self: start; }
+    .o-v .scale-labels.lbl-start .tick-label { justify-self: end; }
+    .o-v .scale-labels.lbl-end .tick-label { justify-self: start; }
+    /* Vertical timer with info: the info keeps its own row above the bar, ticks and labels (they share row 2). */
+    .o-v .stage.has-info.lbl-out, .o-v .stage.has-info.tk-out { grid-template-rows: auto var(--slabton-length); gap: 0; row-gap: 6px; align-items: stretch; }
+    .o-v .stage.has-info.lbl-out > .info, .o-v .stage.has-info.tk-out > .info { grid-row: 1; grid-column: 1 / span 3; justify-self: center; }
+    .o-v .stage.has-info.lbl-out > :not(.info), .o-v .stage.has-info.tk-out > :not(.info) { grid-row: 2; }`;
+}
+
+/**
+ * Ticks outside the bar (`scale.ticks_placement: outside`): a container between bar and labels on the same grid.
+ * Its margin along the bar is the tick track (as for the labels), its size across the bar the tick length; the
+ * gap to the bar is the handle's reach out of it, the stage padding on the tick side is dropped.
+ */
+function outsideTickCss() {
+  const track = "calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2)";
+  const extra = "var(--slabton-cross-extra, 0px)";
+  const size = `var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px)`;
+  return `
+    .o-h .stage.tk-start { padding-top: 0; }
+    .o-h .stage.tk-end { padding-bottom: 0; }
+    .o-v .stage.tk-start { padding-left: 0; }
+    .o-v .stage.tk-end { padding-right: 0; }
+    .scale-ticks { position: relative; pointer-events: none; }
+    .o-h .scale-ticks { margin-inline: ${track}; height: ${size}; }
+    .o-v .scale-ticks { margin-block: ${track}; width: ${size}; }
+    .o-h .scale-ticks .tick { top: 0; }
+    .o-v .scale-ticks .tick { left: 0; }
+    .o-h .scale-ticks.tk-start { margin-bottom: ${extra}; }
+    .o-h .scale-ticks.tk-end { margin-top: ${extra}; }
+    .o-v .scale-ticks.tk-start { margin-right: ${extra}; }
+    .o-v .scale-ticks.tk-end { margin-left: ${extra}; }`;
 }
 
 /**
