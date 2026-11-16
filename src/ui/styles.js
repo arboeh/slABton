@@ -341,8 +341,12 @@ export function buildCss() {
       color: var(--slabton-button-color, var(--slabton-text-color, var(--primary-text-color, #212121)));
       border-radius: var(--slabton-handle-radius);
       box-shadow: 0 1px 4px rgba(0, 0, 0, 0.35);
-      cursor: grab; user-select: none; -webkit-user-select: none; font-size: var(--slabton-button-size, 14px); font-weight: 600;
+      cursor: grab; user-select: none; -webkit-user-select: none; font-weight: 600;
+      /* Text width of the handle is its width on screen (--slabton-hw); a small handle gets a smaller text (45 %: the 40 px default keeps 14 px). */
+      font-size: min(var(--slabton-button-size, 14px), calc(var(--slabton-hw) * 0.45));
     }
+    .o-h .handle { --slabton-hw: var(--slabton-hl); }
+    .o-v .handle { --slabton-hw: var(--slabton-hc); }
     .o-h .handle { left: 0; top: 50%; margin-top: calc(var(--slabton-hc) / -2); width: var(--slabton-hl); height: var(--slabton-hc); touch-action: pan-y; }
     .o-v .handle { top: 0; left: 50%; margin-left: calc(var(--slabton-hc) / -2); height: var(--slabton-hl); width: var(--slabton-hc); touch-action: pan-x; }
     .nodrag .handle { cursor: pointer; touch-action: auto; }
@@ -350,7 +354,7 @@ export function buildCss() {
     .content { display: flex; align-items: center; justify-content: center; max-width: 100%; }
     .content[hidden], .h-icon[hidden], .h-text[hidden] { display: none; }
     .h-icon { --mdc-icon-size: calc(var(--slabton-hc) * 0.55); }
-    .h-text { padding: 0 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .h-text { padding: 0 min(4px, calc(var(--slabton-hw) / 10)); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     ${dialCss()}
     .handle:focus-visible, .sw:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
 

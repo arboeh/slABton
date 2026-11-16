@@ -520,7 +520,17 @@ describe("buildCss", () => {
     expect(css).toMatch(/\.header \{[^}]*font-size: var\(--slabton-header-size, 14px\)/);
     expect(css).toMatch(/\.bar-text \{[^}]*font-size: var\(--slabton-bar-text-size, 13px\)/);
     expect(css).toMatch(/\.info \{[^}]*font-size: var\(--slabton-info-size, 13px\)/);
-    expect(css).toMatch(/\.handle \{[^}]*font-size: var\(--slabton-button-size, 14px\)/);
+    expect(css).toMatch(/\.handle \{[^}]*font-size: min\(var\(--slabton-button-size, 14px\), /);
+  });
+
+  it("shrinks the handle text and its padding with the handle width so thin bars do not cut the value", () => {
+    const css = buildCss();
+    // 45 % of the width: the default handle (40 px) keeps the 14 px text, a 20 px handle gets 9 px.
+    expect(css).toMatch(/\.handle \{[^}]*font-size: min\(var\(--slabton-button-size, 14px\), calc\(var\(--slabton-hw\) \* 0\.45\)\)/);
+    expect(css).toMatch(/\.h-text \{[^}]*padding: 0 min\(4px, calc\(var\(--slabton-hw\) \/ 10\)\)/);
+    // The on-screen width is the length horizontally and the cross size vertically.
+    expect(css).toContain(".o-h .handle { --slabton-hw: var(--slabton-hl); }");
+    expect(css).toContain(".o-v .handle { --slabton-hw: var(--slabton-hc); }");
   });
 
   it("falls back to the common text color for every area", () => {

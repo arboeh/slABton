@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-11-16
+
 ### Added
 
 - Option `bar_state_color` (default `false`): `true` colors the whole bar in the color of the current state
@@ -20,6 +22,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ### Fixed
 
+- Thin bars (small `handle_size` or `thickness`): the handle value was cut with `...`. Its text size and side padding
+  now shrink with the handle width (45 % of it; the 40 px default handle keeps 14 px). Very short values on very small
+  handles can still be cut.
 - Outside scale, horizontal card: a label size or tick length set in `styles:` (`--slabton-scale-label-size`,
   `--slabton-scale-size`, in `px`) now counts in the card height. Before, only `text.scale.font_size` and `scale.size`
   counted.
