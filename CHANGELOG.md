@@ -48,6 +48,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   too many.
 - Vertical card with `handle_overhang`: the overhang along the bar counts for the rows and the masonry size now; before,
   a large handle could run out of the space the card reserved.
+- Docs site, live demo: the card shows the new state after a tap, drag or hold (it no longer stays on the old value);
+  counter examples stop at their minimum and maximum; on narrow screens the card sits above the YAML editor.
+- Docs site, installation (EN, DE): the German page had two `# Installation` headings; the resource snippet is a code
+  block with a copy button now. The HACS section says that dashboards in YAML mode need the resource by hand
+  (`/hacsfiles/slABton/slabton.js`).
+- Docs site footer: the slABton logo was far too large (the theme ignored its `height` attribute); it is 36 px high now.
 
 ## [0.3.0] - 2026-11-14
 

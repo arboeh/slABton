@@ -37,6 +37,8 @@ body {
 
 @media (max-width: 720px) {
   .demo { grid-template-columns: minmax(0, 1fr); }
+  .preview { order: -1; }
+  textarea { min-height: 200px; }
 }
 
 .pane {

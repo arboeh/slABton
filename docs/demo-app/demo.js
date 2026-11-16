@@ -3,7 +3,7 @@
   const EXAMPLES = window.SLABTON_EXAMPLES;
   const i18n = window.SLABTON_I18N;
   const EXAMPLE_LABELS = window.SLABTON_EXAMPLE_LABELS?.[i18n.language] ?? {};
-  const { hass } = window.SLABTON_MOCK;
+  const mock = window.SLABTON_MOCK;
   const DEBOUNCE_MS = 300;
   const LOG_LIMIT = 6;
 
@@ -47,7 +47,7 @@
       return;
     }
     setError("");
-    next.hass = hass;
+    next.hass = mock.hass;
     next.addEventListener("hass-more-info", (event) => log(`more-info: ${event.detail.entityId}`));
     card?.remove();
     stage.appendChild(next);
@@ -114,7 +114,7 @@
   themeButton.addEventListener("click", () => applyTheme(!document.body.classList.contains("dark")));
   copyButton.addEventListener("click", copyConfig);
   document.addEventListener("mock-service-call", (event) => log(formatCall(event.detail)));
-  document.addEventListener("mock-hass-changed", () => { if (card) card.hass = hass; });
+  document.addEventListener("mock-hass-changed", () => { if (card) card.hass = mock.hass; });
 
   applyTheme(initialTheme());
   const start = location.hash.slice(1);

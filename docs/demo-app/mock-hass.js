@@ -46,18 +46,28 @@
   const toHms = (s) => [Math.floor(s / 3600), Math.floor(s / 60) % 60, s % 60]
     .map((n, i) => (i ? String(n).padStart(2, "0") : String(n))).join(":");
 
-  const hass = {
-    states,
+  const base = {
     config: { time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone },
-    locale: { language: navigator.language || "en" },
+    locale: { language: window.SLABTON_I18N?.language ?? navigator.language ?? "en" },
     callService,
   };
+  // Like real HA, every state change yields a new hass object (the card compares old and new).
+  let hass = { ...base, states: { ...states } };
   const timers = new Map();
 
   function publish(id, next) {
     states[id] = next;
-    hass.states = { ...states };
-    document.dispatchEvent(new CustomEvent("mock-hass-changed"));
+    hass = { ...base, states: { ...states } };
+    // Deferred: the card may still be inside its own action handler.
+    setTimeout(() => document.dispatchEvent(new CustomEvent("mock-hass-changed")), 0);
+  }
+
+  function clampCounter(current, delta) {
+    const { minimum, maximum } = current.attributes;
+    const value = Number(current.state) + delta;
+    const lower = minimum ?? -Infinity;
+    const upper = maximum ?? Infinity;
+    return Math.min(upper, Math.max(lower, value));
   }
 
   function endTimer(id) {
@@ -81,6 +91,7 @@
       return { next: { ...current, state: "active", attributes: attrs }, schedule: true };
     }
     if (service === "pause") {
+      if (!attrs.finishes_at) return { next: current };
       const left = Math.max(0, Math.round((Date.parse(attrs.finishes_at) - Date.now()) / 1000));
       clearTimeout(timers.get(id));
       attrs.remaining = toHms(left);
@@ -104,7 +115,7 @@
     let next = current;
     if (domain === "counter") {
       const delta = service === "increment" ? 1 : service === "decrement" ? -1 : 0;
-      next = { ...current, state: String(Number(current.state) + delta) };
+      next = { ...current, state: String(clampCounter(current, delta)) };
     } else if (domain === "timer") {
       const result = timerService(id, service, current);
       next = result.next;
@@ -123,5 +134,5 @@
   }
 
   scheduleTimerEnd("timer.sauna");
-  window.SLABTON_MOCK = { hass };
+  window.SLABTON_MOCK = { get hass() { return hass; } };
 })();
