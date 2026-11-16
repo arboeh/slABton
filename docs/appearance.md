@@ -131,6 +131,26 @@ scale:
 - Visual editor: section "Scale" with a "Show scale" switch. Switching it off removes all scale options; switching it on again starts with the defaults.
 
 
+## State color
+
+`states[].color` colors the fill. In mode `state` the fill is empty at the first state, so there the color shows only on the handle. With `bar_state_color: true` the whole bar takes the color of the current state.
+
+```yaml
+type: custom:slabton-card
+entity: input_select.charge_mode
+bar_state_color: true
+states:
+  - { value: "Off", color: blue }
+  - { value: "PV", color: green }
+  - { value: "Min", color: yellow }
+  - { value: "Fast", color: red }
+```
+
+- Only the boolean `true` turns it on. Default `false`: the card looks as before.
+- A state without `color`, another mode, or an unavailable entity leaves the bar in `bar_color` (or the theme default).
+- Bar and fill then share the color, so the fill level is no longer visible; only the handle shows the position.
+- Visual editor: switch "Whole bar in the state color" in the Layout section.
+
 ## Header
 
 `header_position` (`top`, `bottom`, `none`) and `header_icon_position` (`left`, `right`) place the header. `text.header` sets size, color and icon color (see [Text appearance](#text-appearance)).

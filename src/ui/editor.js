@@ -115,6 +115,7 @@ function layoutFields(config) {
     { name: "handle_position", selector: select(HANDLE_POSITIONS) },
     ...(config.handle_position === "fixed" ? [{ name: "fixed_position", selector: number(0, 100) }] : []),
     { name: "handle_overhang", selector: bool() },
+    { name: "bar_state_color", selector: bool() },
     { name: "handle_content", selector: select(HANDLE_CONTENTS) },
     { name: "animation", selector: select(ANIMATIONS) },
   ];

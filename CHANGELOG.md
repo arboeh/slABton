@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- Option `bar_state_color` (default `false`): `true` colors the whole bar in the color of the current state
+  (`states[].color`), not only the fill. A state without a color keeps `bar_color` or the theme default. With the option
+  on, bar and fill share the color, so only the handle shows the position.
+- Visual editor switch for `bar_state_color`; English and German texts.
+
 ### Changed
 
 - Internal cleanup of the outside scale code (shared tick track margin, grouped padding rules, one helper for tick

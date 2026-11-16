@@ -231,6 +231,7 @@ function normalizeLook(raw) {
     border_width: toNumber(raw.border_width, DEFAULTS.border_width, 0, 20),
     border_radius: toNumber(raw.border_radius, null, 0, 999),
     animation: pickEnum(raw.animation, ANIMATIONS, DEFAULTS.animation, "animation"),
+    bar_state_color: raw.bar_state_color === true,
     styles: normalizeStyles(raw.styles),
   };
   for (const key of COLOR_KEYS) look[key] = safeCss(raw[key], null);

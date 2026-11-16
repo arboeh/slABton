@@ -41,6 +41,7 @@ alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein a
 | `border_radius` | automatisch | Eckenradius der Bar in px |
 | `animation` | `slide` | `none`, `slide`, `fade`, `pulse`, `shimmer` |
 | `bar_color`, `fill_color`, `handle_color`, `text_color`, `border_color` | Theme | CSS-Farben |
+| `bar_state_color` | `false` | `true` färbt die ganze Bar in der Farbe des aktuellen Zustands (`states[].color`), siehe [Zustandsfarbe](appearance.md#zustandsfarbe) |
 | `styles` | keine | Map mit CSS-Variablen, siehe [Styling](appearance.md#styling) |
 | `tap_action`, `double_tap_action`, `hold_action` | nach Modus | HA-Aktionen plus `cycle`, `cycle_back` |
 | `switches` | keine | `start`, `mid`, `end`, je mit `entity`, `icon`, `name`, Aktionen |

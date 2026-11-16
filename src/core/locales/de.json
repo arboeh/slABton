@@ -33,6 +33,7 @@
   "editor.handle_position": "Griffposition",
   "editor.fixed_position": "Feste Position in %",
   "editor.handle_overhang": "Griff ragt an beiden Enden heraus",
+  "editor.bar_state_color": "Ganze Bar in der Zustandsfarbe",
   "editor.handle_content": "Griffinhalt",
   "editor.animation": "Animation",
   "editor.bar_color": "Balkenfarbe",

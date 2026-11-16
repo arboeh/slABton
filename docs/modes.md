@@ -31,6 +31,8 @@ entity: input_select.heating_mode
 handle_overhang: true
 ```
 
+Color the whole bar in the color of the current state with `bar_state_color: true`, see [State color](appearance.md#state-color).
+
 | Option | Default | Description |
 | --- | --- | --- |
 | `states` | from entity | List of `value`, `label`, `icon`, `text`, `color` |

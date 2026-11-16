@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { t } from "../../src/core/i18n.js";
 import { SlabtonCardEditor, buildSchema, cleanConfig, validationHints } from "../../src/ui/editor.js";
 
 if (!customElements.get("slabton-card-editor")) customElements.define("slabton-card-editor", SlabtonCardEditor);
@@ -675,5 +676,33 @@ describe("SlabtonCardEditor", () => {
     editor.hass = next;
     expect(editor.shadowRoot.querySelector("ha-form").hass).toBe(next);
     expect(editor.hass).toBe(next);
+  });
+});
+
+describe("bar_state_color switch", () => {
+  const layoutSection = () => buildSchema({ entity: "input_select.a" }).find((item) => item.title === "Layout");
+
+  it("is a boolean field in the layout section, right after handle_overhang", () => {
+    const fields = layoutSection().schema.map((item) => item.name);
+    expect(fields.indexOf("bar_state_color")).toBe(fields.indexOf("handle_overhang") + 1);
+    const field = layoutSection().schema.find((item) => item.name === "bar_state_color");
+    expect(field.selector).toEqual({ boolean: {} });
+  });
+
+  it("has a label in English and German", () => {
+    expect(t("en", "editor.bar_state_color")).toBe("Whole bar in the state color");
+    expect(t("de", "editor.bar_state_color")).toBe("Ganze Bar in der Zustandsfarbe");
+  });
+
+  it("stores the switch as given, on and off (like handle_overhang)", () => {
+    const el = document.createElement("slabton-card-editor");
+    el.setConfig({ entity: "input_select.a" });
+    el._form = {};
+    const events = [];
+    el.addEventListener("config-changed", (e) => events.push(e.detail.config));
+    for (const value of [true, false]) {
+      el._onChanged({ stopPropagation() {}, detail: { value: { entity: "input_select.a", bar_state_color: value } } });
+      expect(events.at(-1).bar_state_color).toBe(value);
+    }
   });
 });

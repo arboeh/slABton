@@ -275,6 +275,8 @@ export function buildCss() {
       border: var(--slabton-border-width) solid var(--slabton-border-color, var(--divider-color, transparent));
       border-radius: var(--slabton-bar-radius);
     }
+    /* bar_state_color: the whole bar in the color of the current state (none: bar_color or the default). */
+    .bar-state .bar { background: var(--slabton-active-color, var(--slabton-bar-color, var(--secondary-background-color, #e0e0e0))); }
     .o-h .bar { width: var(--slabton-length); height: var(--slabton-thickness); }
     .o-v .bar { height: var(--slabton-length); width: var(--slabton-thickness); }
     .fill-clip { position: absolute; inset: 0; overflow: hidden; border-radius: calc(var(--slabton-bar-radius) - var(--slabton-border-width)); pointer-events: none; }

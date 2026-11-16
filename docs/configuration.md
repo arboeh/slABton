@@ -41,6 +41,7 @@ everything else gives `state`. `input_datetime` / `input_date` and `clock` need 
 | `border_radius` | auto | Bar corner radius in px |
 | `animation` | `slide` | `none`, `slide`, `fade`, `pulse`, `shimmer` |
 | `bar_color`, `fill_color`, `handle_color`, `text_color`, `border_color` | theme | CSS colors |
+| `bar_state_color` | `false` | `true` colors the whole bar in the color of the current state (`states[].color`), see [State color](appearance.md#state-color) |
 | `styles` | none | Map of CSS variables, see [Styling](appearance.md#styling) |
 | `tap_action`, `double_tap_action`, `hold_action` | by mode | HA actions plus `cycle`, `cycle_back` |
 | `switches` | none | `start`, `mid`, `end`, each with `entity`, `icon`, `name`, actions |

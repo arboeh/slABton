@@ -131,6 +131,26 @@ scale:
 - Visueller Editor: Abschnitt „Skala“ mit Schalter „Skala anzeigen“. Ausschalten entfernt alle Skala-Optionen; Einschalten startet mit den Standardwerten.
 
 
+## Zustandsfarbe
+
+`states[].color` färbt die Füllung. Im Modus `state` ist die Füllung beim ersten Zustand leer, die Farbe zeigt sich dort nur am Griff. Mit `bar_state_color: true` nimmt die ganze Bar die Farbe des aktuellen Zustands an.
+
+```yaml
+type: custom:slabton-card
+entity: input_select.lademodus
+bar_state_color: true
+states:
+  - { value: "Aus", color: blue }
+  - { value: "PV", color: green }
+  - { value: "Min", color: yellow }
+  - { value: "Schnell", color: red }
+```
+
+- Nur der boolesche Wert `true` schaltet ein. Standard `false`: die Karte sieht aus wie vorher.
+- Ein Zustand ohne `color`, ein anderer Modus oder ein nicht verfügbares Entity lässt die Bar bei `bar_color` (oder der Theme-Standardfarbe).
+- Bar und Füllung haben dann dieselbe Farbe, der Füllstand ist nicht mehr erkennbar; nur der Griff zeigt die Position.
+- Visueller Editor: Schalter „Ganze Bar in der Zustandsfarbe“ im Abschnitt „Layout“.
+
 ## Header
 
 `header_position` (`top`, `bottom`, `none`) und `header_icon_position` (`left`, `right`) platzieren den Header. `text.header` setzt Größe, Farbe und Icon-Farbe (siehe [Textdarstellung](#textdarstellung)).

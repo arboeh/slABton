@@ -33,6 +33,7 @@
   "editor.handle_position": "Handle position",
   "editor.fixed_position": "Fixed position in %",
   "editor.handle_overhang": "Handle sticks out at both ends",
+  "editor.bar_state_color": "Whole bar in the state color",
   "editor.handle_content": "Handle content",
   "editor.animation": "Animation",
   "editor.bar_color": "Bar color",

@@ -25,6 +25,20 @@ handle_shape: oval
 `,
   },
   {
+    id: "state-color",
+    label: "State, whole bar in the state color",
+    yaml: `type: custom:slabton-card
+entity: input_select.heating_mode
+name: State color
+bar_state_color: true
+states:
+  - { value: "Off", icon: mdi:power, color: blue }
+  - { value: "Auto", icon: mdi:calendar-clock, color: green }
+  - { value: "On", icon: mdi:fire, color: red }
+  - { value: "Idle", icon: mdi:sleep, color: orange }
+`,
+  },
+  {
     id: "vertical",
     label: "State, vertical",
     yaml: `type: custom:slabton-card

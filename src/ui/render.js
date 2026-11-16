@@ -175,6 +175,7 @@ export function rootClasses(config) {
   if (config.direction === "rtl") classes.push("rev");
   if (!config.drag || READ_ONLY_MODES.includes(config.mode)) classes.push("nodrag");
   if (config.allow_unavailable_actions) classes.push("allow-actions");
+  if (config.bar_state_color) classes.push("bar-state");
   return classes.join(" ");
 }
 

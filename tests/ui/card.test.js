@@ -1218,3 +1218,38 @@ describe("separate bar value", () => {
     expect(q(el, ".root").style.getPropertyValue("--slabton-p")).toBe("0");
   });
 });
+
+describe("bar_state_color", () => {
+  const colored = [
+    { value: "off", color: "blue" },
+    { value: "auto" },
+    { value: "on", color: "red" },
+  ];
+
+  it("sets the bar-state class only when the option is on", () => {
+    expect(q(create({}).el, ".root").classList.contains("bar-state")).toBe(false);
+    expect(q(create({ bar_state_color: false }).el, ".root").classList.contains("bar-state")).toBe(false);
+    expect(q(create({ bar_state_color: true }).el, ".root").classList.contains("bar-state")).toBe(true);
+  });
+
+  it("colors the whole bar through a rule on the bar-state class", () => {
+    const { el } = create({ bar_state_color: true });
+    const css = q(el, "style").textContent;
+    expect(css).toMatch(/\.bar-state \.bar\s*\{\s*background:\s*var\(--slabton-active-color,\s*var\(--slabton-bar-color/);
+  });
+
+  it("sets --slabton-active-color for a state with a color and removes it for one without", () => {
+    const { el, hass } = create({ bar_state_color: true, states: colored }, { [SELECT]: selectState("off") });
+    const root = q(el, ".root");
+    expect(root.style.getPropertyValue("--slabton-active-color")).toBe("blue");
+    el.hass = withState(hass, SELECT, "auto");
+    expect(root.style.getPropertyValue("--slabton-active-color")).toBe("");
+    el.hass = withState(hass, SELECT, "on");
+    expect(root.style.getPropertyValue("--slabton-active-color")).toBe("red");
+  });
+
+  it("keeps bar_color as the bar color variable next to the option", () => {
+    const { el } = create({ bar_state_color: true, bar_color: "navy" });
+    expect(el.style.getPropertyValue("--slabton-bar-color")).toBe("navy");
+  });
+});

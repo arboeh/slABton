@@ -1010,3 +1010,22 @@ describe("text block", () => {
     },
   );
 });
+
+describe("bar_state_color", () => {
+  it("defaults to false", () => {
+    expect(normalizeConfig(base).bar_state_color).toBe(false);
+  });
+
+  it("is on only for the boolean true", () => {
+    expect(normalizeConfig({ ...base, bar_state_color: true }).bar_state_color).toBe(true);
+    for (const value of [false, "true", 1, null, "yes"]) {
+      expect(normalizeConfig({ ...base, bar_state_color: value }).bar_state_color).toBe(false);
+    }
+  });
+
+  it("raises no warning in value mode", () => {
+    const warn = warnSpy();
+    expect(normalizeConfig({ ...valueBase, bar_state_color: true }).bar_state_color).toBe(true);
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
