@@ -11,7 +11,7 @@ await build({
   target: "es2020",
   minify: true,
   legalComments: "none",
-  banner: { js: `/* slabton-card v${pkg.version} - MIT - https://github.com/arboeh/slABton */` },
+  banner: { js: `/* slabton-card v${pkg.version} - MPL-2.0 - https://github.com/arboeh/slABton */` },
 });
 
 console.log(`Built dist/slabton.js (v${pkg.version})`);
