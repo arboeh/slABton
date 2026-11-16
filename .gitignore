@@ -1,6 +1,5 @@
 .vscode/
 .idea/
-/.kilocode*/
 .DS_Store
 Thumbs.db
 *.log
@@ -16,3 +15,4 @@ coverage/
 .venv/
 .cache/
 /docs/demo-app/slabton.js
+.claude/
