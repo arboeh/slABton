@@ -83,7 +83,7 @@ npm test
 npm run build
 ```
 
-`dist/slabton.js` is the only release file. The website sources are in `docs/` (MkDocs);
+`dist/slabton.js` is the only release file. The website sources are in `docs/` and `docs-de/` (Zensical);
 see the [reference](https://slabton.de/reference/) for the source layout and how to add a language.
 
 ## License

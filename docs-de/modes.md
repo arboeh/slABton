@@ -2,11 +2,11 @@
 
 ## Modus `state`
 
-![Modus state](assets/shots/state-light.png#only-light)
-![Modus state](assets/shots/state-dark.png#only-dark)
+![Modus state](/assets/shots/state-light.png#only-light)
+![Modus state](/assets/shots/state-dark.png#only-dark)
 
-![Modus state mit Griff-Überstand](assets/shots/state-overhang-light.png#only-light)
-![Modus state mit Griff-Überstand](assets/shots/state-overhang-dark.png#only-dark)
+![Modus state mit Griff-Überstand](/assets/shots/state-overhang-light.png#only-light)
+![Modus state mit Griff-Überstand](/assets/shots/state-overhang-dark.png#only-dark)
 
 Klick schaltet durch die Zustände. Ziehen rastet auf den nächsten Zustand ein.
 Zustände kommen aus `states:`, sonst aus der Entity (`options`, `hvac_modes`), sonst `off` / `on`.
@@ -37,16 +37,16 @@ handle_overhang: true
 | `hold_reverse` | `false` | Halten schaltet rückwärts |
 | `drag` | `true` | Ziehen erlauben (nur mit `handle_position: flex`) |
 
-![Modus state, vertikal](assets/shots/state-vertical-light.png#only-light)
-![Modus state, vertikal](assets/shots/state-vertical-dark.png#only-dark)
+![Modus state, vertikal](/assets/shots/state-vertical-light.png#only-light)
+![Modus state, vertikal](/assets/shots/state-vertical-dark.png#only-dark)
 
-![Separate Schalter bei Start, Mitte und Ende](assets/shots/switches-light.png#only-light)
-![Separate Schalter bei Start, Mitte und Ende](assets/shots/switches-dark.png#only-dark)
+![Separate Schalter bei Start, Mitte und Ende](/assets/shots/switches-light.png#only-light)
+![Separate Schalter bei Start, Mitte und Ende](/assets/shots/switches-dark.png#only-dark)
 
 ## Modus `lock`
 
-![Modus lock](assets/shots/lock-light.png#only-light)
-![Modus lock](assets/shots/lock-dark.png#only-dark)
+![Modus lock](/assets/shots/lock-light.png#only-light)
+![Modus lock](/assets/shots/lock-dark.png#only-dark)
 
 Den Griff über die Bar wischen, um zu entsperren oder zu sperren.
 
@@ -74,8 +74,8 @@ Keine Alarmcodes in der Config ablegen. Siehe [SECURITY.md](https://github.com/a
 
 ## Modus `value`
 
-![Modus value, Thermometer](assets/shots/value-light.png#only-light)
-![Modus value, Thermometer](assets/shots/value-dark.png#only-dark)
+![Modus value, Thermometer](/assets/shots/value-light.png#only-light)
+![Modus value, Thermometer](/assets/shots/value-dark.png#only-dark)
 
 Die Bar füllt sich nach Wert, der Wert steht im Griff. Bei `input_number` und `number` lässt sich der Griff ziehen oder mit den Pfeiltasten verschieben; die Karte ruft beim Loslassen `<domain>.set_value` auf, nicht während des Ziehens. `sensor` bleibt reine Anzeige.
 
@@ -99,8 +99,8 @@ Pfeiltasten verschieben den Wert um einen Schritt (ohne Schrittweite: 1 % des Be
 
 ## Modus `counter`
 
-![Modus counter](assets/shots/counter-light.png#only-light)
-![Modus counter](assets/shots/counter-dark.png#only-dark)
+![Modus counter](/assets/shots/counter-light.png#only-light)
+![Modus counter](/assets/shots/counter-dark.png#only-dark)
 
 Zeigt eine `counter.*`-Entity. Die Bar füllt sich zwischen Minimum und Maximum.
 Tippen zählt um eins hoch, Doppeltippen um eins runter (`counter.increment` / `counter.decrement`).
@@ -125,8 +125,8 @@ Entity-Attribute `minimum` / `maximum`, dann 0 / 100. Den Zähler durch Ziehen z
 
 ## Modus `timer`
 
-![Modus timer](assets/shots/timer-light.png#only-light)
-![Modus timer](assets/shots/timer-dark.png#only-dark)
+![Modus timer](/assets/shots/timer-light.png#only-light)
+![Modus timer](/assets/shots/timer-dark.png#only-dark)
 
 Zwei Quellen:
 
@@ -177,22 +177,22 @@ weicht die Anzeige um diese Differenz ab.
 Sommerzeit: Eine Uhrzeit, die es nicht gibt (Umstellung im Frühjahr), wird hinter die Lücke geschoben; eine,
 die es zweimal gibt (Herbst), meint die spätere. Ein unbekannter Zeitzonenname ist ein Konfigurationsfehler.
 
-![Pausierter Timer](assets/shots/timer-paused-light.png#only-light)
-![Pausierter Timer](assets/shots/timer-paused-dark.png#only-dark)
+![Pausierter Timer](/assets/shots/timer-paused-light.png#only-light)
+![Pausierter Timer](/assets/shots/timer-paused-dark.png#only-dark)
 
-![Countdown auf ein Datum](assets/shots/timer-date-light.png#only-light)
-![Countdown auf ein Datum](assets/shots/timer-date-dark.png#only-dark)
+![Countdown auf ein Datum](/assets/shots/timer-date-light.png#only-light)
+![Countdown auf ein Datum](/assets/shots/timer-date-dark.png#only-dark)
 
-![Vertikaler Timer](assets/shots/timer-vertical-light.png#only-light)
-![Vertikaler Timer](assets/shots/timer-vertical-dark.png#only-dark)
+![Vertikaler Timer](/assets/shots/timer-vertical-light.png#only-light)
+![Vertikaler Timer](/assets/shots/timer-vertical-dark.png#only-dark)
 
 ## Modus `clock`
 
-![Digitaluhr](assets/shots/clock-digital-light.png#only-light)
-![Digitaluhr](assets/shots/clock-digital-dark.png#only-dark)
+![Digitaluhr](/assets/shots/clock-digital-light.png#only-light)
+![Digitaluhr](/assets/shots/clock-digital-dark.png#only-dark)
 
-![Analoguhr](assets/shots/clock-analog-light.png#only-light)
-![Analoguhr](assets/shots/clock-analog-dark.png#only-dark)
+![Analoguhr](/assets/shots/clock-analog-light.png#only-light)
+![Analoguhr](/assets/shots/clock-analog-dark.png#only-dark)
 
 Uhr, keine Entity nötig. Der Griff zeigt die Uhrzeit digital oder als Zifferblatt (analog), die Bar füllt sich mit dem Tagesfortschritt.
 
@@ -231,9 +231,9 @@ clock:
     numbers: quarters
 ```
 
-![Analoguhr größer als die Bar](assets/shots/clock-large-light.png#only-light)
-![Analoguhr größer als die Bar](assets/shots/clock-large-dark.png#only-dark)
+![Analoguhr größer als die Bar](/assets/shots/clock-large-light.png#only-light)
+![Analoguhr größer als die Bar](/assets/shots/clock-large-dark.png#only-dark)
 
-![Analoguhr mit eigenen Farben](assets/shots/clock-colors-light.png#only-light)
-![Analoguhr mit eigenen Farben](assets/shots/clock-colors-dark.png#only-dark)
+![Analoguhr mit eigenen Farben](/assets/shots/clock-colors-light.png#only-light)
+![Analoguhr mit eigenen Farben](/assets/shots/clock-colors-dark.png#only-dark)
 

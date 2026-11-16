@@ -1,0 +1,63 @@
+[project]
+docs_dir = "docs-de"
+site_dir = "site/de"
+site_name = "slABton"
+site_description = "Slider-Button-Bar-Karte für Home Assistant: beweglicher Griff, Zustände, Swipe-to-Lock, Wertanzeige"
+site_url = "https://slabton.de/de/"
+repo_url = "https://github.com/arboeh/slABton"
+repo_name = "arboeh/slABton"
+edit_uri = "edit/main/docs-de/"
+# Logo at the very end of every page. The footer is dark in both color schemes, so the dark
+# variant is used always. Assets are served once at /assets/ for both languages.
+copyright = '<img src="/assets/logo-dark.svg" alt="AB" style="height:36px;width:auto">'
+nav = [
+  { "Start" = "index.md" },
+  { "Live-Demo" = "demo.md" },
+  { "Installation" = "installation.md" },
+  { "Konfiguration" = "configuration.md" },
+  { "Modi" = "modes.md" },
+  { "Darstellung" = "appearance.md" },
+  { "Referenz" = "reference.md" },
+]
+
+# German build, output to site/de/. Shares /assets/ and /demo-app/ with the English site.
+[[project.extra.alternate]]
+name = "English"
+link = "/"
+lang = "en"
+
+[[project.extra.alternate]]
+name = "Deutsch"
+link = "/de/"
+lang = "de"
+
+[project.theme]
+language = "de"
+features = [
+  "navigation.sections",
+  "navigation.top",
+  "content.code.copy",
+  "content.action.edit",
+]
+
+[project.theme.icon]
+alternate = "material/earth"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "material/weather-night"
+toggle.name = "Dunkler Modus"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "material/weather-sunny"
+toggle.name = "Heller Modus"
+
+[project.markdown_extensions]
+tables = {}
+admonition = {}
+toc.permalink = true
+pymdownx.superfences = {}
+pymdownx.highlight = {}

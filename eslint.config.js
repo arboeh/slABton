@@ -3,7 +3,7 @@ import globals from "globals";
 
 export default [
   {
-    // Generated or vendored: site/ (mkdocs output), the demo copy of the bundle and its libraries.
+    // Generated or vendored: site/ (Zensical output), the demo copy of the bundle and its libraries.
     ignores: [
       "node_modules/", "coverage/", "dist/", ".kilocode/", "site/",
       "docs/demo-app/slabton.js", "docs/demo-app/vendor/",

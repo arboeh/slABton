@@ -1,0 +1,62 @@
+[project]
+site_name = "slABton"
+site_description = "Slider button bar card for Home Assistant: movable handle, states, swipe-to-lock, value display"
+site_url = "https://slabton.de/"
+repo_url = "https://github.com/arboeh/slABton"
+repo_name = "arboeh/slABton"
+edit_uri = "edit/main/docs/"
+# Logo at the very end of every page. The footer is dark in both color schemes, so the dark
+# variant is used always. Assets are served once at /assets/ for both languages.
+copyright = '<img src="/assets/logo-dark.svg" alt="AB" style="height:36px;width:auto">'
+nav = [
+  { "Home" = "index.md" },
+  { "Live demo" = "demo.md" },
+  { "Installation" = "installation.md" },
+  { "Configuration" = "configuration.md" },
+  { "Modes" = "modes.md" },
+  { "Appearance" = "appearance.md" },
+  { "Reference" = "reference.md" },
+]
+
+# Language switcher. Zensical has no i18n plugin: English lives in docs/ (site root),
+# German in docs-de/ (built with zensical-de.toml into site/de/).
+[[project.extra.alternate]]
+name = "English"
+link = "/"
+lang = "en"
+
+[[project.extra.alternate]]
+name = "Deutsch"
+link = "/de/"
+lang = "de"
+
+[project.theme]
+language = "en"
+features = [
+  "navigation.sections",
+  "navigation.top",
+  "content.code.copy",
+  "content.action.edit",
+]
+
+[project.theme.icon]
+alternate = "material/earth"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: light)"
+scheme = "default"
+toggle.icon = "material/weather-night"
+toggle.name = "Dark mode"
+
+[[project.theme.palette]]
+media = "(prefers-color-scheme: dark)"
+scheme = "slate"
+toggle.icon = "material/weather-sunny"
+toggle.name = "Light mode"
+
+[project.markdown_extensions]
+tables = {}
+admonition = {}
+toc.permalink = true
+pymdownx.superfences = {}
+pymdownx.highlight = {}

@@ -2,8 +2,8 @@
 
 ## Bar-Wert
 
-![Bar-Wert aus einer anderen Entity](assets/shots/bar-entity-light.png#only-light)
-![Bar-Wert aus einer anderen Entity](assets/shots/bar-entity-dark.png#only-dark)
+![Bar-Wert aus einer anderen Entity](/assets/shots/bar-entity-light.png#only-light)
+![Bar-Wert aus einer anderen Entity](/assets/shots/bar-entity-dark.png#only-dark)
 
 Standardmäßig zeigt die Bar dieselbe Entity wie der Button. Der Block `bar:` trennt beides: die Bar zeigt
 eine numerische Entity, der Griff bleibt bei `entity`.
@@ -46,8 +46,8 @@ Texte sind auf 200 Zeichen begrenzt.
 
 ## Textdarstellung
 
-![Eigene Schriftgrößen und Farben](assets/shots/text-appearance-light.png#only-light)
-![Eigene Schriftgrößen und Farben](assets/shots/text-appearance-dark.png#only-dark)
+![Eigene Schriftgrößen und Farben](/assets/shots/text-appearance-light.png#only-light)
+![Eigene Schriftgrößen und Farben](/assets/shots/text-appearance-dark.png#only-dark)
 
 Der Block `text:` setzt Schriftgröße und Farbe von fünf Bereichen. Ohne ihn ändert sich nichts.
 
@@ -88,8 +88,8 @@ text:
 
 ## Skala
 
-![Skala mit Beschriftung](assets/shots/value-scale-light.png#only-light)
-![Skala mit Beschriftung](assets/shots/value-scale-dark.png#only-dark)
+![Skala mit Beschriftung](/assets/shots/value-scale-light.png#only-light)
+![Skala mit Beschriftung](/assets/shots/value-scale-dark.png#only-dark)
 
 Striche und Beschriftung, unter dem Griff gezeichnet. Striche und Beschriftung können jeweils innen oder außerhalb der Bar stehen, unabhängig voneinander. Ohne `scale:` wird nichts gezeichnet.
 
@@ -135,22 +135,22 @@ scale:
 
 `header_position` (`top`, `bottom`, `none`) und `header_icon_position` (`left`, `right`) platzieren den Header. `text.header` setzt Größe, Farbe und Icon-Farbe (siehe [Textdarstellung](#textdarstellung)).
 
-![Header-Icon rechts](assets/shots/header-icon-right-light.png#only-light)
-![Header-Icon rechts](assets/shots/header-icon-right-dark.png#only-dark)
+![Header-Icon rechts](/assets/shots/header-icon-right-light.png#only-light)
+![Header-Icon rechts](/assets/shots/header-icon-right-dark.png#only-dark)
 
-![Header unter der Bar](assets/shots/header-bottom-light.png#only-light)
-![Header unter der Bar](assets/shots/header-bottom-dark.png#only-dark)
+![Header unter der Bar](/assets/shots/header-bottom-light.png#only-light)
+![Header unter der Bar](/assets/shots/header-bottom-dark.png#only-dark)
 
-![Header mit eigener Schriftgröße und Farben](assets/shots/header-text-light.png#only-light)
-![Header mit eigener Schriftgröße und Farben](assets/shots/header-text-dark.png#only-dark)
+![Header mit eigener Schriftgröße und Farben](/assets/shots/header-text-light.png#only-light)
+![Header mit eigener Schriftgröße und Farben](/assets/shots/header-text-dark.png#only-dark)
 
 ## Styling
 
-![Eigene Farben für Bar, Füllung und Griff](assets/shots/colors-light.png#only-light)
-![Eigene Farben für Bar, Füllung und Griff](assets/shots/colors-dark.png#only-dark)
+![Eigene Farben für Bar, Füllung und Griff](/assets/shots/colors-light.png#only-light)
+![Eigene Farben für Bar, Füllung und Griff](/assets/shots/colors-dark.png#only-dark)
 
-![Warme Farben mit eckigem Griff](assets/shots/colors-warm-light.png#only-light)
-![Warme Farben mit eckigem Griff](assets/shots/colors-warm-dark.png#only-dark)
+![Warme Farben mit eckigem Griff](/assets/shots/colors-warm-light.png#only-light)
+![Warme Farben mit eckigem Griff](/assets/shots/colors-warm-dark.png#only-dark)
 
 Layout und Farben laufen über CSS-Variablen an der Karte. Setzen per `styles:` (Schlüssel ohne
 Präfix `--slabton-` bekommen es automatisch) oder per card-mod.

@@ -83,7 +83,7 @@ npm test
 npm run build
 ```
 
-`dist/slabton.js` ist die einzige Release-Datei. Die Quellen der Website liegen in `docs/` (MkDocs);
+`dist/slabton.js` ist die einzige Release-Datei. Die Quellen der Website liegen in `docs/` und `docs-de/` (Zensical);
 Quellcode-Aufbau und das Hinzufügen einer Sprache stehen in der [Referenz](https://slabton.de/de/reference/).
 
 ## Lizenz
