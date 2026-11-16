@@ -48,6 +48,55 @@ describe("cardHeightPx with scale labels outside", () => {
   });
 });
 
+describe("cardHeightPx with a styles: override of the scale sizes", () => {
+  const scaleOut = (extra = {}, scale = {}) => cfg({
+    entity: "sensor.x", mode: "value", min: 0, max: 100, thickness: 48, handle_size: 40,
+    scale: { ticks: 4, labels: true, labels_placement: "outside", ...scale }, ...extra,
+  });
+  const ticksOut = (extra = {}, scale = {}) => scaleOut(extra, { ticks_placement: "outside", labels_placement: "inside", ...scale });
+
+  it("counts a px label size from styles: like text.scale.font_size", () => {
+    expect(cardHeightPx(scaleOut({ styles: { "scale-label-size": "14px" } }))).toBe(91);
+    expect(cardHeightPx(scaleOut({ styles: { "scale-label-size": "14PX" } }))).toBe(91);
+    expect(cardHeightPx(scaleOut({ styles: { "scale-label-size": "0" } }))).toBe(26 + 48 + 3);
+    expect(cardHeightPx(scaleOut({ styles: { "--slabton-scale-label-size": "14px" } }))).toBe(91);
+    expect(cardHeightPx(scaleOut({ styles: { "scale-label-size": "14px" } }))).toBe(cardHeightPx(scaleOut({ text: { scale: { font_size: 14 } } })));
+  });
+
+  it("ranks text.scale.font_size above styles:", () => {
+    expect(cardHeightPx(scaleOut({ styles: { "scale-label-size": "20px" }, text: { scale: { font_size: 14 } } }))).toBe(91);
+  });
+
+  it("falls back to the default for units the card cannot resolve", () => {
+    for (const value of ["1.2em", "1rem", "50%", "var(--my-size)", "calc(10px + 2px)", "large", "px", "14", "14 px", "-5px", "1e2", "+5px"]) {
+      expect(cardHeightPx(scaleOut({ styles: { "scale-label-size": value } })), value).toBe(87);
+    }
+    expect(cardHeightPx(scaleOut({ styles: { "scale-label-size": 14 } })), "number 14").toBe(87);
+  });
+
+  it("counts a px tick length from styles: and lets it win over scale.size", () => {
+    expect(cardHeightPx(ticksOut({ styles: { "scale-size": "12px" } }))).toBe(86);
+    expect(cardHeightPx(ticksOut({ styles: { "scale-size": "12px" } }, { size: 6 }))).toBe(86);
+    expect(cardHeightPx(ticksOut({}, { size: 6 }))).toBe(80);
+  });
+
+  it("falls back to scale.size or the default for a tick length in another unit", () => {
+    expect(cardHeightPx(ticksOut({ styles: { "scale-size": "1em" } }))).toBe(82);
+    expect(cardHeightPx(ticksOut({ styles: { "scale-size": "var(--x)" } }, { size: 6 }))).toBe(80);
+  });
+
+  it("counts both overrides when ticks and labels stand outside", () => {
+    const both = scaleOut({ styles: { "scale-label-size": "14px", "scale-size": "12px" } }, { ticks_placement: "outside" });
+    expect(cardHeightPx(both)).toBe(26 + 48 + 12 + 14 + 3);
+  });
+
+  it("ignores the overrides for labels and ticks inside and for a vertical bar", () => {
+    const styles = { "scale-label-size": "14px", "scale-size": "12px" };
+    expect(cardHeightPx(cfg({ entity: "sensor.x", mode: "value", scale: { ticks: 4, labels: true }, styles }))).toBe(74);
+    expect(cardHeightPx(scaleOut({ orientation: "vertical", styles }, { ticks_placement: "outside" }))).toBe(186);
+  });
+});
+
 describe("scale labels outside (css)", () => {
   const css = buildCss();
 

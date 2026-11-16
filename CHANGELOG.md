@@ -9,6 +9,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 - Internal cleanup of the outside scale code (shared tick track margin, grouped padding rules, one helper for tick
   markup). No visible change.
+- Visual editor shows `inside` in the scale placement fields while the scale is on; the value is still not stored.
+
+### Fixed
+
+- Outside scale, horizontal card: a label size or tick length set in `styles:` (`--slabton-scale-label-size`,
+  `--slabton-scale-size`, in `px`) now counts in the card height. Before, only `text.scale.font_size` and `scale.size`
+  counted.
 
 ## [0.4.0] - 2026-11-16
 

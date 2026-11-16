@@ -245,9 +245,15 @@ export function cleanConfig(data) {
 function formData(config) {
   const { scale, ...base } = config;
   const rest = withFaceDefaults(base);
-  if (scale === true) return { ...rest, scale: { enabled: true } };
-  return isPlainObject(scale) ? { ...rest, scale: { ...scale, enabled: true } } : rest;
+  if (scale === true) return { ...rest, scale: { ...DEFAULT_PLACEMENTS, enabled: true } };
+  return isPlainObject(scale) ? { ...rest, scale: { ...DEFAULT_PLACEMENTS, ...scale, enabled: true } } : rest;
 }
+
+/** The placements a scale has without options: the form shows them, the editor never stores them (`dropDefaultPlacements`). */
+const DEFAULT_PLACEMENTS = Object.freeze({
+  labels_placement: DEFAULT_SCALE_LABEL_PLACEMENT,
+  ticks_placement: DEFAULT_SCALE_TICK_PLACEMENT,
+});
 
 const isAnalog = (config) => isPlainObject(config.clock) && config.clock.display === "analog";
 

@@ -463,29 +463,54 @@ describe("SlabtonCardEditor", () => {
     return { editor, form, send };
   };
 
-  it("shows scale: true and scale: {} as an enabled, empty section", () => {
-    expect(setup({ entity: "switch.a", scale: true }).form.data).toEqual({ entity: "switch.a", scale: { enabled: true } });
-    expect(setup({ entity: "switch.a", scale: {} }).form.data).toEqual({ entity: "switch.a", scale: { enabled: true } });
+  const placements = { labels_placement: "inside", ticks_placement: "inside" };
+
+  it("shows scale: true and scale: {} as an enabled section with the default placements", () => {
+    expect(setup({ entity: "switch.a", scale: true }).form.data)
+      .toEqual({ entity: "switch.a", scale: { enabled: true, ...placements } });
+    expect(setup({ entity: "switch.a", scale: {} }).form.data)
+      .toEqual({ entity: "switch.a", scale: { enabled: true, ...placements } });
   });
 
-  it("shows the fields of a scale map next to the enabled switch", () => {
+  it("shows the fields of a scale map next to the enabled switch and the default placements", () => {
     expect(setup({ entity: "switch.a", scale: { ticks: 5 } }).form.data)
-      .toEqual({ entity: "switch.a", scale: { enabled: true, ticks: 5 } });
+      .toEqual({ entity: "switch.a", scale: { enabled: true, ticks: 5, ...placements } });
+  });
+
+  it("shows a stored placement instead of the default", () => {
+    expect(setup({ entity: "switch.a", scale: { labels_placement: "outside", ticks_placement: "none" } }).form.data)
+      .toEqual({ entity: "switch.a", scale: { enabled: true, labels_placement: "outside", ticks_placement: "none" } });
   });
 
   it("shows the enabled switch on even when the YAML scale map has its own enabled: false", () => {
     expect(setup({ entity: "switch.a", scale: { enabled: false, ticks: 5 } }).form.data)
-      .toEqual({ entity: "switch.a", scale: { enabled: true, ticks: 5 } });
+      .toEqual({ entity: "switch.a", scale: { enabled: true, ticks: 5, ...placements } });
   });
 
   it("refreshes the form data after a change, without waiting for setConfig", () => {
     const { form, send } = setup({ entity: "switch.a" });
     send({ entity: "switch.a", scale: { enabled: true } });
-    expect(form.data).toEqual({ entity: "switch.a", scale: { enabled: true } });
+    expect(form.data).toEqual({ entity: "switch.a", scale: { enabled: true, ...placements } });
     send({ entity: "switch.a", scale: { enabled: true, ticks: 5 } });
-    expect(form.data).toEqual({ entity: "switch.a", scale: { enabled: true, ticks: 5 } });
+    expect(form.data).toEqual({ entity: "switch.a", scale: { enabled: true, ticks: 5, ...placements } });
     send({ entity: "switch.a", scale: { enabled: false, ticks: 5 } });
     expect(form.data).toEqual({ entity: "switch.a" });
+  });
+
+  it("does not store the default placements the form shows", () => {
+    const { form, send } = setup({ entity: "switch.a", scale: true });
+    expect(send({ ...form.data, name: "N" })).toEqual({ entity: "switch.a", name: "N", scale: true });
+    expect(send({ ...form.data, scale: { ...form.data.scale, ticks: 5 } })).toEqual({ entity: "switch.a", name: "N", scale: { ticks: 5 } });
+  });
+
+  it("stores a placement the user picks and shows the default again after the pick is undone", () => {
+    const { form, send } = setup({ entity: "switch.a", scale: true });
+    expect(send({ ...form.data, scale: { ...form.data.scale, labels_placement: "outside" } }))
+      .toEqual({ entity: "switch.a", scale: { labels_placement: "outside" } });
+    expect(form.data.scale.labels_placement).toBe("outside");
+    expect(send({ ...form.data, scale: { ...form.data.scale, labels_placement: "inside" } }))
+      .toEqual({ entity: "switch.a", scale: true });
+    expect(form.data.scale).toEqual({ enabled: true, ...placements });
   });
 
   it("shows scale: false like a missing scale", () => {

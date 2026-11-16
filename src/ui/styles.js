@@ -35,22 +35,36 @@ export function handleOverhang(config) {
   return Math.max(config.handle_overhang === true ? along / 2 : 0, handleExtra(config));
 }
 
+/** A length in `px` ("14px", "14.5px", ".5px", "14PX") or a bare "0"; nothing else. CSS rejects a unitless non-zero length. */
+const PX_VALUE_RE = /^(?:(\d*\.?\d+)px|0)$/i;
+
 /**
- * Height the scale labels outside the bar add to a horizontal card, in px: the label font size (one line,
- * `line-height: 1`) plus the gap. Zero without labels outside. A `styles:` override of the font size is not seen here.
+ * Value of a `styles:` override in px, or undefined when it is not set or not a px value (`em`, `rem`, `%`,
+ * `var()`, `calc()`): the card cannot know what those resolve to, so they count as not set.
  */
-function outsideLabelsPx(config) {
-  if (!config.scale?.labels || config.scale.labelsPlacement !== "outside") return 0;
-  return (config.text?.scale?.font_size ?? DEFAULT_SCALE_LABEL_SIZE) + SCALE_LABEL_GAP_PX;
+function stylePx(config, name) {
+  const match = PX_VALUE_RE.exec(String(config.styles?.[name] ?? "").trim());
+  return match ? Number(match[1] ?? 0) : undefined;
 }
 
 /**
- * Height the scale ticks outside the bar add to a horizontal card, in px: the tick length (`scale.size` or its
- * default). Zero for ticks inside.
+ * Height the scale labels outside the bar add to a horizontal card, in px: the label font size (one line,
+ * `line-height: 1`) plus the gap. Zero without labels outside. The font size ranks `text.scale.font_size`, then a
+ * `styles:` override in px, then the default.
+ */
+function outsideLabelsPx(config) {
+  if (!config.scale?.labels || config.scale.labelsPlacement !== "outside") return 0;
+  const size = config.text?.scale?.font_size ?? stylePx(config, "--slabton-scale-label-size") ?? DEFAULT_SCALE_LABEL_SIZE;
+  return size + SCALE_LABEL_GAP_PX;
+}
+
+/**
+ * Height the scale ticks outside the bar add to a horizontal card, in px: the tick length (`scale.size`, then a
+ * `styles:` override in px, then the default; the same order as in `buildVars`). Zero for ticks inside.
  */
 function outsideTicksPx(config) {
   if (config.scale?.ticksPlacement !== "outside") return 0;
-  return config.scale.size ?? DEFAULT_SCALE_SIZE;
+  return stylePx(config, "--slabton-scale-size") ?? config.scale.size ?? DEFAULT_SCALE_SIZE;
 }
 
 /**
