@@ -5,11 +5,12 @@ afterEach(() => vi.restoreAllMocks());
 
 const base = { type: "custom:slabton-card", entity: "input_select.mode" };
 
-describe("scale.labels_placement", () => {
-  const valueBase = { ...base, entity: "sensor.x", mode: "value", min: 0, max: 100 };
-  const scaleOf = (scale, extra = {}) => normalizeConfig({ ...valueBase, ...extra, scale }).scale;
-  const warnSpy = () => vi.spyOn(console, "warn").mockImplementation(() => {});
+// Shared by the scale placement blocks below.
+const valueBase = { ...base, entity: "sensor.x", mode: "value", min: 0, max: 100 };
+const scaleOf = (scale, extra = {}) => normalizeConfig({ ...valueBase, ...extra, scale }).scale;
+const warnSpy = () => vi.spyOn(console, "warn").mockImplementation(() => {});
 
+describe("scale.labels_placement", () => {
   it("defaults to inside", () => {
     expect(scaleOf({ labels: true }).labelsPlacement).toBe("inside");
     expect(scaleOf(true).labelsPlacement).toBe("inside");
@@ -53,10 +54,6 @@ describe("scale.labels_placement", () => {
 });
 
 describe("scale.ticks_placement", () => {
-  const valueBase = { ...base, entity: "sensor.x", mode: "value", min: 0, max: 100 };
-  const scaleOf = (scale, extra = {}) => normalizeConfig({ ...valueBase, ...extra, scale }).scale;
-  const warnSpy = () => vi.spyOn(console, "warn").mockImplementation(() => {});
-
   it("defaults to inside", () => {
     expect(scaleOf(true).ticksPlacement).toBe("inside");
     expect(scaleOf({ ticks: 4 }).ticksPlacement).toBe("inside");

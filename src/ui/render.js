@@ -38,6 +38,9 @@ const labelsOutside = (config) => Boolean(config.scale?.labels?.length) && confi
 /** Side of the ticks and labels outside: the side `scale.position` points to; centred scales use the start side. */
 const outsideSide = (config) => (config.scale.position === "end" ? "end" : "start");
 
+/** One tick mark per division plus the closing one (`scale.ticks + 1`). */
+const tickSpansHtml = (config) => '<span class="tick"></span>'.repeat(config.scale.ticks + 1);
+
 /**
  * Container of the `scale:` block in the bar; the tick positions are set after rendering (see `placeTicks`).
  * Ticks outside or hidden leave it without ticks; it stays only as the home of labels inside, otherwise it is not
@@ -50,15 +53,13 @@ function scaleHtml(config) {
     const labelsInside = config.scale.labels?.length && !labelsOutside(config);
     return labelsInside ? `<div class="scale ${position} tk-out" aria-hidden="true"></div>` : "";
   }
-  const ticks = '<span class="tick"></span>'.repeat(config.scale.ticks + 1);
-  return `<div class="scale ${position}" aria-hidden="true">${ticks}</div>`;
+  return `<div class="scale ${position}" aria-hidden="true">${tickSpansHtml(config)}</div>`;
 }
 
 /** Container of the ticks outside the bar (beside it, between bar and labels). */
 function outsideTicksHtml(config) {
   if (!ticksOutside(config)) return "";
-  const ticks = '<span class="tick"></span>'.repeat(config.scale.ticks + 1);
-  return `<div class="scale-ticks tk-${outsideSide(config)}" aria-hidden="true">${ticks}</div>`;
+  return `<div class="scale-ticks tk-${outsideSide(config)}" aria-hidden="true">${tickSpansHtml(config)}</div>`;
 }
 
 /** Container of the labels outside the bar; the labels are added after rendering (see `placeLabels`). */
@@ -197,7 +198,9 @@ export function renderCard(shadow, config, css) {
   const outsideLabels = outsideLabelsHtml(config);
   const outsideTicks = outsideTicksHtml(config);
   const side = outsideLabels || outsideTicks ? outsideSide(config) : "";
-  const stageClass = `stage${hasInfo ? " has-info" : ""}${outsideLabels ? ` lbl-out lbl-${side}` : ""}${outsideTicks ? ` tk-out tk-${side}` : ""}`;
+  const labelClass = outsideLabels ? ` lbl-out lbl-${side}` : "";
+  const tickClass = outsideTicks ? ` tk-out tk-${side}` : "";
+  const stageClass = `stage${hasInfo ? " has-info" : ""}${labelClass}${tickClass}`;
   const outsideBefore = side === "start" ? outsideLabels + outsideTicks : "";
   const outsideAfter = side === "end" ? outsideTicks + outsideLabels : "";
   shadow.innerHTML = `

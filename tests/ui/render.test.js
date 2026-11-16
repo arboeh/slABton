@@ -18,6 +18,11 @@ function setup(extra = {}) {
 
 const modeState = makeState("input_select.mode", "on", { options: ["off", "auto", "on"] });
 
+/** `read(element)` for every element matching `selector` in the shadow root. */
+const mapAll = (shadow, selector, read) => [...shadow.querySelectorAll(selector)].map(read);
+const textOf = (el) => el.textContent;
+const edgeOf = (el) => el.style.getPropertyValue("--slabton-tick-e");
+
 describe("renderCard", () => {
   it("builds the core structure", () => {
     const { shadow, refs } = setup();
@@ -72,7 +77,7 @@ describe("scale labels outside the bar", () => {
     entity: "sensor.x", mode: "value", min: 0, max: 100,
     scale: { ticks: 4, labels: true, labels_placement: "outside", ...scale }, ...extra,
   });
-  const texts = (shadow) => [...shadow.querySelectorAll(".scale-labels .tick-label")].map((label) => label.textContent);
+  const texts = (shadow) => mapAll(shadow, ".scale-labels .tick-label", textOf);
 
   it("builds a label container beside the bar and keeps the ticks in the bar", () => {
     const { shadow } = outside();
@@ -133,7 +138,7 @@ describe("scale ticks outside the bar", () => {
     entity: "sensor.x", mode: "value", min: 0, max: 100,
     scale: { ticks: 4, ticks_placement: "outside", ...scale }, ...extra,
   });
-  const edges = (shadow) => [...shadow.querySelectorAll(".scale-ticks .tick")].map((t) => t.style.getPropertyValue("--slabton-tick-e"));
+  const edges = (shadow) => mapAll(shadow, ".scale-ticks .tick", edgeOf);
 
   it("builds a tick container beside the bar and keeps nothing in the bar", () => {
     const { shadow } = ticksOut();
@@ -198,7 +203,7 @@ describe("scale without ticks (ticks_placement none)", () => {
     entity: "sensor.x", mode: "value", min: 0, max: 100,
     scale: { ticks: 4, labels: true, ticks_placement: "none", ...scale }, ...extra,
   });
-  const labelTexts = (shadow) => [...shadow.querySelectorAll(".tick-label")].map((l) => l.textContent);
+  const labelTexts = (shadow) => mapAll(shadow, ".tick-label", textOf);
 
   it("draws no ticks and keeps the labels in the bar", () => {
     const { shadow } = noTicks();

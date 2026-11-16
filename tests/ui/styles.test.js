@@ -60,10 +60,10 @@ describe("scale labels outside (css)", () => {
   });
 
   it("frees the stage padding on the label side", () => {
-    expect(css).toContain(".o-h .stage.lbl-start { padding-top: 0; }");
-    expect(css).toContain(".o-h .stage.lbl-end { padding-bottom: 0; }");
-    expect(css).toContain(".o-v .stage.lbl-start { padding-left: 0; }");
-    expect(css).toContain(".o-v .stage.lbl-end { padding-right: 0; }");
+    expect(css).toContain(".o-h .stage.lbl-start, .o-h .stage.tk-start { padding-top: 0; }");
+    expect(css).toContain(".o-h .stage.lbl-end, .o-h .stage.tk-end { padding-bottom: 0; }");
+    expect(css).toContain(".o-v .stage.lbl-start, .o-v .stage.tk-start { padding-left: 0; }");
+    expect(css).toContain(".o-v .stage.lbl-end, .o-v .stage.tk-end { padding-right: 0; }");
   });
 });
 
@@ -111,10 +111,10 @@ describe("scale ticks outside (css)", () => {
   });
 
   it("frees the stage padding on the tick side", () => {
-    expect(css).toContain(".o-h .stage.tk-start { padding-top: 0; }");
-    expect(css).toContain(".o-h .stage.tk-end { padding-bottom: 0; }");
-    expect(css).toContain(".o-v .stage.tk-start { padding-left: 0; }");
-    expect(css).toContain(".o-v .stage.tk-end { padding-right: 0; }");
+    expect(css).toContain(".o-h .stage.lbl-start, .o-h .stage.tk-start { padding-top: 0; }");
+    expect(css).toContain(".o-h .stage.lbl-end, .o-h .stage.tk-end { padding-bottom: 0; }");
+    expect(css).toContain(".o-v .stage.lbl-start, .o-v .stage.tk-start { padding-left: 0; }");
+    expect(css).toContain(".o-v .stage.lbl-end, .o-v .stage.tk-end { padding-right: 0; }");
   });
 
   it("takes the tick track as the margin of the tick container and the tick length as its size", () => {

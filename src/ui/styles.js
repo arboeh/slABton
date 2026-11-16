@@ -155,22 +155,27 @@ function scaleLabelCss() {
 }
 
 /**
+ * Margin along the bar of the containers outside the bar: border, handle padding and half the handle length,
+ * the same track the ticks inside use, so labels and ticks outside stand exactly over the handle positions.
+ */
+const OUTSIDE_TRACK = "calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2)";
+
+/**
  * Labels outside the bar (`scale.labels_placement: outside`). The stage becomes a grid with the labels and the
- * bar in flow, so the card grows by itself. The label container leaves the same margin as the tick track (border,
- * handle padding and half the handle length), so every label stands exactly over its tick. The gap to the bar is
- * the handle's reach out of the bar plus a little air; the stage padding on the label side is dropped.
+ * bar in flow, so the card grows by itself. The label container leaves the tick track as margin, so every label
+ * stands exactly over its tick. The gap to the bar is the handle's reach out of the bar plus a little air; the
+ * stage padding on the label side (and on the tick side, see `outsideTickCss`) is dropped.
  */
 function outsideLabelCss() {
   const gap = `calc(var(--slabton-cross-extra, 0px) + ${SCALE_LABEL_GAP_PX}px)`;
-  const track = "calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2)";
   return `
     .stage.lbl-out, .stage.tk-out { display: grid; justify-content: center; }
     .o-h .stage.lbl-out, .o-h .stage.tk-out { grid-template-columns: var(--slabton-length); }
     .o-v .stage.lbl-out, .o-v .stage.tk-out { grid-template-rows: var(--slabton-length); grid-auto-flow: column; }
-    .o-h .stage.lbl-start { padding-top: 0; }
-    .o-h .stage.lbl-end { padding-bottom: 0; }
-    .o-v .stage.lbl-start { padding-left: 0; }
-    .o-v .stage.lbl-end { padding-right: 0; }
+    .o-h .stage.lbl-start, .o-h .stage.tk-start { padding-top: 0; }
+    .o-h .stage.lbl-end, .o-h .stage.tk-end { padding-bottom: 0; }
+    .o-v .stage.lbl-start, .o-v .stage.tk-start { padding-left: 0; }
+    .o-v .stage.lbl-end, .o-v .stage.tk-end { padding-right: 0; }
     .o-h .scale-labels.lbl-start { margin-bottom: ${gap}; }
     .o-h .scale-labels.lbl-end { margin-top: ${gap}; }
     .o-v .scale-labels.lbl-start { margin-right: ${gap}; }
@@ -180,8 +185,8 @@ function outsideLabelCss() {
     .o-v .stage.tk-out .scale-labels.lbl-start { margin-right: ${SCALE_LABEL_GAP_PX}px; }
     .o-v .stage.tk-out .scale-labels.lbl-end { margin-left: ${SCALE_LABEL_GAP_PX}px; }
     .scale-labels { display: grid; pointer-events: none; }
-    .o-h .scale-labels { margin-inline: ${track}; }
-    .o-v .scale-labels { margin-block: ${track}; }
+    .o-h .scale-labels { margin-inline: ${OUTSIDE_TRACK}; }
+    .o-v .scale-labels { margin-block: ${OUTSIDE_TRACK}; }
     .scale-labels .tick-label { position: relative; grid-area: 1 / 1; }
     .o-h .scale-labels .tick-label { justify-self: start; }
     .o-v .scale-labels .tick-label { align-self: start; }
@@ -196,20 +201,15 @@ function outsideLabelCss() {
 /**
  * Ticks outside the bar (`scale.ticks_placement: outside`): a container between bar and labels on the same grid.
  * Its margin along the bar is the tick track (as for the labels), its size across the bar the tick length; the
- * gap to the bar is the handle's reach out of it, the stage padding on the tick side is dropped.
+ * gap to the bar is the handle's reach out of it (the stage padding on the tick side is dropped in `outsideLabelCss`).
  */
 function outsideTickCss() {
-  const track = "calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2)";
   const extra = "var(--slabton-cross-extra, 0px)";
   const size = `var(--slabton-scale-size, ${DEFAULT_SCALE_SIZE}px)`;
   return `
-    .o-h .stage.tk-start { padding-top: 0; }
-    .o-h .stage.tk-end { padding-bottom: 0; }
-    .o-v .stage.tk-start { padding-left: 0; }
-    .o-v .stage.tk-end { padding-right: 0; }
     .scale-ticks { position: relative; pointer-events: none; }
-    .o-h .scale-ticks { margin-inline: ${track}; height: ${size}; }
-    .o-v .scale-ticks { margin-block: ${track}; width: ${size}; }
+    .o-h .scale-ticks { margin-inline: ${OUTSIDE_TRACK}; height: ${size}; }
+    .o-v .scale-ticks { margin-block: ${OUTSIDE_TRACK}; width: ${size}; }
     .o-h .scale-ticks .tick { top: 0; }
     .o-v .scale-ticks .tick { left: 0; }
     .o-h .scale-ticks.tk-start { margin-bottom: ${extra}; }

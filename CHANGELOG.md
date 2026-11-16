@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Changed
+
+- Internal cleanup of the outside scale code (shared tick track margin, grouped padding rules, one helper for tick
+  markup). No visible change.
+
 ## [0.4.0] - 2026-11-16
 
 ### Added
