@@ -7,9 +7,6 @@ site_url = "https://slabton.de/de/"
 repo_url = "https://github.com/arboeh/slABton"
 repo_name = "arboeh/slABton"
 edit_uri = "edit/main/docs-de/"
-# Logo at the very end of every page. The footer is dark in both color schemes, so the dark
-# variant is used always. Assets are served once at /assets/ for both languages.
-copyright = '<img src="/assets/logo-dark.svg" alt="AB" style="height:36px;width:auto">'
 nav = [
   { "Start" = "index.md" },
   { "Live-Demo" = "demo.md" },
@@ -31,7 +28,19 @@ name = "Deutsch"
 link = "/de/"
 lang = "de"
 
+[[project.extra.social]]
+icon = "fontawesome/brands/github"
+link = "https://github.com/arboeh/slABton"
+name = "slABton auf GitHub"
+
+[[project.extra.social]]
+icon = "material/account-circle"
+link = "https://github.com/arboeh?tab=repositories"
+name = "arboeh auf GitHub: alle Repositories"
+
 [project.theme]
+favicon = "/assets/logo-dark.svg"
+logo = "/assets/logo-dark.svg"
 language = "de"
 features = [
   "navigation.sections",
