@@ -16,3 +16,4 @@ coverage/
 .cache/
 /docs/demo-app/slabton.js
 .claude/
+__pycache__/
