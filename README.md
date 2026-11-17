@@ -7,10 +7,11 @@
 
 [![CI](https://github.com/arboeh/slABton/actions/workflows/ci.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/arboeh/slABton/actions/workflows/dynamic/github-code-scanning/codeql/badge.svg)](https://github.com/arboeh/slABton/security/code-scanning)
+[![codecov](https://codecov.io/gh/arboeh/slABton/graph/badge.svg)](https://codecov.io/gh/arboeh/slABton)
 [![Docs](https://github.com/arboeh/slABton/actions/workflows/docs.yml/badge.svg)](https://slabton.de)
 [![HACS](https://github.com/arboeh/slABton/actions/workflows/hacs.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/hacs.yml)
+[![Release](https://img.shields.io/github/v/release/arboeh/slABton)](https://github.com/arboeh/slABton/releases)
 [![License: MPL 2.0](https://img.shields.io/badge/license-MPL%202.0-blue.svg)](LICENSE)
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 
 Slider button bar card for Home Assistant: a bar with a movable handle button.
 Switch through several states, swipe to lock / unlock, or show a value.
@@ -18,6 +19,8 @@ Switch through several states, swipe to lock / unlock, or show a value.
 **[Documentation](https://slabton.de)** · **[Live demo](https://slabton.de/demo/)** · [Deutsche Version](README.de.md)
 
 **Install:** HACS, custom repository `arboeh/slABton`, type **Dashboard** ([details](#installation)).
+
+![slABton promo video](https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/promo/slabton-promo.gif)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/state-dark.png">
@@ -44,6 +47,8 @@ Switch through several states, swipe to lock / unlock, or show a value.
 ## Installation
 
 ### HACS (custom repository)
+
+[![Open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=arboeh&repository=slABton&category=plugin)
 
 1. HACS, three-dot menu, **Custom repositories**.
 2. Add `https://github.com/arboeh/slABton`, type **Dashboard**.
@@ -90,9 +95,7 @@ see the [reference](https://slabton.de/reference/) for the source layout and how
 
 [Mozilla Public License 2.0](LICENSE) (MPL-2.0)
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-dark.svg">
-    <img alt="AB logo" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-light.svg" height="64">
-  </picture>
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-dark.svg">
+  <img alt="AB logo" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-light.svg" height="64">
+</picture>

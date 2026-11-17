@@ -1,10 +1,23 @@
-# slABton
+---
+title: slABton
+---
 
+# ![slABton](assets/heading-light.svg#only-light)![slABton](assets/heading-dark.svg#only-dark)
+
+[![CI](https://github.com/arboeh/slABton/actions/workflows/ci.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/arboeh/slABton/actions/workflows/dynamic/github-code-scanning/codeql/badge.svg)](https://github.com/arboeh/slABton/security/code-scanning)
+[![codecov](https://codecov.io/gh/arboeh/slABton/graph/badge.svg)](https://codecov.io/gh/arboeh/slABton)
+[![HACS](https://github.com/arboeh/slABton/actions/workflows/hacs.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/hacs.yml)
+[![Release](https://img.shields.io/github/v/release/arboeh/slABton)](https://github.com/arboeh/slABton/releases)
 [![License: MPL 2.0](https://img.shields.io/badge/license-MPL%202.0-blue.svg)](https://github.com/arboeh/slABton/blob/main/LICENSE)
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 
 Slider button bar card for Home Assistant: a bar with a movable handle button.
 Switch through several states, swipe to lock / unlock, or show a value.
+
+<video autoplay loop muted playsinline poster="assets/promo/slabton-promo-poster.png" style="width: 100%; border-radius: 8px; margin: 1.5rem 0;">
+  <source src="assets/promo/slabton-promo.webm" type="video/webm">
+  <source src="assets/promo/slabton-promo.mp4" type="video/mp4">
+</video>
 
 ## Features
 

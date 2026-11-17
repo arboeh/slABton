@@ -92,6 +92,15 @@ SHOTS: dict[str, dict[str, Any]] = {
         "entity": HEATING, "name": "Heating", "icon": "mdi:radiator", "states": STATES_WITH_ICONS,
         "bar_color": "#4e342e", "fill_color": "#ff7043", "handle_color": "#fff3e0", "handle_shape": "square",
     },
+    "state-color": {
+        "entity": HEATING, "name": "Heating", "icon": "mdi:radiator", "bar_state_color": True,
+        "states": [
+            {"value": "Off", "icon": "mdi:power", "color": "blue"},
+            {"value": "Auto", "icon": "mdi:calendar-clock", "color": "green"},
+            {"value": "On", "icon": "mdi:fire", "color": "red"},
+            {"value": "Idle", "icon": "mdi:sleep", "color": "orange"},
+        ],
+    },
     "header-icon-right": {"entity": HEATING, "name": "Heating", "icon": "mdi:radiator", "header_icon_position": "right", "states": STATES_WITH_ICONS},
     "header-bottom": {"entity": HEATING, "name": "Heating", "icon": "mdi:radiator", "header_position": "bottom", "states": STATES_WITH_ICONS},
     "header-text": {

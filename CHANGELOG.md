@@ -5,16 +5,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-11-17
+
+First stable release. The configuration options of 0.x stay valid.
+
 ### Changed
 
 - Scale in the modes value, counter, timer and clock spans the whole bar: tick 0 at the start, the last tick at the
   end, every tick on the fill edge of its value. The first and last label are flush with the bar ends. State and lock
   keep the handle track, so labels and ticks stay under the handle positions.
 
+### Added
+
+- Docs (EN, DE): screenshot for `bar_state_color` on the appearance page; the start page shows the slABton wordmark.
+- README and docs start page: release and coverage (Codecov) badges, the static "HACS Custom" badge is gone; the AB logo in the READMEs is left-aligned. The "Open in HACS" button moved into the Installation sections (READMEs and docs).
+- Promo video (about 15 s, English captions): animated GIF in the READMEs, MP4 / WebM on the docs start pages; sources in `scripts/promo/`.
+
 ### Fixed
 
 - Scale ticks in value, counter, timer and clock sat half a handle inside the bar and missed the fill edge, except with
   `handle_overhang`.
+- Docs site, live demo: a failed load of the icon file no longer ends in an unhandled promise rejection (icons stay
+  empty); fast clicks on "Copy YAML" no longer reset the button label too early; the page has one `h1`; the hint text
+  reaches the contrast ratio of 4.5:1 (about 6.4:1 in the light theme); the demo follows the dark / light switch of the
+  docs site (`?theme=` still wins).
+- Docs: the dark AB logo uses the same orange (`#d35400`) as the light logo and the wordmarks.
 
 ## [0.4.1] - 2026-11-16
 

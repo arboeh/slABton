@@ -6,6 +6,7 @@
   const mock = window.SLABTON_MOCK;
   const DEBOUNCE_MS = 300;
   const LOG_LIMIT = 6;
+  const COPY_RESET_MS = 1500;
 
   const select = document.getElementById("example");
   const editor = document.getElementById("yaml");
@@ -17,6 +18,7 @@
 
   let card = null;
   let timer = 0;
+  let copyTimer = 0;
 
   function setError(message) {
     errorBox.textContent = message;
@@ -85,9 +87,37 @@
     themeButton.textContent = i18n.t(dark ? "light" : "dark");
   }
 
+  // Embedded same-origin (docs site): the Material scheme of the parent page, or null.
+  function parentScheme() {
+    try {
+      if (window.parent === window) return null;
+      const scheme = window.parent.document.body?.getAttribute("data-md-color-scheme");
+      if (!scheme) return null;
+      return scheme === "slate" ? "dark" : "light";
+    } catch {
+      return null;
+    }
+  }
+
+  function followParentTheme() {
+    try {
+      if (window.parent === window) return;
+      const parentBody = window.parent.document.body;
+      new MutationObserver(() => {
+        const scheme = parentScheme();
+        if (scheme) applyTheme(scheme === "dark");
+      }).observe(parentBody, { attributes: true, attributeFilter: ["data-md-color-scheme"] });
+    } catch {
+      // Cross-origin or file:// parent: keep the demo's own theme.
+    }
+  }
+
+  // Priority: ?theme=, then the parent page, then the system setting.
   function initialTheme() {
     const param = new URLSearchParams(location.search).get("theme");
     if (param) return param === "dark";
+    const scheme = parentScheme();
+    if (scheme) return scheme === "dark";
     return window.matchMedia("(prefers-color-scheme: dark)").matches;
   }
 
@@ -99,7 +129,8 @@
       editor.select();
       copyButton.textContent = i18n.t("selectCopy");
     }
-    setTimeout(() => { copyButton.textContent = i18n.t("copy"); }, 1500);
+    clearTimeout(copyTimer);
+    copyTimer = setTimeout(() => { copyButton.textContent = i18n.t("copy"); }, COPY_RESET_MS);
   }
 
   for (const example of EXAMPLES) {
@@ -117,6 +148,8 @@
   document.addEventListener("mock-hass-changed", () => { if (card) card.hass = mock.hass; });
 
   applyTheme(initialTheme());
+  // An explicit ?theme= stays fixed; otherwise follow the docs site switch.
+  if (!new URLSearchParams(location.search).get("theme")) followParentTheme();
   const start = location.hash.slice(1);
   select.value = EXAMPLES.some((item) => item.id === start) ? start : EXAMPLES[0].id;
   loadExample(select.value);

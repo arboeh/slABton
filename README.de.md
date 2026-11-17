@@ -7,10 +7,11 @@
 
 [![CI](https://github.com/arboeh/slABton/actions/workflows/ci.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/arboeh/slABton/actions/workflows/dynamic/github-code-scanning/codeql/badge.svg)](https://github.com/arboeh/slABton/security/code-scanning)
+[![codecov](https://codecov.io/gh/arboeh/slABton/graph/badge.svg)](https://codecov.io/gh/arboeh/slABton)
 [![Docs](https://github.com/arboeh/slABton/actions/workflows/docs.yml/badge.svg)](https://slabton.de/de/)
 [![HACS](https://github.com/arboeh/slABton/actions/workflows/hacs.yml/badge.svg)](https://github.com/arboeh/slABton/actions/workflows/hacs.yml)
+[![Release](https://img.shields.io/github/v/release/arboeh/slABton)](https://github.com/arboeh/slABton/releases)
 [![Lizenz: MPL 2.0](https://img.shields.io/badge/license-MPL%202.0-blue.svg)](LICENSE)
-[![HACS Custom](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://hacs.xyz)
 
 Slider-Button-Bar-Karte für Home Assistant: eine Bar mit verschiebbarem Griff-Button.
 Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzeigen.
@@ -18,6 +19,8 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 **[Dokumentation](https://slabton.de/de/)** · **[Live-Demo](https://slabton.de/de/demo/)** · [English version](README.md)
 
 **Installation:** HACS, benutzerdefiniertes Repository `arboeh/slABton`, Typ **Dashboard** ([Details](#installation)).
+
+![slABton Promo-Video](https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/promo/slabton-promo.gif)
 
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/state-dark.png">
@@ -44,6 +47,8 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 ## Installation
 
 ### HACS (benutzerdefiniertes Repository)
+
+[![Dieses Repository in HACS öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=arboeh&repository=slABton&category=plugin)
 
 1. HACS, Dreipunktmenü, **Benutzerdefinierte Repositories**.
 2. `https://github.com/arboeh/slABton` hinzufügen, Typ **Dashboard**.
@@ -90,9 +95,7 @@ Quellcode-Aufbau und das Hinzufügen einer Sprache stehen in der [Referenz](http
 
 [Mozilla Public License 2.0](LICENSE) (MPL-2.0)
 
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-dark.svg">
-    <img alt="AB Logo" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-light.svg" height="64">
-  </picture>
-</p>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-dark.svg">
+  <img alt="AB Logo" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/logo-light.svg" height="64">
+</picture>

@@ -1,6 +1,15 @@
 // Minimal Home Assistant stand-in for the docs demo: ha-card, ha-icon and a hass object.
 (function () {
-  const ICONS = fetch("icons.json").then((r) => r.json());
+  // A failed fetch leaves the icon map empty: icons stay blank instead of an unhandled rejection.
+  const ICONS = fetch("icons.json")
+    .then((r) => {
+      if (!r.ok) throw new Error(`icons.json: HTTP ${r.status}`);
+      return r.json();
+    })
+    .catch((error) => {
+      console.warn("slABton demo: icons unavailable", error);
+      return {};
+    });
 
   if (!customElements.get("ha-card")) {
     customElements.define("ha-card", class extends HTMLElement {});

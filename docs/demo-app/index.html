@@ -7,10 +7,11 @@
   <link rel="stylesheet" href="demo.css">
 </head>
 <body>
+  <h1 class="sr-only">slABton demo</h1>
   <main class="demo">
     <section class="pane" aria-labelledby="config-title">
       <div class="bar">
-        <h1 id="config-title" data-i18n="configuration">Configuration</h1>
+        <h2 id="config-title" data-i18n="configuration">Configuration</h2>
         <label class="sr-only" for="example" data-i18n="example">Example</label>
         <select id="example"></select>
       </div>
@@ -23,9 +24,9 @@
     </section>
 
     <section class="pane preview" aria-labelledby="card-title">
-      <h1 id="card-title" data-i18n="card">Card</h1>
+      <h2 id="card-title" data-i18n="card">Card</h2>
       <div id="stage" class="stage"></div>
-      <h2 data-i18n="calls">Service calls</h2>
+      <h3 data-i18n="calls">Service calls</h3>
       <ul id="log" class="log" aria-live="polite"></ul>
       <p class="hint" data-i18n="hint">Demo data only, no Home Assistant needed. Drag, tap, double tap and hold work as in a dashboard.</p>
     </section>

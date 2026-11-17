@@ -2,6 +2,8 @@
 
 ## HACS (benutzerdefiniertes Repository)
 
+<p style="margin: 1.5rem 0;"><a href="https://my.home-assistant.io/redirect/hacs_repository/?owner=arboeh&repository=slABton&category=plugin"><img alt="Dieses Repository in HACS öffnen" src="https://my.home-assistant.io/badges/hacs_repository.svg"></a></p>
+
 1. HACS, Dreipunktmenü, **Benutzerdefinierte Repositories**.
 2. `https://github.com/arboeh/slABton` hinzufügen, Typ **Dashboard**.
 3. **slABton** installieren, Browser neu laden.

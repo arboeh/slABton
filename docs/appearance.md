@@ -133,6 +133,9 @@ scale:
 
 ## State color
 
+![whole bar in the state color](assets/shots/state-color-light.png#only-light)
+![whole bar in the state color](assets/shots/state-color-dark.png#only-dark)
+
 `states[].color` colors the fill. In mode `state` the fill is empty at the first state, so there the color shows only on the handle. With `bar_state_color: true` the whole bar takes the color of the current state.
 
 ```yaml

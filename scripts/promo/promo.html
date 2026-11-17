@@ -1,0 +1,124 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>slABton promo</title>
+<style>
+  :root {
+    --primary-color: #d35400;
+    --primary-text-color: #e8e6e3;
+    --secondary-text-color: #9198a1;
+    --secondary-background-color: #2a2d33;
+    --card-background-color: #1b1d22;
+    --divider-color: rgba(255,255,255,.12);
+    --accent: #d35400;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; width: 1280px; height: 720px; overflow: hidden; background: #0d0e11; }
+  body {
+    font-family: "Segoe UI", system-ui, sans-serif; color: var(--primary-text-color); position: relative;
+    background:
+      radial-gradient(900px 500px at 78% 8%, rgba(211,84,0,.20), transparent 60%),
+      radial-gradient(700px 500px at 5% 100%, rgba(80,110,180,.14), transparent 60%),
+      #0d0e11;
+  }
+  body::before {
+    content: ""; position: absolute; inset: 0; opacity: .5;
+    background-image: linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px);
+    background-size: 40px 40px;
+    mask-image: radial-gradient(ellipse at center, #000 30%, transparent 75%);
+  }
+  .layer { position: absolute; inset: 0; opacity: 0; visibility: hidden; transition: opacity .45s ease, visibility 0s .45s; }
+  /* visibility, not pointer-events: the card handles set pointer-events themselves and would catch clicks. */
+  .layer.on { opacity: 1; visibility: visible; transition: opacity .45s ease, visibility 0s; }
+
+  .center { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; gap: 22px; }
+  .logo { height: 190px; transform: translateY(14px) scale(.92); transition: transform .9s cubic-bezier(.16,1,.3,1); }
+  .on .logo { transform: none; }
+  /* The real heading SVG (sl / orange A / grey B / ton), 120x40 viewBox scaled by height. */
+  .wordmark { height: 108px; width: auto; }
+  .tag { font-size: 30px; color: var(--secondary-text-color); letter-spacing: .2px; }
+  .pill { margin-top: 6px; display: inline-flex; gap: 14px; align-items: center; font-size: 26px; font-weight: 600;
+          padding: 12px 26px; border-radius: 999px; border: 1px solid rgba(211,84,0,.55); background: rgba(211,84,0,.12); }
+  .pill span { color: var(--secondary-text-color); font-weight: 400; }
+
+  .scene { padding: 0 90px; display: flex; flex-direction: column; justify-content: center; gap: 44px; }
+  .kicker { font-size: 20px; font-weight: 700; letter-spacing: 4px; text-transform: uppercase; color: var(--accent); }
+  .caption { font-size: 60px; font-weight: 800; letter-spacing: -1.5px; line-height: 1.05; margin-top: 8px; }
+  .caption em { font-style: normal; color: var(--accent); }
+  .stage { width: 560px; zoom: 1.7; display: flex; flex-direction: column; gap: 14px; }
+  .scene.row { flex-direction: row; align-items: center; gap: 70px; }
+  .scene.row .copy { flex: 0 0 440px; }
+  .stage.wide { zoom: 1.18; }
+  slabton-card { display: block; filter: drop-shadow(0 14px 30px rgba(0,0,0,.55)); }
+  ha-card { display: block; background: var(--card-background-color); border-radius: 14px; border: 1px solid rgba(255,255,255,.06); }
+</style>
+</head>
+<body>
+  <div id="intro" class="layer center">
+    <img class="logo" src="../../docs/assets/logo-dark.svg" alt="">
+    <img class="wordmark" src="../../docs/assets/heading-dark.svg" alt="slABton">
+    <div class="tag">Slider button bar card for Home Assistant</div>
+  </div>
+
+  <div id="s-state" class="layer scene">
+    <div class="copy"><div class="kicker">State</div><div class="caption">Switch states<br>with <em>one swipe</em></div></div>
+    <div class="stage" id="stage-state"></div>
+  </div>
+  <div id="s-lock" class="layer scene">
+    <div class="copy"><div class="kicker">Lock</div><div class="caption">Swipe to <em>unlock</em></div></div>
+    <div class="stage" id="stage-lock"></div>
+  </div>
+  <div id="s-value" class="layer scene">
+    <div class="copy"><div class="kicker">Value</div><div class="caption">Any sensor,<br>as a <em>gauge</em></div></div>
+    <div class="stage" id="stage-value"></div>
+  </div>
+  <div id="s-more" class="layer scene row">
+    <div class="copy"><div class="kicker">And more</div><div class="caption">Counter. Timer.<br><em>Analog clock.</em></div></div>
+    <div class="stage wide" id="stage-more"></div>
+  </div>
+
+  <div id="outro" class="layer center">
+    <img class="logo" style="height:120px" src="../../docs/assets/logo-dark.svg" alt="">
+    <img class="wordmark" src="../../docs/assets/heading-dark.svg" alt="slABton">
+    <div class="tag">Slider button bar card for Home Assistant</div>
+    <div class="pill">HACS <span>·</span> slabton.de</div>
+  </div>
+
+  <script src="../../docs/demo-app/mock-hass.js"></script>
+  <script src="../../docs/demo-app/slabton.js"></script>
+  <script>
+    const HEATING = "input_select.heating_mode";
+    const ICONS = [
+      { value: "Off", icon: "mdi:power", color: "#4c8dff" },
+      { value: "Auto", icon: "mdi:calendar-clock", color: "#2fb67c" },
+      { value: "On", icon: "mdi:fire", color: "#e5484d" },
+      { value: "Idle", icon: "mdi:sleep", color: "#f0a020" },
+    ];
+    const CARDS = {
+      state: [{ entity: HEATING, name: "Heating", icon: "mdi:radiator", bar_state_color: true, thickness: 56, handle_size: 64, states: ICONS }],
+      lock: [{ entity: "lock.front_door", name: "Front door", mode: "lock", thickness: 56, handle_size: 64 }],
+      value: [{ entity: "sensor.battery_soc", mode: "value", preset: "soc", name: "Battery", thickness: 56, handle_size: 64, scale: { ticks: 10, labels: true } }],
+      more: [
+        { entity: "counter.guests", name: "Guests", bar_text: "{value} of 10", counter: { max: 10 } },
+        { entity: "timer.sauna", name: "Sauna", icon: "mdi:timer-outline" },
+        { mode: "clock", name: "Berlin", thickness: 44, handle_size: 96, clock: { display: "analog", time_zone: "Europe/Berlin", seconds: true, face: { numbers: "quarters" } } },
+      ],
+    };
+    const cards = [];
+    for (const [key, list] of Object.entries(CARDS)) {
+      const stage = document.getElementById("stage-" + key);
+      for (const cfg of list) {
+        const card = document.createElement("slabton-card");
+        card.setConfig({ type: "custom:slabton-card", ...cfg });
+        card.hass = window.SLABTON_MOCK.hass;
+        stage.appendChild(card);
+        cards.push(card);
+      }
+    }
+    document.addEventListener("mock-hass-changed", () => cards.forEach((c) => (c.hass = window.SLABTON_MOCK.hass)));
+    window.show = (id) => document.querySelectorAll(".layer").forEach((l) => l.classList.toggle("on", l.id === id));
+    window.call = (domain, service, data, target) => window.SLABTON_MOCK.hass.callService(domain, service, data, target);
+  </script>
+</body>
+</html>

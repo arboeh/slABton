@@ -133,6 +133,9 @@ scale:
 
 ## Zustandsfarbe
 
+![Ganze Bar in der Zustandsfarbe](/assets/shots/state-color-light.png#only-light)
+![Ganze Bar in der Zustandsfarbe](/assets/shots/state-color-dark.png#only-dark)
+
 `states[].color` färbt die Füllung. Im Modus `state` ist die Füllung beim ersten Zustand leer, die Farbe zeigt sich dort nur am Griff. Mit `bar_state_color: true` nimmt die ganze Bar die Farbe des aktuellen Zustands an.
 
 ```yaml
