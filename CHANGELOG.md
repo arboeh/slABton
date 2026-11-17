@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Changed
+
+- Scale in the modes value, counter, timer and clock spans the whole bar: tick 0 at the start, the last tick at the
+  end, every tick on the fill edge of its value. The first and last label are flush with the bar ends. State and lock
+  keep the handle track, so labels and ticks stay under the handle positions.
+
+### Fixed
+
+- Scale ticks in value, counter, timer and clock sat half a handle inside the bar and missed the fill edge, except with
+  `handle_overhang`.
+
 ## [0.4.1] - 2026-11-16
 
 ### Added

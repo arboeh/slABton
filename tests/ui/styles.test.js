@@ -104,8 +104,10 @@ describe("scale labels outside (css)", () => {
     expect(css).toContain("calc(var(--slabton-cross-extra, 0px) + 3px)");
   });
 
-  it("takes the tick track as the margin of the label container", () => {
-    expect(css).toContain("calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2)");
+  it("takes the handle-centre track as the margin of the label container, the full bar width with scale-full", () => {
+    expect(css).toContain(".o-h .scale-labels { margin-inline: calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2); }");
+    expect(css).toContain(".o-h.scale-full .scale-labels { margin-inline: var(--slabton-border-width); }");
+    expect(css).toContain(".o-v.scale-full .scale-labels { margin-block: var(--slabton-border-width); }");
   });
 
   it("frees the stage padding on the label side", () => {
@@ -166,8 +168,10 @@ describe("scale ticks outside (css)", () => {
     expect(css).toContain(".o-v .stage.lbl-end, .o-v .stage.tk-end { padding-right: 0; }");
   });
 
-  it("takes the tick track as the margin of the tick container and the tick length as its size", () => {
+  it("takes the handle-centre track (the full bar width with scale-full) as the margin of the tick container and the tick length as its size", () => {
     expect(css).toContain(".o-h .scale-ticks { margin-inline: calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2);");
+    expect(css).toContain(".o-h.scale-full .scale-ticks { margin-inline: var(--slabton-border-width); }");
+    expect(css).toContain(".o-v.scale-full .scale-ticks { margin-block: var(--slabton-border-width); }");
     expect(css).toContain("height: var(--slabton-scale-size, 8px)");
     expect(css).toContain("width: var(--slabton-scale-size, 8px)");
   });
@@ -546,6 +550,22 @@ describe("buildCss", () => {
     expect(css).toMatch(/\.rail, \.switches, \.scale \{[^}]*pointer-events: none/);
     expect(css).toMatch(/\.o-h \.switches, \.o-h \.scale \{[^}]*left: calc\(var\(--slabton-pad\) \+ var\(--slabton-hl\) \/ 2\)/);
     expect(css).toMatch(/\.o-v \.switches, \.o-v \.scale \{[^}]*top: calc\(var\(--slabton-pad\) \+ var\(--slabton-hl\) \/ 2\)/);
+  });
+
+  it("spans the scale over the full bar like the fill with scale-full, while the switches keep the handle-centre track", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.o-h\.scale-full \.scale \{[^}]*left: 0;[^}]*width: 100%/);
+    expect(css).toMatch(/\.o-v\.scale-full \.scale \{[^}]*top: 0;[^}]*height: 100%/);
+    expect(css).not.toMatch(/\.scale-full \.switches/);
+    expect(css).toMatch(/\.o-h \.switches, \.o-h \.scale \{[^}]*width: calc\(100% - 2 \* var\(--slabton-pad\) - var\(--slabton-hl\)\)/);
+  });
+
+  it("aligns the first and last label to the bar ends with scale-full instead of centring them on the tick", () => {
+    const css = buildCss();
+    expect(css).toContain('.o-h.scale-full .tick-label[data-edge="start"] { transform: translateX(0); }');
+    expect(css).toContain('.o-h.scale-full .tick-label[data-edge="end"] { transform: translateX(-100%); }');
+    expect(css).toContain('.o-v.scale-full .tick-label[data-edge="start"] { transform: translateY(0); }');
+    expect(css).toContain('.o-v.scale-full .tick-label[data-edge="end"] { transform: translateY(-100%); }');
   });
 
   it("places the ticks per orientation and position from the tick fraction", () => {

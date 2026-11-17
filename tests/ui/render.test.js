@@ -264,10 +264,23 @@ describe("scale", () => {
     expect(shadow.querySelector(".scale")).toBeNull();
   });
 
-  it("renders ticks + 1 marks that sit on the handle centre positions", () => {
+  it("renders ticks + 1 marks at their share of the scale track", () => {
     const { shadow } = setup({ scale: { ticks: 4 } });
     expect(shadow.querySelectorAll(".scale .tick")).toHaveLength(5);
     expect(tickValues(shadow)).toEqual(["0", "0.25", "0.5", "0.75", "1"]);
+  });
+
+  it("puts scale-full on the rendered root for value modes only (state keeps the handle track)", () => {
+    const root = (extra) => setup({ scale: { ticks: 4 }, ...extra }).shadow.querySelector(".root");
+    expect(root({ entity: "sensor.t", mode: "value" }).classList.contains("scale-full")).toBe(true);
+    expect(root({}).classList.contains("scale-full")).toBe(false);
+  });
+
+  it("marks the labels at the bar ends as edge labels (start, end), mirrored for rtl", () => {
+    const edges = (extra) => [...setup({ entity: "sensor.t", mode: "value", min: 0, max: 100, scale: { ticks: 4, labels: true }, ...extra })
+      .shadow.querySelectorAll(".scale .tick-label")].map((l) => l.getAttribute("data-edge"));
+    expect(edges({})).toEqual(["start", "end"]);
+    expect(edges({ direction: "rtl" })).toEqual(["end", "start"]);
   });
 
   it("defaults to 10 segments at the end edge", () => {
@@ -551,6 +564,13 @@ describe("rootClasses", () => {
     const c = normalizeConfig({ entity: "sensor.t", orientation: "vertical", direction: "rtl", handle_shape: "oval", animation: "pulse" });
     const classes = rootClasses(c).split(" ");
     expect(classes).toEqual(expect.arrayContaining(["o-v", "dir-rtl", "rev", "shape-oval", "anim-pulse", "nodrag"]));
+  });
+
+  it("marks scale-full for the modes whose fill edge is the value, not for state and lock", () => {
+    const full = (mode, extra = {}) => rootClasses(normalizeConfig({ entity: "sensor.t", mode, ...extra })).split(" ");
+    for (const mode of ["value", "counter", "timer", "clock"]) expect(full(mode)).toContain("scale-full");
+    expect(full("state")).not.toContain("scale-full");
+    expect(full("lock")).not.toContain("scale-full");
   });
 });
 

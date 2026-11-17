@@ -154,6 +154,11 @@ function scaleLabelCss() {
     }
     .o-h .tick-label { left: calc(var(--slabton-tick-e, 0) * 100%); transform: translateX(-50%); }
     .o-v .tick-label { top: calc(var(--slabton-tick-e, 0) * 100%); transform: translateY(-50%); }
+    /* With scale-full the first and last label stand flush with the bar ends instead of reaching over them. */
+    .o-h.scale-full .tick-label[data-edge="start"] { transform: translateX(0); }
+    .o-h.scale-full .tick-label[data-edge="end"] { transform: translateX(-100%); }
+    .o-v.scale-full .tick-label[data-edge="start"] { transform: translateY(0); }
+    .o-v.scale-full .tick-label[data-edge="end"] { transform: translateY(-100%); }
     .o-h .sc-start .tick-label { top: ${clear}; }
     .o-h .sc-end .tick-label { bottom: ${clear}; }
     .o-h .sc-center .tick-label { top: 2px; }
@@ -170,9 +175,15 @@ function scaleLabelCss() {
 
 /**
  * Margin along the bar of the containers outside the bar: border, handle padding and half the handle length,
- * the same track the ticks inside use, so labels and ticks outside stand exactly over the handle positions.
+ * the handle-centre track (state and lock, whose labels stand over the handle positions).
  */
 const OUTSIDE_TRACK = "calc(var(--slabton-border-width) + var(--slabton-pad) + var(--slabton-hl) / 2)";
+
+/**
+ * The same margin with `scale-full` (value, counter, timer, clock): only the border, so the track starts at the
+ * inner edge of the border like the fill and ticks and labels outside stand exactly on the fill edge.
+ */
+const OUTSIDE_TRACK_FULL = "var(--slabton-border-width)";
 
 /**
  * Labels outside the bar (`scale.labels_placement: outside`). The stage becomes a grid with the labels and the
@@ -201,6 +212,8 @@ function outsideLabelCss() {
     .scale-labels { display: grid; pointer-events: none; }
     .o-h .scale-labels { margin-inline: ${OUTSIDE_TRACK}; }
     .o-v .scale-labels { margin-block: ${OUTSIDE_TRACK}; }
+    .o-h.scale-full .scale-labels { margin-inline: ${OUTSIDE_TRACK_FULL}; }
+    .o-v.scale-full .scale-labels { margin-block: ${OUTSIDE_TRACK_FULL}; }
     .scale-labels .tick-label { position: relative; grid-area: 1 / 1; }
     .o-h .scale-labels .tick-label { justify-self: start; }
     .o-v .scale-labels .tick-label { align-self: start; }
@@ -224,6 +237,8 @@ function outsideTickCss() {
     .scale-ticks { position: relative; pointer-events: none; }
     .o-h .scale-ticks { margin-inline: ${OUTSIDE_TRACK}; height: ${size}; }
     .o-v .scale-ticks { margin-block: ${OUTSIDE_TRACK}; width: ${size}; }
+    .o-h.scale-full .scale-ticks { margin-inline: ${OUTSIDE_TRACK_FULL}; }
+    .o-v.scale-full .scale-ticks { margin-block: ${OUTSIDE_TRACK_FULL}; }
     .o-h .scale-ticks .tick { top: 0; }
     .o-v .scale-ticks .tick { left: 0; }
     .o-h .scale-ticks.tk-start { margin-bottom: ${extra}; }
@@ -257,8 +272,8 @@ export function buildCss() {
     .root {
       display: flex; flex-direction: column; gap: 8px; align-items: stretch;
       color: var(--slabton-text-color, var(--primary-text-color, #212121));
-      /* Fill edge: empty at 0, complete at 1, and always at the handle centre in between
-         (centre = pad + hl/2 + p * travel, so the edge reduces to p * 100%). */
+      /* Fill edge: p * 100 % of the full bar, empty at 0 and complete at 1; the handle centre
+         (pad + hl/2 + p * travel) only matches it at the middle, or with handle_overhang. */
       --slabton-ext: calc(var(--slabton-p, 0) * 100%);
     }
     .header { display: flex; align-items: center; gap: 8px; font-size: var(--slabton-header-size, 14px); font-weight: 500; }
@@ -315,9 +330,12 @@ export function buildCss() {
     .rail, .switches, .scale { position: absolute; pointer-events: none; }
     .o-h .rail { left: var(--slabton-pad); top: 0; height: 100%; width: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
     .o-v .rail { top: var(--slabton-pad); left: 0; width: 100%; height: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
-    /* Switches and ticks share the handle-centre track, so a tick sits exactly under the handle at its value. */
+    /* Switches (and ticks in state and lock) sit on the handle-centre track, so a mark is exactly under the handle at its value. */
     .o-h .switches, .o-h .scale { left: calc(var(--slabton-pad) + var(--slabton-hl) / 2); top: 0; height: 100%; width: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
     .o-v .switches, .o-v .scale { top: calc(var(--slabton-pad) + var(--slabton-hl) / 2); left: 0; width: 100%; height: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
+    /* With scale-full (value, counter, timer, clock) the scale spans the full bar like the fill: a tick stands on the fill edge of its value. */
+    .o-h.scale-full .scale { left: 0; top: 0; height: 100%; width: 100%; }
+    .o-v.scale-full .scale { top: 0; left: 0; width: 100%; height: 100%; }
 
     /* Scale ticks (scale:): across the bar at the start, centre or end edge. */
     .tick { position: absolute; background: var(--slabton-scale-color, color-mix(in srgb, var(--slabton-text-color, var(--primary-text-color, #212121)) 45%, transparent)); }
