@@ -13,7 +13,7 @@
 import { VERSION } from "../version.js";
 import { normalizeConfig } from "../core/config.js";
 import {
-  ACTION, CARD_SIZE, CARD_UNIT_PX, GRID, GRID_FIT_TOLERANCE_PX, GRID_ROW_GAP_PX, GRID_ROW_PX, MODE, NOTICE, TICK_MS, hasAction,
+  ACTION, CARD_SIZE, CARD_UNIT_PX, GRID, GRID_FIT_TOLERANCE_PX, MODE, NOTICE, TICK_MS, hasAction,
 } from "../core/constants.js";
 import { resolveLanguage, resolveLocale, t } from "../core/i18n.js";
 import { Pulse } from "../core/pulse.js";
@@ -106,29 +106,31 @@ export class SlabtonCard extends HTMLElement {
     return this._hass;
   }
 
+  /** Masonry size in units of `CARD_UNIT_PX`: the base size plus the units the content needs beyond it. */
   getCardSize() {
-    const base = this._config?.orientation === "vertical" ? CARD_SIZE.vertical : CARD_SIZE.horizontal;
-    return base + this._extraUnits(CARD_UNIT_PX, 0);
+    const base = this._baseCardSize();
+    return base + this._extraUnits(base);
   }
 
+  /** Sections view: the width in columns, the height from the content (`rows: "auto"`); a `grid_options:` of the user wins per key. */
   getGridOptions() {
-    const grid = { ...(this._config?.orientation === "vertical" ? GRID.vertical : GRID.horizontal) };
-    grid.rows += this._extraUnits(GRID_ROW_PX, GRID_ROW_GAP_PX);
-    return grid;
+    return { ...(this._config?.orientation === "vertical" ? GRID.vertical : GRID.horizontal) };
+  }
+
+  _baseCardSize() {
+    return this._config?.orientation === "vertical" ? CARD_SIZE.vertical : CARD_SIZE.horizontal;
   }
 
   /**
-   * Extra rows or size units on top of the base size: how far the card's height need (bar, handle and its
-   * overhang) exceeds the height of the base size (`unitPx` per unit minus the `gapPx` after the last one),
-   * minus a small tolerance. A thin bar leaves room in the base size, so a handle sticking out of it costs
-   * nothing until that room is used up. Not counted: the header and the info line of a vertical card.
+   * Extra masonry units on top of the base size: how far the card's height need (bar, handle and its overhang)
+   * exceeds the height of the base size (`CARD_UNIT_PX` per unit), minus a small tolerance. A thin bar leaves room
+   * in the base size, so a handle sticking out of it costs nothing until that room is used up. Not counted: the
+   * header and the info line of a vertical card.
    */
-  _extraUnits(unitPx, gapPx) {
+  _extraUnits(baseUnits) {
     if (!this._config) return 0;
-    const baseUnits = (this._config.orientation === "vertical" ? GRID.vertical : GRID.horizontal).rows;
-    const budget = unitPx * baseUnits - gapPx;
-    const overflow = cardHeightPx(this._config) - GRID_FIT_TOLERANCE_PX - budget;
-    return overflow > 0 ? Math.ceil(overflow / unitPx) : 0;
+    const overflow = cardHeightPx(this._config) - GRID_FIT_TOLERANCE_PX - CARD_UNIT_PX * baseUnits;
+    return overflow > 0 ? Math.ceil(overflow / CARD_UNIT_PX) : 0;
   }
 
   connectedCallback() {

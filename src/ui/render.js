@@ -70,7 +70,7 @@ function outsideLabelsHtml(config) {
 /** Tick positions are rounded to four decimals: far below a pixel on any bar. */
 const TICK_PRECISION = 1e4;
 
-/** Position (0..1 along the scale track: the full bar like the fill edge, or the handle-centre travel for state and lock) of tick `index`, mirrored like the handle itself. */
+/** Position (0..1 along the scale track, the handle-centre travel, like the fill edge) of tick `index`, mirrored like the handle itself. */
 function tickEdge(config, index) {
   const horizontal = config.orientation === "horizontal";
   const edge = axisFraction(index / config.scale.ticks, horizontal, config.direction === "rtl");
@@ -99,11 +99,7 @@ function placeLabels(shadow, config) {
     const label = shadow.ownerDocument.createElement("span");
     label.className = "tick-label";
     label.textContent = text;
-    const edge = tickEdge(config, index);
-    label.style.setProperty("--slabton-tick-e", edge);
-    // The labels at the bar ends are aligned flush with scale-full (see styles.js), not centred on the tick.
-    if (edge === "0") label.setAttribute("data-edge", "start");
-    else if (edge === "1") label.setAttribute("data-edge", "end");
+    label.style.setProperty("--slabton-tick-e", tickEdge(config, index));
     scale.appendChild(label);
     if (name) bound.push({ bound: name, el: label });
   }
@@ -181,9 +177,6 @@ export function rootClasses(config) {
   if (!config.drag || ownAttribute || READ_ONLY_MODES.includes(config.mode)) classes.push("nodrag");
   if (config.allow_unavailable_actions) classes.push("allow-actions");
   if (config.bar_state_color) classes.push("bar-state");
-  // State and lock put the scale on the handle positions; the other modes on the fill edge over the full bar.
-  // A bar that measures an attribute is a number scale like the value mode, whatever the mode.
-  if ((config.mode !== MODE.STATE && config.mode !== MODE.LOCK) || config.bar_attribute) classes.push("scale-full");
   return classes.join(" ");
 }
 

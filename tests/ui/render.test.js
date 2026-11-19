@@ -270,17 +270,18 @@ describe("scale", () => {
     expect(tickValues(shadow)).toEqual(["0", "0.25", "0.5", "0.75", "1"]);
   });
 
-  it("puts scale-full on the rendered root for value modes only (state keeps the handle track)", () => {
+  it("keeps every mode on the handle-centre track: no scale-full class on the rendered root", () => {
     const root = (extra) => setup({ scale: { ticks: 4 }, ...extra }).shadow.querySelector(".root");
-    expect(root({ entity: "sensor.t", mode: "value" }).classList.contains("scale-full")).toBe(true);
+    expect(root({ entity: "sensor.t", mode: "value" }).classList.contains("scale-full")).toBe(false);
     expect(root({}).classList.contains("scale-full")).toBe(false);
   });
 
-  it("marks the labels at the bar ends as edge labels (start, end), mirrored for rtl", () => {
-    const edges = (extra) => [...setup({ entity: "sensor.t", mode: "value", min: 0, max: 100, scale: { ticks: 4, labels: true }, ...extra })
-      .shadow.querySelectorAll(".scale .tick-label")].map((l) => l.getAttribute("data-edge"));
-    expect(edges({})).toEqual(["start", "end"]);
-    expect(edges({ direction: "rtl" })).toEqual(["end", "start"]);
+  it("leaves the labels at the bar ends without an edge mark: they stand centred on their tick, mirrored for rtl", () => {
+    const labels = (extra) => [...setup({ entity: "sensor.t", mode: "value", min: 0, max: 100, scale: { ticks: 4, labels: true }, ...extra })
+      .shadow.querySelectorAll(".scale .tick-label")];
+    expect(labels({}).map((l) => l.style.getPropertyValue("--slabton-tick-e"))).toEqual(["0", "1"]);
+    expect(labels({ direction: "rtl" }).map((l) => l.style.getPropertyValue("--slabton-tick-e"))).toEqual(["1", "0"]);
+    for (const label of [...labels({}), ...labels({ direction: "rtl" })]) expect(label.hasAttribute("data-edge")).toBe(false);
   });
 
   it("defaults to 10 segments at the end edge", () => {
@@ -566,11 +567,9 @@ describe("rootClasses", () => {
     expect(classes).toEqual(expect.arrayContaining(["o-v", "dir-rtl", "rev", "shape-oval", "anim-pulse", "nodrag"]));
   });
 
-  it("marks scale-full for the modes whose fill edge is the value, not for state and lock", () => {
-    const full = (mode, extra = {}) => rootClasses(normalizeConfig({ entity: "sensor.t", mode, ...extra })).split(" ");
-    for (const mode of ["value", "counter", "timer", "clock"]) expect(full(mode)).toContain("scale-full");
-    expect(full("state")).not.toContain("scale-full");
-    expect(full("lock")).not.toContain("scale-full");
+  it("never adds a scale-full class in any mode: scale, fill edge and labels share the handle-centre track", () => {
+    const classes = (mode, extra = {}) => rootClasses(normalizeConfig({ entity: "sensor.t", mode, ...extra })).split(" ");
+    for (const mode of ["value", "counter", "timer", "clock", "state", "lock"]) expect(classes(mode)).not.toContain("scale-full");
   });
 
   it("marks nodrag only for a state card whose handle shows its own attribute", () => {
@@ -580,9 +579,9 @@ describe("rootClasses", () => {
     expect(classes({})).not.toContain("nodrag");
   });
 
-  it("marks scale-full for a bar attribute in the state mode (number scale over the full bar)", () => {
+  it("does not mark scale-full for a bar attribute in the state mode either", () => {
     const classes = rootClasses(normalizeConfig({ entity: "cover.c", mode: "state", bar: { attribute: "current_position" } })).split(" ");
-    expect(classes).toContain("scale-full");
+    expect(classes).not.toContain("scale-full");
   });
 });
 

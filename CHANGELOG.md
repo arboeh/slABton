@@ -17,7 +17,15 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 - With `bar.attribute` the scale labels in `state` mode show the number range instead of the state names.
 - With `bar.attribute` in the `state` mode the handle sits on the measured value and cannot be dragged (a drag would
-  have picked a state elsewhere). The scale spans the whole bar like in the `value` mode.
+  have picked a state elsewhere). The scale and the fill edge follow the handle track like in every mode.
+- Scale, fill edge and labels sit on the handle track in every mode (state, lock, value, counter, timer, clock). The
+  tick of a value stands under the handle centre at that value, and the fill ends there. The value, counter, timer
+  and clock modes no longer span the whole bar (1.0.0). The first and last label are centred on their tick, no longer
+  flush with the bar ends.
+- Sections view: the height comes from the content (`rows: "auto"`); width unchanged (6 columns, vertical 3). Remove
+  `card_mod` heights (for example `ha-card { height: ... }`) and `grid_options: rows:` from dashboards that set them:
+  a fixed height cuts off content that grows. A `grid_options:` in the card config still overrides each key. Checked
+  with Home Assistant 2026.11.2; the first release that accepts `rows: "auto"` is not known.
 - Card: new internal class `blocked` carries the gesture lock (touch action, cursor); `unavailable` only drives icon,
   title and opacity.
 
@@ -25,6 +33,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 - Lock mode with a bar value: the swipe threshold starts from the lock position, no longer from the measured bar value.
 - Visual editor: clearing the "Attribute" field no longer leaves `bar: attribute: ""` or an empty `bar:` map in the YAML.
+- Scale and fill edge: the ticks at 0 and 100 were offset from the handle centre (24 px with the default handle, 9 to 10 px
+  on thin bars, 36 px for an oval handle); they now sit on it. Labels at the bar ends no longer get cut off.
+- Sections view: no empty space under the content of a card (fixed rows are gone).
 
 ## [1.0.0] - 2026-11-17
 

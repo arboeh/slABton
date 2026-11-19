@@ -65,3 +65,14 @@ Screenreader. Die Karte ist gesperrt: Ein Tippen öffnet more-info, Gesten und P
   öffnen kann.
 - Template-Entitäten: `availability` unabhängig von optionalen Hilfsentitäten halten. Fehlt eine Hilfsentität, ist die
   Karte gesperrt.
+
+## Größe in der Sections-Ansicht
+
+Die Karte belegt 6 Spalten waagerecht (3 senkrecht) und legt keine feste Zeilenzahl fest: Die Höhe folgt dem Inhalt
+(`rows: "auto"`). Ältere Dashboards können die Höhe noch fest vorgeben und sollten das entfernen:
+
+- `card_mod` mit fester Höhe, zum Beispiel `ha-card { height: 122px; }`: entfernen. Eine feste Höhe schneidet Inhalt
+  ab, der wächst (Beschriftungen, Striche, ein größerer Griff).
+- `grid_options: rows: <Zahl>` in der Kartenconfig: aus demselben Grund entfernen.
+- `grid_options: columns: ...` (und die übrigen Schlüssel) überschreiben die Standardwerte der Karte weiterhin, je
+  Schlüssel. Damit wird die Karte breiter, zum Beispiel `columns: 12` für die volle Breite.

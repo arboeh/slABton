@@ -63,3 +63,14 @@ screen readers. The card is locked: a tap opens more-info, gestures and arrow ke
   first state of the cycle). A `select` without its option list sends nothing.
 - The handle stays focusable while locked (`aria-disabled="true"`) so Enter / Space can open more-info.
 - Template entities: keep `availability` independent of optional helper entities. A missing helper locks the card.
+
+## Size in sections view
+
+The card takes 6 columns horizontal (3 vertical) and sets no fixed number of rows: the height follows the content
+(`rows: "auto"`). Older dashboards may still fix the height and must drop it:
+
+- `card_mod` with a fixed height, for example `ha-card { height: 122px; }`: remove it. A fixed height cuts off
+  content that grows (labels, ticks, a larger handle).
+- `grid_options: rows: <number>` in the card config: remove it for the same reason.
+- `grid_options: columns: ...` (and the other keys) still override the card's defaults, key by key. Use it to widen the
+  card, for example `columns: 12` for the full width.
