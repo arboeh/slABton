@@ -22,11 +22,21 @@ Details zu `bar.attribute` (siehe [Bar-Wert](appearance.md#bar-wert-aus-einem-at
 - `scale.ticks` zählt Abschnitte: `ticks: 7` zeichnet 8 Striche.
 - Die Bar ist nur lesend. Die Gestensperre folgt nur dem Haupt-Entity; ein kaputtes Attribut zeigt den Hinweis und
   lässt Tippen, Doppeltippen und Halten weiter zu.
-- `mode: value` mit Attribut folgt für Griff und Sperre dem Zustand des Haupt-Entities. Für Climate und Cover den
-  Standard-Modus lassen.
+- `mode: value` mit Attribut folgt für Griff und Sperre dem Zustand des Haupt-Entities. Für Climate den
+  Standard-Modus lassen; bei Cover siehe [Covers](#covers).
 - Im Modus `state` sitzt der Griff auf dem gemessenen Wert (nicht ziehbar), wenn die Bar das Haupt-Entity misst; mit
   eigener `bar.entity` bleibt er auf dem Zustand. In `timer`, `counter` und `lock` folgt der Griff weiter dem Modus,
   nur Füllung und Skala zeigen das Attribut.
+
+## Covers
+
+Details zur Cover-Unterstützung (siehe [Modus value](modes.md#covers)):
+
+- Ein Cover ohne `mode:` läuft im Modus `value`. Vor diesem Release lief es im Modus `state`. Eine Cover-Konfiguration mit `states`, `bar.entity` oder `bar.attribute` und ohne `mode:` behält den Modus `state`, ebenso ein ausdrückliches `mode: state`.
+- Der Griff lässt sich setzen, wenn `supported_features` Bit 4 (Position setzen) hat und `current_position` eine Zahl ist. Sonst zeigt das Cover seinen Zustand, kein Ziehen.
+- Lamellen (Tilt), Schalter an den Enden und Cover-Gruppen werden nicht unterstützt.
+- `animation: pulse` lässt den Griff beim Ziehen bei jedem Schritt aufploppen, in jedem Modus, nicht nur bei Covers (es läuft bei jeder Änderung des gezeigten Werts). Mit `slide` entfällt das.
+- Bekannte Grenze: Die gezogene Position bleibt, bis das Cover eine Bewegung meldet. Bekommt das Cover vor dem Losfahren ein neues State-Objekt (zum Beispiel ein Attribut-Update), kann der Griff kurz auf die gemeldete Position zurückspringen.
 
 ## Entwicklung
 

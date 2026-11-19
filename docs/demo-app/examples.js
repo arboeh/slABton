@@ -118,6 +118,25 @@ unit: "°C"
 `,
   },
   {
+    id: "cover",
+    label: "Cover (position)",
+    yaml: `type: custom:slabton-card
+entity: cover.living_room
+name: Living room shutter
+scale:
+  ticks: 4
+  labels: true
+`,
+  },
+  {
+    id: "cover-simple",
+    label: "Cover (no position)",
+    yaml: `type: custom:slabton-card
+entity: cover.garage_door
+name: Garage door
+`,
+  },
+  {
     id: "counter",
     label: "Counter",
     yaml: `type: custom:slabton-card
@@ -209,7 +228,7 @@ text:
 window.SLABTON_EXAMPLE_LABELS = {
   de: {
     state: "Zustand (Select)", overhang: "Zustand, Griff-Überstand", vertical: "Zustand, vertikal",
-    lock: "Sperre (Swipe)", value: "Wert (Sensor)", "labels-outside": "Wert, Beschriftung außen", "ticks-outside": "Wert, Striche und Beschriftung außen", draggable: "Wert (ziehbare Zahl)", counter: "Zähler",
+    lock: "Sperre (Swipe)", value: "Wert (Sensor)", "labels-outside": "Wert, Beschriftung außen", "ticks-outside": "Wert, Striche und Beschriftung außen", draggable: "Wert (ziehbare Zahl)", cover: "Rollladen (Position)", "cover-simple": "Rollladen (ohne Position)", counter: "Zähler",
     timer: "Timer", clock: "Uhr (digital)", analog: "Uhr (analog)", "bar-attribute": "Wert aus Attribut", styled: "Farben und Text",
   },
 };

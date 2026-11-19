@@ -3,7 +3,7 @@
  *
  * A bar with a movable handle button. Modes: `state` (multi-state click /
  * drag), `lock` (swipe to lock/unlock), `value` (number display; drag sets
- * `input_number` / `number`),
+ * `input_number` / `number` and the position of a `cover`),
  * `counter`, `timer` and `clock`. Timer and clock tick locally once per
  * second, only while the card is connected and the page is visible.
  * Plain custom element, no runtime dependencies. All config values are
@@ -13,7 +13,7 @@
 import { VERSION } from "../version.js";
 import { normalizeConfig } from "../core/config.js";
 import {
-  ACTION, CARD_SIZE, CARD_UNIT_PX, GRID, GRID_FIT_TOLERANCE_PX, MODE, NOTICE, TICK_MS, hasAction,
+  ACTION, ANIMATION_PULSE, CARD_SIZE, CARD_UNIT_PX, GRID, GRID_FIT_TOLERANCE_PX, MODE, NOTICE, TICK_MS, hasAction,
 } from "../core/constants.js";
 import { resolveLanguage, resolveLocale, t } from "../core/i18n.js";
 import { Pulse } from "../core/pulse.js";
@@ -34,6 +34,8 @@ export const CARD_TAG = "slabton-card";
 export const EDITOR_TAG = "slabton-card-editor";
 export const MIN_CALL_INTERVAL_MS = 250;
 export const PENDING_TIMEOUT_MS = 3000;
+/** How long a pending cover position is kept while the cover travels towards it, in ms. */
+export const TRAVEL_PENDING_TIMEOUT_MS = 180000;
 
 const MODES = {
   [MODE.STATE]: stateMode,
@@ -201,18 +203,34 @@ export class SlabtonCard extends HTMLElement {
     return this._pending.value;
   }
 
-  /** Drop a pending value the entity has already replaced. */
+  /**
+   * Drop a pending value the entity has already replaced, unless the mode keeps it (a cover still travelling to
+   * it): then it is bound to the new state and the timeout is extended to the length of a travel.
+   */
   _expirePending() {
-    if (this._pending && this._pending.base !== this._stateObj()) this._clearPending();
+    if (!this._pending) return;
+    const stateObj = this._stateObj();
+    if (this._pending.base === stateObj) return;
+    if (this._mode.keepsPending?.(this._config, stateObj, this._pending.value)) {
+      this._pending = { ...this._pending, base: stateObj };
+      this._armPendingTimer(TRAVEL_PENDING_TIMEOUT_MS);
+      return;
+    }
+    this._clearPending();
   }
 
   _setPending(value) {
     this._clearPending();
     this._pending = { value, base: this._stateObj() };
+    this._armPendingTimer(this._mode.pendingTimeoutMs?.(this._config) ?? PENDING_TIMEOUT_MS);
+  }
+
+  _armPendingTimer(ms) {
+    clearTimeout(this._pendingTimer);
     this._pendingTimer = setTimeout(() => {
       this._clearPending();
       if (this._config) this._update();
-    }, PENDING_TIMEOUT_MS);
+    }, ms);
   }
 
   _clearPending() {
@@ -271,7 +289,8 @@ export class SlabtonCard extends HTMLElement {
       fillPos: bar ? bar.frac : view.fillPos,
       modeFillPos: view.fillPos,
       scaleLabels: this._boundScaleLabels(barState),
-      expired: ctx.expired,
+      // A travelling cover pulses like an expired timer, but only with `animation: pulse` (opt-in).
+      expired: ctx.expired || Boolean(view.moving && config.animation === ANIMATION_PULSE),
       barText: config.bar_text ? renderTemplate(config.bar_text, values, config.mode) : null,
       info: config.timer.info ? renderTemplate(config.timer.info, values, config.mode) : null,
     };

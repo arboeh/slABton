@@ -48,6 +48,8 @@ everything else gives `state`. `input_datetime` / `input_date` and `clock` need 
 | `text` | defaults | Font size and color per text area, see [Text appearance](appearance.md#text-appearance) |
 | `scale` | none | Tick marks and labels, each inside or outside the bar, see [Scale](appearance.md#scale) |
 
+A `cover` entity runs in the `value` mode without further options: drag sets the position, tap toggles, hold stops, see [Covers](modes.md#covers).
+
 `call-service` (with `service` / `service_data`) is accepted as a deprecated alias of `perform-action` and may be removed in a later version.
 
 ## Unavailable entities

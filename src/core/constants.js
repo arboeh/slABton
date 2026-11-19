@@ -40,6 +40,25 @@ export const READ_ONLY_MODES = Object.freeze([MODE.COUNTER, MODE.TIMER, MODE.CLO
 /** Domains whose number the value mode can set by dragging (`<domain>.set_value`). */
 export const VALUE_SETTABLE_DOMAINS = Object.freeze(["input_number", "number"]);
 
+/**
+ * Cover entities (value mode): the position 0 (closed) .. 100 (open) is the attribute `current_position`, set with
+ * `cover.set_cover_position`. `COVER_FEATURE` are the `supported_features` bits of Home Assistant's cover entity.
+ */
+export const COVER_DOMAIN = "cover";
+export const COVER_POSITION_ATTRIBUTE = "current_position";
+export const COVER_POSITION_UNIT = "%";
+export const COVER_FEATURE = Object.freeze({ OPEN: 1, CLOSE: 2, SET_POSITION: 4, STOP: 8 });
+/** Cover states the card knows (the HA `cover` states). */
+export const COVER_STATE = Object.freeze({ OPEN: "open", CLOSED: "closed", OPENING: "opening", CLOSING: "closing" });
+/** Handle icon of a cover without `icon` (own icon of the entity wins), per state. */
+export const COVER_ICONS = Object.freeze({
+  [COVER_STATE.OPEN]: "mdi:window-shutter-open",
+  [COVER_STATE.CLOSED]: "mdi:window-shutter",
+  [COVER_STATE.OPENING]: "mdi:arrow-up",
+  [COVER_STATE.CLOSING]: "mdi:arrow-down",
+});
+export const COVER_DEFAULT_ICON = COVER_ICONS[COVER_STATE.CLOSED];
+
 /** Interval of the local clock tick (timer and clock modes), in ms. */
 export const TICK_MS = 1000;
 
@@ -202,6 +221,10 @@ export function hasAction(action) {
 /** Predefined bar animations (names only; CSS lives in `ui/animations.js`). */
 export const ANIMATIONS = ["none", "slide", "fade", "pulse", "shimmer"];
 export const DEFAULT_ANIMATION = "slide";
+/** Animation a travelling cover opts into. */
+export const ANIMATION_PULSE = "pulse";
+/** `handle_position` value: the handle follows the value freely (the only one that can be dragged). */
+export const HANDLE_FLEX = "flex";
 
 /** Timer states as shown by the timer mode (the first three equal the HA `timer.*` states). */
 export const TIMER_STATUS = Object.freeze({

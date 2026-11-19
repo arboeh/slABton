@@ -21,11 +21,21 @@ Details of `bar.attribute` (see [Bar value](appearance.md#bar-value-from-an-attr
 - `scale.ticks` counts sections: `ticks: 7` draws 8 marks.
 - The bar is read-only. The gesture lock only follows the main entity; a broken attribute shows the hint and keeps
   taps, double taps and hold working.
-- `mode: value` with an attribute follows the state of the main entity for handle and lock. For climate and cover
-  keep the default mode.
+- `mode: value` with an attribute follows the state of the main entity for handle and lock. For climate keep
+  the default mode; for a cover see [Covers](#covers).
 - In the `state` mode the handle sits on the measured value (not draggable) when the bar measures the main entity; with
   a separate `bar.entity` it stays on the state. In `timer`, `counter` and `lock` the handle keeps following the mode
   and only fill and scale show the attribute.
+
+## Covers
+
+Details of the cover support (see [Mode value](modes.md#covers)):
+
+- A cover without `mode:` runs in the `value` mode. Before this release it ran in the `state` mode. A cover config with `states`, `bar.entity` or `bar.attribute` and no `mode:` keeps the `state` mode, and so does an explicit `mode: state`.
+- The handle can be set when `supported_features` has bit 4 (set position) and `current_position` is a number. Without it the cover shows its state, no dragging.
+- Tilt, switches at the ends and cover groups are not supported.
+- `animation: pulse` also makes the handle pop on every step while dragging, in every mode, not only for covers (it plays whenever the shown value changes). Use `slide` to avoid it.
+- Known limit: the dragged position is kept until the cover reports a movement. If the cover entity gets a new state object before it starts moving (for example an attribute update), the handle can briefly return to the reported position.
 
 ## Development
 

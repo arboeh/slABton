@@ -48,6 +48,8 @@ alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein a
 | `text` | Standardwerte | Schriftgröße und Farbe je Textbereich, siehe [Textdarstellung](appearance.md#textdarstellung) |
 | `scale` | keine | Striche und Beschriftung, je innen oder außerhalb der Bar, siehe [Skala](appearance.md#skala) |
 
+Ein `cover`-Entity läuft ohne weitere Optionen im Modus `value`: Ziehen setzt die Position, Tippen schaltet um, Halten stoppt, siehe [Covers](modes.md#covers).
+
 `call-service` (mit `service` / `service_data`) wird als veralteter Alias von `perform-action` akzeptiert und kann in einer späteren Version entfallen.
 
 ## Nicht verfügbare Entitäten
