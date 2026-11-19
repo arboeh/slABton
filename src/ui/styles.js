@@ -393,7 +393,7 @@ export function buildCss() {
 
     .unavailable .bar { opacity: 0.5; }
     /* The lock lives in the card (it blocks every gesture but a tap); the handle stays tappable for more-info. */
-    .unavailable:not(.allow-actions) .handle { cursor: pointer; touch-action: auto; }
+    .blocked:not(.allow-actions) .handle { cursor: pointer; touch-action: auto; }
     .unavailable .h-icon { color: var(--slabton-unavailable-color, var(--warning-color, #ffa600)); }
     ${animationCss()}
   `;

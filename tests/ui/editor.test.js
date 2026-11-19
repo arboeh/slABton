@@ -254,6 +254,13 @@ describe("buildSchema", () => {
   });
 });
 
+describe("cleanConfig bar block", () => {
+  it("drops cleared bar fields and an empty bar map", () => {
+    expect(cleanConfig({ entity: "climate.a", bar: { attribute: "", entity: "", min: 5 } })).toEqual({ entity: "climate.a", bar: { min: 5 } });
+    expect(cleanConfig({ entity: "climate.a", bar: { attribute: "" } })).toEqual({ entity: "climate.a" });
+  });
+});
+
 describe("cleanConfig", () => {
   it("drops cleared values but keeps false and 0", () => {
     expect(cleanConfig({ a: undefined, b: null, c: "", d: 0, e: false, f: "x" })).toEqual({ d: 0, e: false, f: "x" });
@@ -704,5 +711,24 @@ describe("bar_state_color switch", () => {
       el._onChanged({ stopPropagation() {}, detail: { value: { entity: "input_select.a", bar_state_color: value } } });
       expect(events.at(-1).bar_state_color).toBe(value);
     }
+  });
+});
+
+describe("bar attribute field", () => {
+  const barNames = (config) => buildSchema(config).find((item) => item.name === "bar").schema.flatMap((f) => (f.schema ? f.schema.map((g) => g.name) : [f.name]));
+
+  it("offers attribute in the bar block", () => {
+    expect(barNames({ entity: "climate.a" })).toContain("attribute");
+  });
+
+  it("has labels in both languages", () => {
+    expect(t("en", "editor.bar_attribute")).toBe("Attribute for the bar value (optional)");
+    expect(t("de", "editor.bar_attribute")).toBe("Attribut für den Balkenwert (optional)");
+    expect(t("en", "unavailable.attribute")).toBe("Attribute missing or not a number");
+    expect(t("de", "unavailable.attribute")).toBe("Attribut fehlt oder ist keine Zahl");
+  });
+
+  it("hides drag for a bar with an attribute", () => {
+    expect(names(buildSchema({ entity: "input_number.a", bar: { attribute: "x" } }))).not.toContain("drag");
   });
 });

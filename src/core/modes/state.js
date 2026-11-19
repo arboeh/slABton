@@ -102,6 +102,8 @@ export function cycleAction(config, stateObj, step, pending) {
 }
 
 export function isDraggable(config, stateObj) {
+  // The handle shows the measured attribute of its own entity: a drag would pick a state at another position.
+  if (config.bar_own_attribute) return false;
   return config.drag && config.handle_position === "flex" && resolveStates(config, stateObj).length > 1;
 }
 

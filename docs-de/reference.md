@@ -12,6 +12,22 @@ und Konsolenwarnungen bleiben Englisch.
 ignoriert und mit Warnung protokolliert. Mehrere Bars oder Buttons in einer Karte (`bars:`) sind nicht Teil des Schemas.
 
 
+## Bar-Attribut
+
+Details zu `bar.attribute` (siehe [Bar-Wert](appearance.md#bar-wert-aus-einem-attribut)):
+
+- Name: Buchstaben, Ziffern, `_`, 1 bis 64 Zeichen. Ungültige Namen werden mit Konsolenwarnung ignoriert. Ohne
+  Entity (Uhr) wird das Attribut mit Warnung ignoriert.
+- Wert: eine Zahl oder ein Text, der wie der Zustand als Zahl lesbar ist (`"1e5"` zählt). Alles andere ist ungültig.
+- `scale.ticks` zählt Abschnitte: `ticks: 7` zeichnet 8 Striche.
+- Die Bar ist nur lesend. Die Gestensperre folgt nur dem Haupt-Entity; ein kaputtes Attribut zeigt den Hinweis und
+  lässt Tippen, Doppeltippen und Halten weiter zu.
+- `mode: value` mit Attribut folgt für Griff und Sperre dem Zustand des Haupt-Entities. Für Climate und Cover den
+  Standard-Modus lassen.
+- Im Modus `state` sitzt der Griff auf dem gemessenen Wert (nicht ziehbar), wenn die Bar das Haupt-Entity misst; mit
+  eigener `bar.entity` bleibt er auf dem Zustand. In `timer`, `counter` und `lock` folgt der Griff weiter dem Modus,
+  nur Füllung und Skala zeigen das Attribut.
+
 ## Entwicklung
 
 ```bash

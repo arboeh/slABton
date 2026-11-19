@@ -317,3 +317,59 @@ describe("live value", () => {
     expect(view(sensor({ decimals: 0 }), makeState("sensor.t", "20"), undefined, { dragPos: 0.9 }).text).toBe("20");
   });
 });
+
+describe("bar attribute", () => {
+  const climate = (state = "heat", attributes = {}) => makeState("climate.room", state, attributes);
+  const cfg = (bar = {}) => normalizeConfig({ entity: "climate.room", bar: { attribute: "current_temperature", ...bar } });
+
+  it("measures the attribute instead of the state", () => {
+    const m = measure(cfg({ min: 10, max: 30 }), climate("heat", { current_temperature: 20 }), undefined, "current_temperature");
+    expect(m).toMatchObject({ valid: true, frac: 0.5, value: 20 });
+  });
+
+  it("accepts a decimal text", () => {
+    const m = measure(cfg({ min: 0, max: 100 }), climate("heat", { current_temperature: "21.5" }), undefined, "current_temperature");
+    expect(m.value).toBe(21.5);
+  });
+
+  it("is invalid when the attribute is missing, empty or not a number", () => {
+    for (const attributes of [{}, { current_temperature: null }, { current_temperature: "" }, { current_temperature: "warm" }, { current_temperature: [] }]) {
+      expect(measure(cfg(), climate("heat", attributes), undefined, "current_temperature")).toMatchObject({ valid: false, frac: 0, text: "–" });
+    }
+  });
+
+  it("is invalid while the entity is unavailable", () => {
+    const m = measure(cfg(), climate("unavailable", { current_temperature: 20 }), undefined, "current_temperature");
+    expect(m.valid).toBe(false);
+  });
+
+  it("still reads the state without an attribute", () => {
+    expect(measure(sensor(), makeState("sensor.t", "42")).value).toBe(42);
+  });
+
+  it("takes the range from the config, then min_temp / max_temp, then min / max, then 0..100", () => {
+    const attrs = { min_temp: 7, max_temp: 35, min: 1, max: 2 };
+    expect(range(cfg(), climate("heat", attrs), "current_temperature")).toEqual({ min: 7, max: 35 });
+    expect(range(cfg({ min: 12 }), climate("heat", attrs), "current_temperature")).toEqual({ min: 12, max: 35 });
+    expect(range(cfg(), climate("heat", { min: 1, max: 2 }), "current_temperature")).toEqual({ min: 1, max: 2 });
+    expect(range(cfg(), climate("heat", {}), "current_temperature")).toEqual({ min: 0, max: 100 });
+    expect(range(cfg({ min: 12, max: 20 }), climate("heat", attrs), "current_temperature")).toEqual({ min: 12, max: 20 });
+  });
+
+  it("ignores min_temp / max_temp without an attribute", () => {
+    expect(range(sensor(), makeState("sensor.t", "5", { min_temp: 1, max_temp: 9 }))).toEqual({ min: 0, max: 100 });
+  });
+
+  it("uses bar.unit before the unit of the entity", () => {
+    const state = makeState("sensor.t", "0", { level: 50, unit_of_measurement: "W" });
+    const m = measure(normalizeConfig({ entity: "sensor.t", bar: { attribute: "level", decimals: 0 } }), state, undefined, "level");
+    expect(m.text).toBe("50 W");
+    const own = measure(normalizeConfig({ entity: "sensor.t", bar: { attribute: "level", unit: "%", decimals: 0 } }), state, undefined, "level");
+    expect(own.text).toBe("50%");
+  });
+
+  it("is never draggable", () => {
+    const config = normalizeConfig({ entity: "number.v", bar: { attribute: "level" } });
+    expect(isDraggable(config, makeState("number.v", "5", { min: 0, max: 10 }))).toBe(false);
+  });
+});

@@ -4,7 +4,8 @@
  * (see config.js). `input_number` and `number` entities can also be set: the
  * handle is dragged (or moved with the arrow keys) and `set_value` is called
  * on release. Range priority: explicit `bar.min/max` or flat `min/max`, then
- * the entity attributes `min` / `max` (settable domains), then preset / 0..100.
+ * the entity attributes `min` / `max` (settable domains; with `bar.attribute` any domain, plus
+ * `min_temp` / `max_temp`), then preset / 0..100.
  * Step: `step` option, then the attribute `step`, else stepless.
  */
 
@@ -29,13 +30,25 @@ function decimalPlaces(n) {
   return text.split(".")[1]?.length ?? 0;
 }
 
-/** Effective { min, max } of the entity (attributes only for settable domains). */
-export function range(config, stateObj) {
-  if (!VALUE_SETTABLE_DOMAINS.includes(domainOf(config, stateObj))) return { min: config.min, max: config.max };
+/**
+ * Effective { min, max } of the entity (attributes only for settable domains). A bar that measures an
+ * `attribute` takes `min_temp` / `max_temp` (climate) or `min` / `max` from any domain.
+ */
+export function range(config, stateObj, attribute) {
+  if (!attribute && !VALUE_SETTABLE_DOMAINS.includes(domainOf(config, stateObj))) return { min: config.min, max: config.max };
   const attrs = stateObj?.attributes ?? {};
-  const min = (config.range_set.min ? config.min : null) ?? finite(attrs.min) ?? config.min;
-  const max = (config.range_set.max ? config.max : null) ?? finite(attrs.max) ?? config.max;
+  const fromEntity = (bound, tempKey) => (attribute ? finite(attrs[tempKey]) : null) ?? finite(attrs[bound]);
+  const min = (config.range_set.min ? config.min : null) ?? fromEntity("min", "min_temp") ?? config.min;
+  const max = (config.range_set.max ? config.max : null) ?? fromEntity("max", "max_temp") ?? config.max;
   return { min, max };
+}
+
+/** Number of an entity attribute (a number or a plain decimal text), NaN when it is neither or missing. */
+function parseAttribute(stateObj, attribute) {
+  const raw = stateObj?.attributes?.[attribute];
+  if (typeof raw === "number") return raw;
+  if (typeof raw !== "string" || raw.trim() === "") return NaN;
+  return Number(raw);
 }
 
 /** Step size: `step` option, else the attribute `step`, else null (stepless). */
@@ -45,11 +58,14 @@ export function resolveStep(config, stateObj) {
   return step != null && step >= MIN_STEP ? step : null;
 }
 
-/** Fraction (0..1), formatted text and validity of a numeric entity against its range. */
-export function measure(config, stateObj, pending) {
-  const value = pending ?? parseNumericState(stateObj);
+/**
+ * Fraction (0..1), formatted text and validity of a numeric entity against its range. With `attribute`
+ * the value is that attribute of the entity instead of its state.
+ */
+export function measure(config, stateObj, pending, attribute) {
+  const value = pending ?? (attribute ? parseAttribute(stateObj, attribute) : parseNumericState(stateObj));
   const valid = Number.isFinite(value) && !isUnavailable(stateObj);
-  const { min, max } = range(config, stateObj);
+  const { min, max } = range(config, stateObj, attribute);
   const rangeOk = max > min;
   const frac = valid && rangeOk ? clamp((value - min) / (max - min), 0, 1) : 0;
   const unit = config.unit ?? stateObj?.attributes?.unit_of_measurement ?? null;

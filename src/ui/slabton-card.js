@@ -27,7 +27,7 @@ import * as valueMode from "../core/modes/value.js";
 import { renderTemplate } from "../core/placeholders.js";
 import { renderCard, updateSwitches, updateView } from "./render.js";
 import { applyVars, buildCss, cardHeightPx, handleDimensions } from "./styles.js";
-import { isUnavailable, safeUrl, unavailableReason, warn } from "../core/util.js";
+import { isUnavailable, resolveHandlePosition, safeUrl, unavailableReason, warn } from "../core/util.js";
 import { SlabtonCardEditor } from "./editor.js";
 
 export const CARD_TAG = "slabton-card";
@@ -242,7 +242,12 @@ export class SlabtonCard extends HTMLElement {
   _decorate(view, stateObj, ctx) {
     const config = this._config;
     const barState = config.bar_entity ? this._hass?.states?.[config.bar_entity] : null;
-    const bar = config.bar_entity ? valueMode.measure(config, barState) : null;
+    const bar = config.bar_entity ? valueMode.measure(config, barState, undefined, config.bar_attribute ?? undefined) : null;
+    // A bar attribute that cannot be read is shown like an unavailable entity, but never blocks the actions.
+    const barBroken = Boolean(config.bar_attribute && bar && !bar.valid);
+    const unavailableKey = view.unavailable
+      ? (unavailableReason(stateObj) ?? "invalid")
+      : (barBroken ? (unavailableReason(barState) ?? "attribute") : null);
     const values = {
       name: config.name ?? stateObj?.attributes?.friendly_name ?? "",
       state: stateObj?.state ?? "",
@@ -251,10 +256,18 @@ export class SlabtonCard extends HTMLElement {
       ...(bar ? { value: bar.text } : {}),
     };
     this._notify(view.notice);
+    // State mode, bar attribute of the main entity: the handle sits on the measured value like in the value mode
+    // (the state position of a cover or climate entity means nothing here). A separate `bar.entity` keeps the
+    // handle on the state.
+    const handleOnBar = Boolean(bar?.valid && config.bar_own_attribute && config.mode === MODE.STATE);
     return {
       ...view,
-      unavailableText: view.unavailable ? t(ctx.lang, `unavailable.${unavailableReason(stateObj) ?? "invalid"}`) : null,
+      pos: handleOnBar ? resolveHandlePosition(config, bar.frac, bar.frac > 0) : view.pos,
+      unavailable: Boolean(view.unavailable) || barBroken,
+      blocked: Boolean(view.unavailable),
+      unavailableText: unavailableKey ? t(ctx.lang, `unavailable.${unavailableKey}`) : null,
       fillPos: bar ? bar.frac : view.fillPos,
+      modeFillPos: view.fillPos,
       scaleLabels: this._boundScaleLabels(barState),
       expired: ctx.expired,
       barText: config.bar_text ? renderTemplate(config.bar_text, values, config.mode) : null,
@@ -272,7 +285,7 @@ export class SlabtonCard extends HTMLElement {
     const config = this._config;
     if (!config.scale?.labels?.some((label) => label.bound)) return null;
     if (!barState || isUnavailable(barState)) return null;
-    const { min, max } = valueMode.range(config, { entity_id: config.bar_entity, ...barState });
+    const { min, max } = valueMode.range(config, { entity_id: config.bar_entity, ...barState }, config.bar_attribute ?? undefined);
     if (!(max > min)) return { min: "", max: "" };
     return { min: min.toFixed(config.decimals), max: max.toFixed(config.decimals) };
   }
@@ -290,7 +303,7 @@ export class SlabtonCard extends HTMLElement {
     const now = Date.now();
     this._advance(now);
     const view = this._view(now);
-    this._blocked = Boolean(view.unavailable) && !this._config.allow_unavailable_actions;
+    this._blocked = Boolean(view.blocked) && !this._config.allow_unavailable_actions;
     updateView(this._refs, this._config, view, { dragPos: this._dragPos });
     this._syncNoDrag();
     updateSwitches(this._refs, this._config, this._hass);
@@ -346,7 +359,8 @@ export class SlabtonCard extends HTMLElement {
         if (!this._blocked) this._runAction(this._actionFor("hold_action"));
       },
       onDragStart: () => {
-        this._dragStartPos = this._view().fillPos;
+        // The logical position of the mode (lock: locked or not), not the measured bar value.
+        this._dragStartPos = this._view().modeFillPos;
         this._refs.root.classList.add("dragging");
       },
       onDrag: (frac) => {

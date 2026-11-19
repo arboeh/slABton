@@ -24,6 +24,39 @@ bar_text: "{value}"
 `decimals`, `preset` at the top level) stay as an alias of `bar.*`; if both are set, `bar:` wins and a
 warning is logged. Without `bar.entity` the bar follows `entity` as before. `{value}` is then the bar value.
 
+### Bar value from an attribute
+
+`bar.attribute` makes the bar show an attribute of an entity instead of its state, for example the position of
+a cover or the measured temperature of a thermostat:
+
+```yaml
+type: custom:slabton-card
+entity: climate.living_room
+bar:
+  attribute: current_temperature
+  unit: "°C"
+bar_text: "{value}"
+```
+
+- The attribute belongs to `bar.entity`; without `bar.entity` it belongs to `entity`. The attribute name uses
+  letters, digits and `_` (at most 64 characters), anything else is ignored with a warning.
+- The bar is read-only with an attribute. `drag` has no effect, the handle keeps its normal actions. In the default
+  `state` mode the handle sits on the measured value and cannot be dragged. Tap and keys still work.
+- The scale spans the whole bar like in the `value` mode, so `0` and the maximum stand at the ends of the bar and the
+  fill ends under the tick of its value.
+- Unit: `bar.unit` first, else the `unit_of_measurement` of the entity. Climate and cover entities have none, so
+  set `bar.unit` (for example `"°C"` or `"%"`).
+- Range: `bar.min` / `bar.max` first, else the attributes `min_temp` / `max_temp`, else `min` / `max` of the
+  entity, else 0 to 100. Climate entities bring `min_temp` / `max_temp`, covers use 0 to 100. A sensor with an
+  extra attribute has no range of its own, so set `bar.min` and `bar.max`.
+- Scale `labels` show this range. The labels follow the entity range at runtime.
+- A missing attribute, a value that is not a number or an unavailable entity shows the warning icon with the
+  reason ("Attribute missing or not a number") and an empty bar. This does not block the actions of the card.
+  Only an unavailable main `entity` blocks them.
+- A text value counts as a number like the entity state does, so `"1e5"` and `"0x10"` are numbers.
+- Keep the default `mode` for climate and cover. With `mode: value` the handle and the lock follow the state of
+  the entity, and a climate entity has no numeric state.
+
 ## Placeholders
 
 `bar_text` and `timer.info` take text with placeholders in single curly braces. This is **not** a template

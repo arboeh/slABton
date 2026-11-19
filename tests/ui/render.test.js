@@ -572,6 +572,18 @@ describe("rootClasses", () => {
     expect(full("state")).not.toContain("scale-full");
     expect(full("lock")).not.toContain("scale-full");
   });
+
+  it("marks nodrag only for a state card whose handle shows its own attribute", () => {
+    const classes = (extra) => rootClasses(normalizeConfig({ entity: "cover.c", mode: "state", ...extra })).split(" ");
+    expect(classes({ bar: { attribute: "current_position" } })).toContain("nodrag");
+    expect(classes({ bar: { entity: "cover.d", attribute: "current_position" } })).not.toContain("nodrag");
+    expect(classes({})).not.toContain("nodrag");
+  });
+
+  it("marks scale-full for a bar attribute in the state mode (number scale over the full bar)", () => {
+    const classes = rootClasses(normalizeConfig({ entity: "cover.c", mode: "state", bar: { attribute: "current_position" } })).split(" ");
+    expect(classes).toContain("scale-full");
+  });
 });
 
 describe("updateView", () => {
@@ -682,6 +694,18 @@ describe("updateView", () => {
       expect(refs.handle.getAttribute("aria-disabled")).toBe("false");
       expect(refs.handle.getAttribute("tabindex")).toBe("0");
       expect(refs.icon.getAttribute("icon")).toBe("mdi:alert-circle-outline");
+    });
+
+    it("sets the blocked class from view.blocked and falls back to view.unavailable", () => {
+      const { config, refs } = setup();
+      updateView(refs, config, unavailableView(config));
+      expect(refs.root.classList.contains("blocked")).toBe(true);
+      updateView(refs, config, { ...unavailableView(config), blocked: false });
+      expect(refs.root.classList.contains("unavailable")).toBe(true);
+      expect(refs.root.classList.contains("blocked")).toBe(false);
+      expect(refs.handle.getAttribute("aria-disabled")).toBe("false");
+      updateView(refs, config, stateMode.view(config, modeState));
+      expect(refs.root.classList.contains("blocked")).toBe(false);
     });
 
     it("adds no allow-actions class by default", () => {

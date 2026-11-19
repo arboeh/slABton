@@ -38,7 +38,7 @@
   const states = {
     "input_select.heating_mode": entity("input_select.heating_mode", "Auto", { options: ["Off", "Auto", "On", "Idle"] }),
     "lock.front_door": entity("lock.front_door", "locked"),
-    "sensor.living_room_temperature": entity("sensor.living_room_temperature", "21.4"),
+    "sensor.living_room_temperature": entity("sensor.living_room_temperature", "21.4", { humidity: 48 }),
     "sensor.battery_soc": entity("sensor.battery_soc", "64"),
     "input_number.target_temperature": entity("input_number.target_temperature", "21", { min: 15, max: 25, step: 0.5 }),
     "counter.guests": entity("counter.guests", "3", { minimum: 0, maximum: 10 }),

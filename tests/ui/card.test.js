@@ -1219,6 +1219,120 @@ describe("separate bar value", () => {
   });
 });
 
+describe("bar.attribute", () => {
+  const CLIMATE = "climate.room";
+  const climate = (state, attributes) => ({ [CLIMATE]: makeState(CLIMATE, state, attributes) });
+  const config = { entity: CLIMATE, mode: "state", bar: { attribute: "current_temperature", min: 10, max: 30, decimals: 0, unit: "°C" } };
+  const fill = (el) => q(el, ".root").style.getPropertyValue("--slabton-p");
+
+  it("fills the bar from the attribute and follows attribute changes at the same state", () => {
+    const { el, hass } = create(config, climate("heat", { current_temperature: 20 }));
+    expect(fill(el)).toBe("0.5");
+    el.hass = withState(hass, CLIMATE, "heat", { current_temperature: 30 });
+    expect(fill(el)).toBe("1");
+  });
+
+  it("puts the handle on the measured value, not on the state position", () => {
+    const edge = (el) => q(el, ".root").style.getPropertyValue("--slabton-e");
+    const { el, hass } = create(config, climate("heat", { current_temperature: 25 }));
+    expect(edge(el)).toBe("0.75");
+    el.hass = withState(hass, CLIMATE, "heat", { current_temperature: 10 });
+    expect(edge(el)).toBe("0");
+  });
+
+  it("keeps the handle on the state with a separate bar entity", () => {
+    const { el } = create({ entity: SELECT, states: ["Off", "Auto", "On", "Idle"], bar: { entity: "sensor.b", attribute: "level", min: 0, max: 100 } },
+      { [SELECT]: makeState(SELECT, "On", selectState().attributes), "sensor.b": makeState("sensor.b", "5", { level: 20 }) });
+    expect(q(el, ".root").style.getPropertyValue("--slabton-e")).toBe(String(2 / 3));
+  });
+
+  it("is not draggable in the state mode when the handle shows its own attribute", () => {
+    const { el, hass } = create({ ...config }, climate("heat", { current_temperature: 20, hvac_modes: ["off", "heat", "cool"] }));
+    expect(q(el, ".root").classList.contains("nodrag")).toBe(true);
+    mockRect(q(el, ".rail"), { left: 0, width: 200 });
+    const handle = q(el, ".handle");
+    pointer(handle, "pointerdown", { clientX: 120 });
+    pointer(handle, "pointermove", { clientX: 220 });
+    pointer(handle, "pointerup", { clientX: 220 });
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+
+  it("keeps the handle on the state when the attribute is broken or the position is fixed", () => {
+    const edge = (el) => q(el, ".root").style.getPropertyValue("--slabton-e");
+    const broken = create(config, climate("heat", {}));
+    expect(edge(broken.el)).toBe("0");
+    const fixed = create({ ...config, handle_position: "fixed", fixed_position: 100 }, climate("heat", { current_temperature: 20 }));
+    expect(edge(fixed.el)).toBe("1");
+  });
+
+  it("moves a switch handle with the measured value, not with the state", () => {
+    const edge = (el) => q(el, ".root").style.getPropertyValue("--slabton-e");
+    const on = create({ ...config, handle_position: "switch" }, climate("off", { current_temperature: 20 }));
+    expect(edge(on.el)).toBe("1");
+    const zero = create({ ...config, handle_position: "switch" }, climate("heat", { current_temperature: 10 }));
+    expect(edge(zero.el)).toBe("0");
+  });
+
+  it("starts a lock swipe from the lock position, not from the measured bar value", () => {
+    const { el, hass } = create(
+      { entity: "lock.front", bar: { entity: "sensor.b", attribute: "level", min: 0, max: 100 } },
+      { "lock.front": makeState("lock.front", "locked"), "sensor.b": makeState("sensor.b", "5", { level: 80 }) },
+    );
+    mockRect(q(el, ".rail"), { left: 0, width: 200 });
+    const handle = q(el, ".handle");
+    pointer(handle, "pointerdown", { clientX: 20 });
+    pointer(handle, "pointermove", { clientX: 200 });
+    pointer(handle, "pointerup", { clientX: 200 });
+    expect(hass.callService).toHaveBeenCalledWith("lock", "unlock", {}, { entity_id: "lock.front" });
+  });
+
+  it("offers the attribute as {value}", () => {
+    const { el } = create({ ...config, bar_text: "{value}" }, climate("heat", { current_temperature: 20 }));
+    expect(q(el, ".bar-text").textContent).toBe("20°C");
+  });
+
+  it("shows the reason and keeps the actions when the attribute is missing", () => {
+    const { el } = create(config, climate("heat", {}));
+    expect(fill(el)).toBe("0");
+    expect(q(el, ".root").classList.contains("unavailable")).toBe(true);
+    expect(q(el, ".root").getAttribute("title")).toBe("Attribute missing or not a number");
+    expect(q(el, ".handle").getAttribute("aria-disabled")).toBe("false");
+  });
+
+  it("keeps taps working and the touch rule off when only the attribute is broken", () => {
+    const { el, hass } = create({ entity: SELECT, states: ["Off", "Auto", "On", "Idle"], bar: { entity: "sensor.b", attribute: "level" } },
+      { [SELECT]: selectState(), "sensor.b": makeState("sensor.b", "5") });
+    expect(q(el, ".root").classList.contains("unavailable")).toBe(true);
+    expect(q(el, ".root").classList.contains("blocked")).toBe(false);
+    tap(q(el, ".handle"));
+    expect(hass.callService).toHaveBeenCalledTimes(1);
+  });
+
+  it("blocks the card when the entity itself is unavailable, with its reason in aria", () => {
+    const { el, hass } = create(config, climate("unavailable", {}));
+    expect(q(el, ".root").classList.contains("blocked")).toBe(true);
+    expect(q(el, ".handle").getAttribute("aria-valuetext")).toBe("Entity unavailable");
+    tap(q(el, ".handle"));
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+
+  it("names the entity state first when the entity is unavailable", () => {
+    const { el } = create(config, climate("unavailable", {}));
+    expect(q(el, ".root").getAttribute("title")).toBe("Entity unavailable");
+  });
+
+  it("leaves the bar read-only", () => {
+    const { el } = create({ entity: "number.v", bar: { attribute: "level" } }, { "number.v": makeState("number.v", "5", { level: 50, min: 0, max: 100 }) });
+    expect(q(el, ".root").classList.contains("nodrag")).toBe(true);
+  });
+
+  it("takes scale labels from min_temp / max_temp", () => {
+    const { el } = create({ entity: CLIMATE, bar: { attribute: "current_temperature", decimals: 0 }, scale: { ticks: 4, labels: true } }, climate("heat", { current_temperature: 20, min_temp: 7, max_temp: 35 }));
+    const labels = [...el.shadowRoot.querySelectorAll(".tick-label")].map((label) => label.textContent);
+    expect(labels).toEqual(["7", "35"]);
+  });
+});
+
 describe("bar_state_color", () => {
   const colored = [
     { value: "off", color: "blue" },

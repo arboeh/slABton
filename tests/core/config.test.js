@@ -384,6 +384,62 @@ describe("bar block", () => {
   });
 });
 
+describe("bar.attribute", () => {
+  it("reads the attribute and lets the bar measure the main entity", () => {
+    const c = normalizeConfig({ entity: "climate.room", bar: { attribute: "current_temperature" } });
+    expect(c).toMatchObject({ bar_attribute: "current_temperature", bar_entity: "climate.room" });
+    expect(c.bar_own_attribute).toBe(true);
+  });
+
+  it("keeps a separate bar entity", () => {
+    const c = normalizeConfig({ entity: "switch.a", bar: { entity: "cover.b", attribute: "current_position" } });
+    expect(c).toMatchObject({ bar_attribute: "current_position", bar_entity: "cover.b" });
+  });
+
+  it("defaults to no attribute", () => {
+    expect(normalizeConfig({ entity: "sensor.t" }).bar_attribute).toBeNull();
+    expect(normalizeConfig({ entity: "sensor.t", bar: { attribute: "" } }).bar_attribute).toBeNull();
+  });
+
+  it("ignores an unusable attribute name with a warning", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    for (const attribute of ["a b", "x.y", 5, "a".repeat(65)]) {
+      const c = normalizeConfig({ entity: "sensor.t", bar: { attribute } });
+      expect(c).toMatchObject({ bar_attribute: null, bar_entity: null });
+    }
+    expect(warn).toHaveBeenCalledTimes(4);
+    expect(warn.mock.calls[0][0]).toMatch(/bar\.attribute/);
+  });
+
+  it("is not accepted as a flat option", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ entity: "sensor.t", attribute: "x" }).bar_attribute).toBeNull();
+  });
+
+  it("needs an entity (clock mode without entity ignores it)", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    const c = normalizeConfig({ mode: "clock", bar: { attribute: "x" } });
+    expect(c.bar_attribute).toBeNull();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it("works next to the lock, timer, counter and clock modes", () => {
+    for (const [entity, mode] of [["lock.door", "lock"], ["timer.t", "timer"], ["counter.c", "counter"]]) {
+      const c = normalizeConfig({ entity, mode, bar: { attribute: "level" } });
+      expect(c).toMatchObject({ mode, bar_attribute: "level", bar_entity: entity });
+    }
+    const clock = normalizeConfig({ mode: "clock", bar: { entity: "cover.b", attribute: "current_position" } });
+    expect(clock).toMatchObject({ bar_attribute: "current_position", bar_entity: "cover.b", entity: null });
+  });
+
+  it("marks scale labels that follow the entity range as runtime bound", () => {
+    const c = normalizeConfig({ entity: "climate.room", bar: { attribute: "current_temperature" }, scale: { labels: true } });
+    expect(c.scale.labels.some((label) => label.bound)).toBe(true);
+    const fixed = normalizeConfig({ entity: "climate.room", bar: { attribute: "current_temperature", min: 10, max: 30 }, scale: { labels: true } });
+    expect(fixed.scale.labels.some((label) => label.bound)).toBe(false);
+  });
+});
+
 describe("value mode: step and drag", () => {
   it("has no step by default and accepts a positive number", () => {
     expect(normalizeConfig({ entity: "input_number.v" }).step).toBeNull();

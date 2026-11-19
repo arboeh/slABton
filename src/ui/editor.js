@@ -49,7 +49,7 @@ function clockFaceFields(config, lang) {
  */
 function canDrag(config) {
   const domain = typeof config.entity === "string" ? config.entity.split(".")[0] : "";
-  const ownBar = !(isPlainObject(config.bar) && config.bar.entity);
+  const ownBar = !(isPlainObject(config.bar) && (config.bar.entity || config.bar.attribute));
   return VALUE_SETTABLE_DOMAINS.includes(domain) && ownBar;
 }
 
@@ -125,6 +125,7 @@ function layoutFields(config) {
 function barFields() {
   return [
     { name: "entity", labelKey: "editor.entity_bar", selector: { entity: {} } },
+    { name: "attribute", labelKey: "editor.bar_attribute", selector: text() },
     { type: "grid", name: "", schema: [
       { name: "min", selector: number(-1e9, 1e9) },
       { name: "max", selector: number(-1e9, 1e9) },
@@ -209,7 +210,7 @@ export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
 }
 
 /** Top-level blocks whose cleared fields are dropped at every depth (so no `header: {}` stays behind). */
-const NESTED_CLEAN_KEYS = ["text", "scale", "clock"];
+const NESTED_CLEAN_KEYS = ["text", "scale", "clock", "bar"];
 
 const isCleared = (value) => value === undefined || value === null || value === "";
 

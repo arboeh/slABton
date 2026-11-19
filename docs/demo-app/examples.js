@@ -170,6 +170,24 @@ clock:
 `,
   },
   {
+    id: "bar-attribute",
+    label: "Value from an attribute",
+    yaml: `type: custom:slabton-card
+entity: sensor.living_room_temperature
+name: Humidity
+icon: mdi:water-percent
+bar:
+  attribute: humidity
+  min: 0
+  max: 100
+  unit: "%"
+  decimals: 0
+scale:
+  ticks: 10
+  labels: true
+`,
+  },
+  {
     id: "styled",
     label: "Colors and text",
     yaml: `type: custom:slabton-card
@@ -192,6 +210,6 @@ window.SLABTON_EXAMPLE_LABELS = {
   de: {
     state: "Zustand (Select)", overhang: "Zustand, Griff-Überstand", vertical: "Zustand, vertikal",
     lock: "Sperre (Swipe)", value: "Wert (Sensor)", "labels-outside": "Wert, Beschriftung außen", "ticks-outside": "Wert, Striche und Beschriftung außen", draggable: "Wert (ziehbare Zahl)", counter: "Zähler",
-    timer: "Timer", clock: "Uhr (digital)", analog: "Uhr (analog)", styled: "Farben und Text",
+    timer: "Timer", clock: "Uhr (digital)", analog: "Uhr (analog)", "bar-attribute": "Wert aus Attribut", styled: "Farben und Text",
   },
 };

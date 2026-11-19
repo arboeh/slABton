@@ -24,6 +24,40 @@ bar_text: "{value}"
 `decimals`, `preset` auf oberster Ebene) bleiben Alias für `bar.*`; sind beide gesetzt, gewinnt `bar:` und
 es gibt eine Warnung. Ohne `bar.entity` folgt die Bar wie bisher `entity`. `{value}` ist dann der Bar-Wert.
 
+### Bar-Wert aus einem Attribut
+
+`bar.attribute` lässt die Bar ein Attribut eines Entities statt seines Zustands anzeigen, zum Beispiel die Position
+eines Covers oder die gemessene Temperatur eines Thermostats:
+
+```yaml
+type: custom:slabton-card
+entity: climate.wohnzimmer
+bar:
+  attribute: current_temperature
+  unit: "°C"
+bar_text: "{value}"
+```
+
+- Das Attribut gehört zu `bar.entity`; ohne `bar.entity` gehört es zu `entity`. Der Attributname besteht aus
+  Buchstaben, Ziffern und `_` (höchstens 64 Zeichen), alles andere wird mit Warnung ignoriert.
+- Mit Attribut ist die Bar nur lesend. `drag` hat keine Wirkung, der Griff behält seine normalen Aktionen. Im
+  Standardmodus `state` sitzt der Griff auf dem gemessenen Wert und lässt sich nicht ziehen. Tippen und Tasten
+  funktionieren weiter.
+- Die Skala läuft wie im Modus `value` über die ganze Bar: `0` und das Maximum stehen an den Enden der Bar, die
+  Füllung endet unter dem Strich ihres Werts.
+- Einheit: zuerst `bar.unit`, sonst die `unit_of_measurement` des Entities. Climate und Cover haben keine,
+  setze `bar.unit` (zum Beispiel `"°C"` oder `"%"`).
+- Bereich: zuerst `bar.min` / `bar.max`, sonst die Attribute `min_temp` / `max_temp`, sonst `min` / `max` des
+  Entities, sonst 0 bis 100. Climate bringt `min_temp` / `max_temp` mit, Cover nutzt 0 bis 100. Ein Sensor mit
+  Zusatzattribut hat keinen eigenen Bereich, setze dort `bar.min` und `bar.max`.
+- Die Skala-`labels` zeigen diesen Bereich. Die Labels folgen dem Entity-Bereich zur Laufzeit.
+- Fehlendes Attribut, kein Zahlenwert oder ein nicht verfügbares Entity zeigen das Warn-Icon mit dem Grund
+  ("Attribut fehlt oder ist keine Zahl") und eine leere Bar. Die Aktionen der Karte bleiben frei. Nur ein
+  nicht verfügbares Haupt-`entity` sperrt sie.
+- Ein Text zählt wie beim Entity-Zustand als Zahl, also sind `"1e5"` und `"0x10"` Zahlen.
+- Für Climate und Cover den Standard-`mode` lassen. Mit `mode: value` folgen Griff und Sperre dem Zustand des
+  Entities, und ein Climate hat keinen numerischen Zustand.
+
 ## Platzhalter
 
 `bar_text` und `timer.info` nehmen Text mit Platzhaltern in einfachen geschweiften Klammern. Das ist **keine**

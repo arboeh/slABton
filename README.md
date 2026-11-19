@@ -41,6 +41,7 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Handle shapes, positions and overhang; horizontal and vertical, `ltr` and `rtl`
 - Drag, tap, double tap and hold actions; arrow keys for `input_number` / `number`
 - Text in the bar with simple placeholders (no templates), tick scale with labels, inside or outside the bar
+- Bar value from an entity attribute (`bar.attribute`), for example cover position or climate temperature
 - Colors, font sizes and CSS variables; theme aware; respects reduced motion
 - English and German texts, visual editor
 

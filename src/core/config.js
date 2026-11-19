@@ -39,6 +39,10 @@ export const RESERVED_KEYS = Object.freeze(["thresholds", "shape", "control"]);
 /** Longest accepted `bar_text` / `timer.info`. */
 export const MAX_TEXT_LENGTH = 200;
 
+/** Longest accepted `bar.attribute` name and the characters of an attribute name. */
+const MAX_ATTRIBUTE_LENGTH = 64;
+const BAR_ATTRIBUTE_RE = new RegExp(`^[A-Za-z0-9_]{1,${MAX_ATTRIBUTE_LENGTH}}$`);
+
 /** Keys of the `bar:` block that alias the flat top-level range options. */
 const BAR_ALIAS_KEYS = ["min", "max", "unit", "decimals", "preset", "step"];
 const OPTIONAL_BLOCKS = [MODE.COUNTER, MODE.TIMER, MODE.CLOCK];
@@ -268,8 +272,8 @@ function normalizeRange(raw, presetDefaults) {
  * on conflict (with a warning). Returns the merged option source and the
  * optional separate bar entity (null = the bar follows `entity`).
  */
-function resolveBar(raw) {
-  if (raw.bar == null) return { source: raw, barEntity: null };
+function resolveBar(raw, entity) {
+  if (raw.bar == null) return { source: raw, barEntity: null, barAttribute: null };
   if (!isPlainObject(raw.bar)) throw new Error("slabton-card: bar must be a map");
   const source = { ...raw };
   for (const key of BAR_ALIAS_KEYS) {
@@ -279,8 +283,24 @@ function resolveBar(raw) {
     if (flat != null && flat !== "" && flat !== value) warn(`bar.${key} overrides the top-level ${key}`);
     source[key] = value;
   }
-  const barEntity = raw.bar.entity == null || raw.bar.entity === "" ? null : checkEntity(raw.bar.entity, "bar.entity");
-  return { source, barEntity };
+  const ownEntity = raw.bar.entity == null || raw.bar.entity === "" ? null : checkEntity(raw.bar.entity, "bar.entity");
+  const barAttribute = normalizeBarAttribute(raw.bar.attribute, ownEntity ?? entity);
+  // An attribute is read from an entity: without `bar.entity` the bar measures the main entity.
+  return { source, barEntity: barAttribute ? (ownEntity ?? entity) : ownEntity, barAttribute };
+}
+
+/** Attribute name of `bar.attribute`, or null (warns about an unusable name or a missing entity). */
+function normalizeBarAttribute(value, entity) {
+  if (value == null || value === "") return null;
+  if (typeof value !== "string" || !BAR_ATTRIBUTE_RE.test(value)) {
+    warn(`bar.attribute must be an attribute name (letters, digits, "_", up to ${MAX_ATTRIBUTE_LENGTH} characters) and was ignored`);
+    return null;
+  }
+  if (!entity) {
+    warn("bar.attribute needs an entity and was ignored");
+    return null;
+  }
+  return value;
 }
 
 /** A config block (`counter:`, `timer:`, `clock:`): missing -> {}, anything but a map -> error. */
@@ -407,12 +427,13 @@ function clockLabels(ticks) {
  * Range the config alone fixes, or null. An entity may bring its own range (attributes of an
  * input_number / number, of a counter); then only explicitly configured limits are known.
  */
-function fixedRange(mode, { domain, range, counter, barEntity }) {
+function fixedRange(mode, { domain, range, counter, barEntity, barAttribute }) {
   const both = range.range_set.min && range.range_set.max;
   if (barEntity) {
     // The bar measures its own entity with the value-mode rules, whatever the mode of the card is.
-    // A settable bar entity without both limits brings them in its attributes: known only at runtime (`runtime`).
-    const runtime = VALUE_SETTABLE_DOMAINS.includes(barEntity.split(".")[0]) && !both;
+    // A settable bar entity (or any entity with `bar.attribute`) without both limits brings them in its
+    // attributes: known only at runtime (`runtime`).
+    const runtime = (barAttribute != null || VALUE_SETTABLE_DOMAINS.includes(barEntity.split(".")[0])) && !both;
     return { min: range.min, max: range.max, decimals: range.decimals, runtime };
   }
   if (mode === MODE.VALUE) {
@@ -473,7 +494,8 @@ function scaleLabels(value, ticks, mode, context) {
     return null;
   }
   if (mode === MODE.CLOCK) return clockLabels(ticks);
-  if (mode === MODE.STATE) {
+  // A bar that measures an attribute has a number range, even in the state mode.
+  if (mode === MODE.STATE && !context.barAttribute) {
     const labels = stateLabels(ticks, context.states);
     if (!labels) warn('scale.labels needs at least two configured states (set states) in mode "state" and was ignored');
     return labels;
@@ -682,7 +704,7 @@ export function normalizeConfig(raw) {
   const domain = entity ? entity.split(".")[0] : "";
 
   const mode = pickEnum(raw.mode, MODES, inferMode(domain), "mode");
-  const { source, barEntity } = resolveBar(raw);
+  const { source, barEntity, barAttribute } = resolveBar(raw, entity);
   const preset = pickEnum(source.preset, PRESET_NAMES, "none", "preset");
   const presetDefaults = PRESETS[preset] ?? {};
   const states = normalizeStates(raw.states);
@@ -701,12 +723,15 @@ export function normalizeConfig(raw) {
     name: str(raw.name),
     icon: str(raw.icon) ?? presetDefaults.icon ?? null,
     bar_entity: barEntity,
+    bar_attribute: barAttribute,
+    // The bar measures an attribute of the main entity itself (no separate `bar.entity`).
+    bar_own_attribute: Boolean(barAttribute && barEntity === entity),
     bar_text: normalizeText(raw.bar_text, "bar_text", mode),
     counter,
     timer: mode === MODE.TIMER ? normalizeTimer(raw) : { ...TIMER_DEFAULTS },
     clock,
     ...layout,
-    scale: normalizeScale(raw.scale, mode, { clock, counter, range, domain, states, barEntity, ...layout }),
+    scale: normalizeScale(raw.scale, mode, { clock, counter, range, domain, states, barEntity, barAttribute, ...layout }),
     ...normalizeLook(raw),
     ...normalizeTriggers(raw),
     states,

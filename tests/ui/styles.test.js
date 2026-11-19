@@ -631,7 +631,8 @@ describe("buildCss", () => {
     const css = buildCss();
     expect(css).toMatch(/\.unavailable \.bar \{[^}]*opacity: 0\.5/);
     expect(css).not.toMatch(/\.unavailable[^{]*\.handle \{[^}]*pointer-events: none/);
-    expect(css).toMatch(/\.unavailable:not\(\.allow-actions\) \.handle \{[^}]*cursor: pointer/);
+    expect(css).toMatch(/\.blocked:not\(\.allow-actions\) \.handle \{[^}]*cursor: pointer[^}]*touch-action: auto/);
+    expect(css).not.toMatch(/\.unavailable:not\(\.allow-actions\)/);
   });
 
   it("colors the unavailable icon with a variable and a warning fallback", () => {

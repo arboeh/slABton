@@ -21,7 +21,7 @@ everything else gives `state`. `input_datetime` / `input_date` and `clock` need 
 | --- | --- | --- |
 | `entity` | required (not for `clock`) | Entity id |
 | `mode` | by domain | `state`, `lock`, `value`, `counter`, `timer`, `clock` |
-| `bar` | none | Bar value separate from the button, see [Bar value](appearance.md#bar-value) |
+| `bar` | none | Bar value separate from the button, also from an attribute (`bar.attribute`), see [Bar value](appearance.md#bar-value) |
 | `bar_text` | none | Text in the bar with [placeholders](appearance.md#placeholders) |
 | `name` | none | Header text |
 | `icon` | by mode | Header and handle icon |

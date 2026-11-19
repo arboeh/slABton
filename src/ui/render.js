@@ -177,11 +177,13 @@ export function rootClasses(config) {
     animationClass(config.animation),
   ];
   if (config.direction === "rtl") classes.push("rev");
-  if (!config.drag || READ_ONLY_MODES.includes(config.mode)) classes.push("nodrag");
+  const ownAttribute = config.mode === MODE.STATE && config.bar_own_attribute;
+  if (!config.drag || ownAttribute || READ_ONLY_MODES.includes(config.mode)) classes.push("nodrag");
   if (config.allow_unavailable_actions) classes.push("allow-actions");
   if (config.bar_state_color) classes.push("bar-state");
   // State and lock put the scale on the handle positions; the other modes on the fill edge over the full bar.
-  if (config.mode !== MODE.STATE && config.mode !== MODE.LOCK) classes.push("scale-full");
+  // A bar that measures an attribute is a number scale like the value mode, whatever the mode.
+  if ((config.mode !== MODE.STATE && config.mode !== MODE.LOCK) || config.bar_attribute) classes.push("scale-full");
   return classes.join(" ");
 }
 
@@ -286,7 +288,7 @@ function setRole(handle, config, view) {
   if (view.unavailable && view.unavailableText) handle.setAttribute("aria-description", view.unavailableText);
   else handle.removeAttribute("aria-description");
   handle.setAttribute("aria-label", config.name ?? config.entity ?? "slABton");
-  handle.setAttribute("aria-disabled", String(view.unavailable && !config.allow_unavailable_actions));
+  handle.setAttribute("aria-disabled", String(Boolean(view.blocked ?? view.unavailable) && !config.allow_unavailable_actions));
   // Stays focusable while locked: a tap (Enter / Space) opens more-info of the unavailable entity.
   handle.setAttribute("tabindex", "0");
 }
@@ -341,6 +343,8 @@ export function updateView(refs, config, view, options = {}) {
   if (view.color) root.style.setProperty("--slabton-active-color", view.color);
   else root.style.removeProperty("--slabton-active-color");
   root.classList.toggle("unavailable", Boolean(view.unavailable));
+  // `blocked` (gestures locked) can differ from `unavailable` (hint only): a bar attribute that cannot be read.
+  root.classList.toggle("blocked", Boolean(view.blocked ?? view.unavailable));
   root.classList.toggle("expired", Boolean(view.expired));
   setUnavailableTitle(root, view);
 

@@ -41,6 +41,7 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Griffformen, Griffpositionen und Überstand; horizontal und vertikal, `ltr` und `rtl`
 - Aktionen Klick, Doppelklick, Halten und Ziehen; Pfeiltasten bei `input_number` / `number`
 - Text in der Bar mit einfachen Platzhaltern (ohne Templates), Skala mit Beschriftung, innen oder außerhalb der Bar
+- Bar-Wert aus einem Entity-Attribut (`bar.attribute`), zum Beispiel Cover-Position oder Climate-Temperatur
 - Farben, Schriftgrößen und CSS-Variablen; Theme-fähig; beachtet reduzierte Bewegung
 - Texte auf Deutsch und Englisch, visueller Editor
 

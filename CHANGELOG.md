@@ -5,6 +5,27 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- `bar.attribute`: the bar shows an attribute of the entity (or of `bar.entity`), for example `current_position` of
+  a cover or `current_temperature` of a climate entity. Unit from `bar.unit`, else the entity. Range from
+  `bar.min` / `bar.max`, else `min_temp` / `max_temp`, else `min` / `max`, else 0 to 100. The bar is read-only. A
+  missing or non-numeric attribute shows the warning icon with the reason (EN, DE) and does not block the actions.
+  Visual editor field "Attribute for the bar value", demo example "Value from an attribute".
+
+### Changed
+
+- With `bar.attribute` the scale labels in `state` mode show the number range instead of the state names.
+- With `bar.attribute` in the `state` mode the handle sits on the measured value and cannot be dragged (a drag would
+  have picked a state elsewhere). The scale spans the whole bar like in the `value` mode.
+- Card: new internal class `blocked` carries the gesture lock (touch action, cursor); `unavailable` only drives icon,
+  title and opacity.
+
+### Fixed
+
+- Lock mode with a bar value: the swipe threshold starts from the lock position, no longer from the measured bar value.
+- Visual editor: clearing the "Attribute" field no longer leaves `bar: attribute: ""` or an empty `bar:` map in the YAML.
+
 ## [1.0.0] - 2026-11-17
 
 First stable release. The configuration options of 0.x stay valid.

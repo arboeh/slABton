@@ -21,7 +21,7 @@ alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein a
 | --- | --- | --- |
 | `entity` | Pflicht (nicht bei `clock`) | Entity-ID |
 | `mode` | nach Domain | `state`, `lock`, `value`, `counter`, `timer`, `clock` |
-| `bar` | keiner | Bar-Wert getrennt vom Button, siehe [Bar-Wert](appearance.md#bar-wert) |
+| `bar` | keiner | Bar-Wert getrennt vom Button, auch aus einem Attribut (`bar.attribute`), siehe [Bar-Wert](appearance.md#bar-wert) |
 | `bar_text` | keiner | Text in der Bar mit [Platzhaltern](appearance.md#platzhalter) |
 | `name` | keiner | Header-Text |
 | `icon` | nach Modus | Header- und Griff-Icon |
