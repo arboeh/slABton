@@ -7,7 +7,7 @@
 
 import {
   ACTION, ACTION_TYPES, ANIMATIONS, CLOCK_FACE_NUMBERS, CLOCK_FACE_OPTIONS, CLOCK_LABEL_STEP,
-  CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, DEFAULT_ANIMATION, DEFAULT_FACE_TICKS, DEFAULT_SCALE_LABEL_PLACEMENT,
+  CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, COVER_DOMAIN, COVER_POSITION_UNIT, DEFAULT_ANIMATION, DEFAULT_FACE_TICKS, DEFAULT_SCALE_LABEL_PLACEMENT,
   DEFAULT_SCALE_POSITION, DEFAULT_SCALE_TICK_PLACEMENT,
   DEFAULT_SCALE_TICKS, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES, MAX_FONT_SIZE, MAX_SCALE_TICKS,
   MAX_THICKNESS, MIN_ANALOG_HANDLE_SIZE, MIN_DIAL_NUMBERS_SIZE, MIN_DIAL_QUARTERS_SIZE, MIN_FONT_SIZE, MIN_LABEL_THICKNESS,
@@ -74,8 +74,21 @@ export const DEFAULTS = {
 const COLOR_KEYS = ["bar_color", "fill_color", "handle_color", "text_color", "border_color"];
 const STYLE_KEY_RE = /^(--slabton-[a-z0-9-]+|[a-z0-9][a-z0-9-]*)$/;
 
-/** Default mode for an entity domain. */
-export function inferMode(domain) {
+const hasText = (value) => value != null && value !== "";
+
+/**
+ * A cover config written before covers had their own position bar: it lists `states` or measures a `bar.entity` /
+ * `bar.attribute`. Without an explicit `mode` such a card keeps running in the state mode.
+ */
+export function isLegacyCoverConfig(raw) {
+  if (!isPlainObject(raw)) return false;
+  const bar = isPlainObject(raw.bar) ? raw.bar : {};
+  return (Array.isArray(raw.states) && raw.states.length > 0) || hasText(bar.entity) || hasText(bar.attribute);
+}
+
+/** Default mode for an entity domain (`legacyCover`: see `isLegacyCoverConfig`). */
+export function inferMode(domain, { legacyCover = false } = {}) {
+  if (domain === COVER_DOMAIN) return legacyCover ? MODE.STATE : MODE.VALUE;
   if (domain === "lock" || domain === "alarm_control_panel") return MODE.LOCK;
   if (domain === "sensor" || domain === "number" || domain === "input_number") return MODE.VALUE;
   if (domain === "counter") return MODE.COUNTER;
@@ -695,6 +708,14 @@ function normalizeLock(raw) {
   };
 }
 
+/** A cover position is a whole percent: no decimals, unit %. Other cover configs keep the generic defaults. */
+function coverDefaults(mode, domain, barEntity) {
+  return mode === MODE.VALUE && domain === COVER_DOMAIN && !barEntity ? { unit: COVER_POSITION_UNIT, decimals: 0 } : {};
+}
+
+/** The value mode can only be dragged for entities it can set. */
+const isDragCapable = (mode, domain) => mode !== MODE.VALUE || VALUE_SETTABLE_DOMAINS.includes(domain) || domain === COVER_DOMAIN;
+
 export function normalizeConfig(raw) {
   if (!isPlainObject(raw)) throw new Error("slabton-card: invalid configuration");
   const hasEntity = raw.entity != null && raw.entity !== "";
@@ -703,10 +724,10 @@ export function normalizeConfig(raw) {
   const entity = hasEntity ? checkEntity(raw.entity, "entity") : null;
   const domain = entity ? entity.split(".")[0] : "";
 
-  const mode = pickEnum(raw.mode, MODES, inferMode(domain), "mode");
+  const mode = pickEnum(raw.mode, MODES, inferMode(domain, { legacyCover: isLegacyCoverConfig(raw) }), "mode");
   const { source, barEntity, barAttribute } = resolveBar(raw, entity);
   const preset = pickEnum(source.preset, PRESET_NAMES, "none", "preset");
-  const presetDefaults = PRESETS[preset] ?? {};
+  const presetDefaults = PRESETS[preset] ?? coverDefaults(mode, domain, barEntity);
   const states = normalizeStates(raw.states);
   if (mode === MODE.STATE) warnUnreachableStates(states, domain);
   warnUnusedKeys(raw, mode);
@@ -737,7 +758,7 @@ export function normalizeConfig(raw) {
     states,
     hold_reverse: raw.hold_reverse === true,
     allow_unavailable_actions: normalizeAllowUnavailable(raw.allow_unavailable_actions, mode),
-    drag: raw.drag !== false && (mode !== MODE.VALUE || VALUE_SETTABLE_DOMAINS.includes(domain)),
+    drag: raw.drag !== false && isDragCapable(mode, domain),
     ...normalizeLock(raw),
     preset,
     ...range,

@@ -99,6 +99,29 @@ preset: thermometer
 
 Pfeiltasten verschieben den Wert um einen Schritt (ohne Schrittweite: 1 % des Bereichs). Ein Bereich mit max nicht größer als min lässt die Bar leer, meldet eine Konsolenwarnung und deaktiviert das Ziehen.
 
+### Covers
+
+Ein `cover`-Entity braucht kein `mode`: `entity: cover.living_room` läuft im Modus `value` und zeigt die Position
+(`current_position`). 0 ist zu, 100 ist offen; die Füllung zeigt, wie weit das Cover offen ist. Einheit `%`, keine Nachkommastellen, Bereich 0 bis 100 (`min` / `max` sind möglich).
+
+```yaml
+type: custom:slabton-card
+entity: cover.living_room
+```
+
+| Geste | Aktion | Voraussetzung |
+| --- | --- | --- |
+| Griff loslassen, Pfeiltasten (1 % je Druck) | `cover.set_cover_position` | `current_position` und `supported_features` Bit 4 (Position setzen) |
+| Tippen | `cover.toggle`; `open_cover` oder `close_cover`, wenn die Entity nur eines kann; more-info, wenn keines | Bit 1 (öffnen), 2 (schließen) |
+| Halten | `cover.stop_cover` | Bit 8 (Stopp) |
+
+Eigene `tap_action` / `hold_action` gewinnen. Ein Dienst, den die Entity nicht unterstützt, wird nie aufgerufen.
+
+- **Fahrt:** Solange der Zustand `opening` oder `closing` ist, folgt der Griff der gemeldeten Position. Mit `animation: pulse` pulst der Rahmen der Bar. Nach dem eigenen Ziehen bleibt der Griff auf dem Ziel, bis das Cover angekommen ist; meldet das Cover binnen 10 s keine Bewegung oder bleibt es stehen, springt der Griff auf die gemeldete Position zurück.
+- **Ohne `current_position`** zeigt die Karte den Zustand (`open`, `closed`, `opening`, `closing`); Tippen schaltet um, kein Ziehen.
+- **Bestehende Konfigurationen:** Ein Cover mit `states`, `bar.entity` oder `bar.attribute` und ohne `mode:` bleibt im Modus `state`, siehe [Referenz](reference.md#covers).
+- **Garagentore und Tore:** Tippen schaltet ohne Rückfrage um. Dort eine eigene `tap_action` mit `confirmation` setzen.
+
 ## Modus `counter`
 
 ![Modus counter](/assets/shots/counter-light.png#only-light)

@@ -39,8 +39,9 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 
 - Modi: `state`, `lock`, `value`, `counter`, `timer`, `clock` (digital und analog)
 - Griffformen, Griffpositionen und Überstand; horizontal und vertikal, `ltr` und `rtl`
-- Aktionen Klick, Doppelklick, Halten und Ziehen; Pfeiltasten bei `input_number` / `number`
+- Aktionen Klick, Doppelklick, Halten und Ziehen; Pfeiltasten bei `input_number` / `number` / `cover`
 - Text in der Bar mit einfachen Platzhaltern (ohne Templates), Skala mit Beschriftung, innen oder außerhalb der Bar
+- Covers (`cover.*`): Ziehen setzt die Position, Tippen öffnet oder schließt, Halten stoppt, die Fahrt wird live gezeigt
 - Bar-Wert aus einem Entity-Attribut (`bar.attribute`), zum Beispiel Cover-Position oder Climate-Temperatur
 - Farben, Schriftgrößen und CSS-Variablen; Theme-fähig; beachtet reduzierte Bewegung
 - Texte auf Deutsch und Englisch, visueller Editor

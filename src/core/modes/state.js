@@ -19,7 +19,7 @@
  * @property {boolean} [locked] - lock mode only
  */
 
-import { ACTION, ATTRIBUTE_STATE_DOMAINS, MODE, OFF_VALUES, TOGGLE_DOMAINS } from "../constants.js";
+import { ACTION, ATTRIBUTE_STATE_DOMAINS, HANDLE_FLEX, MODE, OFF_VALUES, TOGGLE_DOMAINS } from "../constants.js";
 import { isUnavailable, resolveHandlePosition } from "../util.js";
 
 export const id = MODE.STATE;
@@ -104,7 +104,7 @@ export function cycleAction(config, stateObj, step, pending) {
 export function isDraggable(config, stateObj) {
   // The handle shows the measured attribute of its own entity: a drag would pick a state at another position.
   if (config.bar_own_attribute) return false;
-  return config.drag && config.handle_position === "flex" && resolveStates(config, stateObj).length > 1;
+  return config.drag && config.handle_position === HANDLE_FLEX && resolveStates(config, stateObj).length > 1;
 }
 
 /** Drag release: snap to the nearest state; null when it is already active. */

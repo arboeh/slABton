@@ -8,10 +8,10 @@
 
 import {
   ARM_SERVICES, CLOCK_DISPLAYS, CLOCK_FACE_NUMBERS, DEFAULTS, DIRECTIONS, HANDLE_CONTENTS, HANDLE_POSITIONS, HANDLE_SHAPES,
-  HEADER_ICON_POSITIONS, HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, inferMode,
+  HEADER_ICON_POSITIONS, HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, inferMode, isLegacyCoverConfig,
 } from "../core/config.js";
 import {
-  ANIMATIONS, DEFAULT_FACE_TICKS, MAX_FONT_SIZE, MAX_SCALE_TICKS, MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS,
+  ANIMATIONS, COVER_DOMAIN, DEFAULT_FACE_TICKS, MAX_FONT_SIZE, MAX_SCALE_TICKS, MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS,
   MIN_STEP, MIN_THICKNESS, MODE, MODES, SCALE_ALIASES, SCALE_LABEL_PLACEMENTS, DEFAULT_SCALE_LABEL_PLACEMENT,
   SCALE_TICK_PLACEMENTS, DEFAULT_SCALE_TICK_PLACEMENT, TEXT_AREAS, TEXT_OPTIONS, VALUE_SETTABLE_DOMAINS, scalePositionsFor,
 } from "../core/constants.js";
@@ -44,13 +44,13 @@ function clockFaceFields(config, lang) {
 }
 
 /**
- * The value mode can be dragged only for a settable entity (input_number, number) that is its own bar:
+ * The value mode can be dragged only for a settable entity (input_number, number, cover) that is its own bar:
  * with a sensor or a separate bar entity the `drag` switch would do nothing.
  */
 function canDrag(config) {
   const domain = typeof config.entity === "string" ? config.entity.split(".")[0] : "";
   const ownBar = !(isPlainObject(config.bar) && (config.bar.entity || config.bar.attribute));
-  return VALUE_SETTABLE_DOMAINS.includes(domain) && ownBar;
+  return (VALUE_SETTABLE_DOMAINS.includes(domain) || domain === COVER_DOMAIN) && ownBar;
 }
 
 /** Fields that only apply to one mode. */
@@ -177,7 +177,7 @@ function scaleFields(config) {
 /** ha-form schema for the given (raw) config. */
 export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
   const domain = typeof config.entity === "string" ? config.entity.split(".")[0] : "";
-  const mode = MODES.includes(config.mode) ? config.mode : inferMode(domain);
+  const mode = MODES.includes(config.mode) ? config.mode : inferMode(domain, { legacyCover: isLegacyCoverConfig(config) });
 
   return [
     { name: "entity", required: mode !== MODE.CLOCK, selector: { entity: {} } },

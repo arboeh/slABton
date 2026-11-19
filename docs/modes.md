@@ -99,6 +99,29 @@ preset: thermometer
 
 Arrow keys move the value one step (without a step: 1 % of the range). A range with max not greater than min leaves the bar empty, logs a console warning and disables dragging.
 
+### Covers
+
+A `cover` entity needs no `mode`: `entity: cover.living_room` runs in the value mode and shows the position
+(`current_position`). 0 is closed, 100 is open; the fill shows how far the cover is open. Unit `%`, no decimals, range 0 to 100 (`min` / `max` are possible).
+
+```yaml
+type: custom:slabton-card
+entity: cover.living_room
+```
+
+| Gesture | Action | Needs |
+| --- | --- | --- |
+| Release the handle, arrow keys (1 % per press) | `cover.set_cover_position` | `current_position` and `supported_features` bit 4 (set position) |
+| Tap | `cover.toggle`; `open_cover` or `close_cover` if the entity supports only one; more-info if neither | bits 1 (open), 2 (close) |
+| Hold | `cover.stop_cover` | bit 8 (stop) |
+
+Your own `tap_action` / `hold_action` win. A service the entity does not support is never called.
+
+- **Travel:** while the state is `opening` or `closing` the handle follows the reported position. With `animation: pulse` the frame of the bar pulses. After your own drag the handle stays on the target until the cover has arrived; if the cover does not report a movement within 10 s, or stops, the handle returns to the reported position.
+- **Without `current_position`** the card shows the state (`open`, `closed`, `opening`, `closing`); a tap toggles, no dragging.
+- **Existing configs:** a cover with `states`, `bar.entity` or `bar.attribute` and no `mode:` stays in the `state` mode, see [Reference](reference.md#covers).
+- **Garage doors and gates:** the tap toggles without confirmation. Set your own `tap_action` with `confirmation` there.
+
 ## Mode `counter`
 
 ![counter mode](assets/shots/counter-light.png#only-light)

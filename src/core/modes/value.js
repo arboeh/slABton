@@ -7,12 +7,22 @@
  * the entity attributes `min` / `max` (settable domains; with `bar.attribute` any domain, plus
  * `min_temp` / `max_temp`), then preset / 0..100.
  * Step: `step` option, then the attribute `step`, else stepless.
+ * A `cover` entity shows and sets its position (`current_position`, `cover.set_cover_position`), see "covers" below.
  */
 
-import { ACTION, MAX_SNAP_DECIMALS, MIN_STEP, MODE, NOTICE, VALUE_SETTABLE_DOMAINS, infoActions } from "../constants.js";
+import {
+  ACTION, COVER_DEFAULT_ICON, COVER_DOMAIN, COVER_FEATURE, COVER_ICONS, COVER_POSITION_ATTRIBUTE, COVER_STATE,
+  HANDLE_FLEX, MAX_SNAP_DECIMALS, MIN_STEP, MODE, NOTICE, VALUE_SETTABLE_DOMAINS, infoActions,
+} from "../constants.js";
 import { clamp, formatValue, isUnavailable, parseNumericState, resolveHandlePosition } from "../util.js";
 
 export const id = MODE.VALUE;
+
+/**
+ * How long an own cover command may go unanswered before the handle returns to the reported position. A cover
+ * (Shelly, Z-Wave) reports `opening` / `closing` late, far later than the 3 s of a number entity.
+ */
+export const COVER_PENDING_TIMEOUT_MS = 10000;
 
 /** Tolerance when counting steps (float noise of `(value - min) / step`). */
 const STEP_EPSILON = 1e-9;
@@ -58,12 +68,133 @@ export function resolveStep(config, stateObj) {
   return step != null && step >= MIN_STEP ? step : null;
 }
 
+// --- covers --------------------------------------------------------------------------------------------------
+// A `cover` entity (without a separate `bar.entity`) is measured by its attribute `current_position` (0 closed ..
+// 100 open) and set with `cover.set_cover_position`. A cover without a position runs as a plain open / closed
+// switch: no drag, the handle sits at the end that matches the state (halfway while it moves).
+
+/** The card's own entity is a cover (a `bar.entity` hands the measuring to the generic rules). */
+const isCoverCard = (config) => Boolean(config?.entity) && !config.bar_entity && domainOf(config) === COVER_DOMAIN;
+
+/** `supported_features` of the entity as a bit mask, or null when it has none. */
+const featuresOf = (stateObj) => finite(stateObj?.attributes?.supported_features);
+
+/** The entity supports the feature `bit` (false without `supported_features`). */
+const supports = (stateObj, bit) => ((featuresOf(stateObj) ?? 0) & bit) !== 0;
+
+const coverPosition = (stateObj) => parseAttribute(stateObj, COVER_POSITION_ATTRIBUTE);
+
+/**
+ * The cover reports a position; otherwise the state fallback applies. A cover that only claims the set-position
+ * feature but reports no `current_position` (yet) must not leave the card dead: it gets the state view and its taps.
+ */
+const hasPosition = (stateObj) => Number.isFinite(coverPosition(stateObj));
+
+const isMoving = (stateObj) => stateObj?.state === COVER_STATE.OPENING || stateObj?.state === COVER_STATE.CLOSING;
+
+/** View shared by all value-mode shapes: handle and fill at `frac`, aria values from `frac` and `text`. */
+function buildView(config, { frac, text, unavailable, icon, notice = null }) {
+  return {
+    pos: resolveHandlePosition(config, frac, frac > 0),
+    fillPos: frac,
+    icon,
+    text,
+    positionText: String(Math.round(frac * 100)),
+    color: null,
+    unavailable,
+    ariaNow: Math.round(frac * 100),
+    ariaText: text,
+    notice,
+  };
+}
+
+/** Value under the dragged handle, undefined when nothing is being dragged. */
+function liveValue(config, stateObj, ctx) {
+  return isDraggable(config, stateObj) && ctx?.dragPos != null ? valueAt(config, stateObj, ctx.dragPos) : undefined;
+}
+
+/** Fraction of the bar per state of a cover without position (0..1). */
+const COVER_STATE_FRACTION = Object.freeze({
+  [COVER_STATE.CLOSED]: 0, [COVER_STATE.OPEN]: 1, [COVER_STATE.OPENING]: 0.5, [COVER_STATE.CLOSING]: 0.5,
+});
+
+/** Icon of a cover: the config, then the entity, then one per state. */
+const coverIcon = (config, stateObj) => config.icon ?? stateObj?.attributes?.icon ?? COVER_ICONS[stateObj?.state] ?? COVER_DEFAULT_ICON;
+
+/** Cover without position: state text, bar at the end that matches the state. */
+function coverStateView(config, stateObj, pending) {
+  const state = pending ?? stateObj?.state;
+  const frac = COVER_STATE_FRACTION[state] ?? 0;
+  const unavailable = isUnavailable(stateObj);
+  const text = unavailable || state == null ? "–" : String(state);
+  return { ...buildView(config, { frac, text, unavailable, icon: coverIcon(config, stateObj) }), moving: isMoving(stateObj) };
+}
+
+/** Position of a cover as the value mode shows it. `moving` lets the card show the travel. */
+function coverPositionView(config, stateObj, pending, ctx) {
+  const live = liveValue(config, stateObj, ctx);
+  const { valid, frac, text, rangeOk } = measureValue(config, stateObj, live ?? pending ?? coverPosition(stateObj));
+  const notice = rangeOk ? null : NOTICE.INVALID_VALUE_RANGE;
+  return { ...buildView(config, { frac, text, unavailable: !valid, icon: coverIcon(config, stateObj), notice }), moving: isMoving(stateObj) };
+}
+
+/** The cover can be set from the card: position support, drag on, available, valid range. */
+function isCoverDraggable(config, stateObj) {
+  if (!config.drag || config.handle_position !== HANDLE_FLEX) return false;
+  if (isUnavailable(stateObj) || !hasPosition(stateObj) || !supports(stateObj, COVER_FEATURE.SET_POSITION)) return false;
+  const { min, max } = range(config, stateObj);
+  return max > min;
+}
+
+/** perform-action on the cover entity. */
+const coverService = (config, service) => ({
+  action: ACTION.PERFORM, perform_action: `${COVER_DOMAIN}.${service}`, target: { entity_id: config.entity },
+});
+
+/**
+ * Tap and hold of a cover: tap opens / closes (`cover.toggle`, or the one direction the entity supports), hold
+ * stops the travel. Without the matching `supported_features` bit the service would be refused: the tap then opens
+ * more-info, the hold does nothing.
+ */
+function coverActions(config, stateObj) {
+  const open = supports(stateObj, COVER_FEATURE.OPEN);
+  const close = supports(stateObj, COVER_FEATURE.CLOSE);
+  let tap = { action: ACTION.MORE_INFO };
+  if (open && close) tap = coverService(config, "toggle");
+  else if (open) tap = coverService(config, "open_cover");
+  else if (close) tap = coverService(config, "close_cover");
+  return {
+    tap_action: tap,
+    double_tap_action: { action: ACTION.NONE },
+    hold_action: supports(stateObj, COVER_FEATURE.STOP) ? coverService(config, "stop_cover") : { action: ACTION.NONE },
+  };
+}
+
+/** Start timeout of a pending value in ms; undefined keeps the card default. */
+export const pendingTimeoutMs = (config) => (isCoverCard(config) ? COVER_PENDING_TIMEOUT_MS : undefined);
+
+/**
+ * A pending position stays while the cover travels towards it and has not got there yet (the entity reports
+ * `opening` / `closing` before the position moves, or only at the end): the handle would swing back otherwise.
+ */
+export function keepsPending(config, stateObj, pending) {
+  if (!isCoverCard(config) || !isMoving(stateObj) || !Number.isFinite(pending)) return false;
+  const position = coverPosition(stateObj);
+  if (!Number.isFinite(position)) return true;
+  return stateObj.state === COVER_STATE.OPENING ? position < pending : position > pending;
+}
+
 /**
  * Fraction (0..1), formatted text and validity of a numeric entity against its range. With `attribute`
  * the value is that attribute of the entity instead of its state.
  */
 export function measure(config, stateObj, pending, attribute) {
   const value = pending ?? (attribute ? parseAttribute(stateObj, attribute) : parseNumericState(stateObj));
+  return measureValue(config, stateObj, value, attribute);
+}
+
+/** `measure` for a value that is already read. */
+function measureValue(config, stateObj, value, attribute) {
   const valid = Number.isFinite(value) && !isUnavailable(stateObj);
   const { min, max } = range(config, stateObj, attribute);
   const rangeOk = max > min;
@@ -93,49 +224,48 @@ export function valueAt(config, stateObj, frac) {
 
 /** The entity can be set from the card: settable domain, drag on, available, valid range, own bar. */
 export function isDraggable(config, stateObj) {
+  if (isCoverCard(config)) return isCoverDraggable(config, stateObj);
   if (!config || !VALUE_SETTABLE_DOMAINS.includes(domainOf(config))) return false;
-  if (!config.drag || config.bar_entity || config.handle_position !== "flex") return false;
+  if (!config.drag || config.bar_entity || config.handle_position !== HANDLE_FLEX) return false;
   if (isUnavailable(stateObj) || !Number.isFinite(parseNumericState(stateObj))) return false;
   const { min, max } = range(config, stateObj);
   return max > min;
 }
 
 export function view(config, stateObj, pending, ctx) {
-  const draggable = isDraggable(config, stateObj);
-  const live = draggable && ctx?.dragPos != null ? valueAt(config, stateObj, ctx.dragPos) : undefined;
+  if (isCoverCard(config)) {
+    return hasPosition(stateObj) ? coverPositionView(config, stateObj, pending, ctx) : coverStateView(config, stateObj, pending);
+  }
+  const live = liveValue(config, stateObj, ctx);
   const { valid, frac, text, rangeOk } = measure(config, stateObj, live ?? pending);
-  return {
-    pos: resolveHandlePosition(config, frac, frac > 0),
-    fillPos: frac,
-    icon: config.icon ?? stateObj?.attributes?.icon ?? "mdi:gauge",
-    text,
-    positionText: String(Math.round(frac * 100)),
-    color: null,
-    unavailable: !valid,
-    ariaNow: Math.round(frac * 100),
-    ariaText: text,
-    notice: rangeOk ? null : NOTICE.INVALID_VALUE_RANGE,
-  };
+  const icon = config.icon ?? stateObj?.attributes?.icon ?? "mdi:gauge";
+  return buildView(config, { frac, text, unavailable: !valid, icon, notice: rangeOk ? null : NOTICE.INVALID_VALUE_RANGE });
 }
 
-export const defaultActions = infoActions;
+/** Info actions (a tap opens more-info); a cover opens / closes on tap and stops on hold. */
+export function defaultActions(config, stateObj) {
+  return isCoverCard(config) ? coverActions(config, stateObj) : infoActions();
+}
 
 /** perform-action that sets the entity to `value`, plus the optimistic value. */
 function setValue(config, value) {
   const domain = config.entity.split(".")[0];
+  const cover = domain === COVER_DOMAIN;
   return {
     action: {
       action: ACTION.PERFORM,
-      perform_action: `${domain}.set_value`,
+      perform_action: cover ? `${COVER_DOMAIN}.set_cover_position` : `${domain}.set_value`,
       target: { entity_id: config.entity },
-      data: { value },
+      data: cover ? { position: value } : { value },
     },
     pending: value,
   };
 }
 
-/** Value now shown: the optimistic value, else the entity state. */
-const currentValue = (stateObj, pending) => pending ?? parseNumericState(stateObj);
+/** Value now shown: the optimistic value, else the entity state (the position of a cover). */
+const currentValue = (config, stateObj, pending) => (
+  pending ?? (isCoverCard(config) ? coverPosition(stateObj) : parseNumericState(stateObj))
+);
 
 /**
  * Drag release: set the value under the handle. Null when it is unchanged, when the entity is not
@@ -145,7 +275,7 @@ const currentValue = (stateObj, pending) => pending ?? parseNumericState(stateOb
 export function onRelease({ frac, startPos, config, stateObj, pending }) {
   if (!isDraggable(config, stateObj)) return null;
   const value = valueAt(config, stateObj, frac);
-  if (value === currentValue(stateObj, pending)) return null;
+  if (value === currentValue(config, stateObj, pending)) return null;
   if (startPos != null && value === valueAt(config, stateObj, startPos)) return null;
   return setValue(config, value);
 }
@@ -155,7 +285,8 @@ export function stepRelease({ direction, config, stateObj, pending }) {
   if (!isDraggable(config, stateObj)) return null;
   const { min, max } = range(config, stateObj);
   const size = resolveStep(config, stateObj) ?? Math.max((max - min) * KEY_STEP_SHARE, 10 ** -config.decimals);
-  const current = currentValue(stateObj, pending);
+  const current = currentValue(config, stateObj, pending);
+  if (!Number.isFinite(current)) return null;
   const value = snap(config, stateObj, current + direction * size);
   if (value === current) return null;
   return setValue(config, value);

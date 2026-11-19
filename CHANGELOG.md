@@ -7,6 +7,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ### Added
 
+- Covers: `entity: cover.living_room` is enough. The bar shows the position (`current_position`, 0 = closed, 100 = open,
+  the fill is how far the cover is open, unit `%`, no decimals). Releasing the handle (or an arrow key, 1 % per press)
+  calls `cover.set_cover_position`, a tap `cover.toggle` (`open_cover` / `close_cover` when only one is supported,
+  more-info when neither), a hold `cover.stop_cover`. Actions follow `supported_features`; your own `tap_action` /
+  `hold_action` win. While the cover travels (`opening` / `closing`) the handle follows the position live; with
+  `animation: pulse` the bar frame pulses. After your own drag the handle stays on the target until the cover has
+  arrived (10 s for the first report, 3 minutes of travel). A cover without `current_position` shows its state
+  (`open`, `closed`, `opening`, `closing`), a tap toggles, no dragging. The visual editor shows the drag, range,
+  step, unit and decimals fields for covers, the demo has two cover examples. Not part of this release: tilt, switches
+  at the ends, groups.
 - `bar.attribute`: the bar shows an attribute of the entity (or of `bar.entity`), for example `current_position` of
   a cover or `current_temperature` of a climate entity. Unit from `bar.unit`, else the entity. Range from
   `bar.min` / `bar.max`, else `min_temp` / `max_temp`, else `min` / `max`, else 0 to 100. The bar is read-only. A
@@ -16,6 +26,9 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 ### Changed
 
 - With `bar.attribute` the scale labels in `state` mode show the number range instead of the state names.
+- A cover without `mode:` now runs in the `value` mode (before: `state`). A cover config with `states`, `bar.entity`
+  or `bar.attribute` and no `mode:` keeps the `state` mode and behaves as before; so does every cover with an explicit
+  `mode:`.
 - With `bar.attribute` in the `state` mode the handle sits on the measured value and cannot be dragged (a drag would
   have picked a state elsewhere). The scale and the fill edge follow the handle track like in every mode.
 - Scale, fill edge and labels sit on the handle track in every mode (state, lock, value, counter, timer, clock). The

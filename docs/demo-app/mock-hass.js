@@ -44,6 +44,9 @@
     "counter.guests": entity("counter.guests", "3", { minimum: 0, maximum: 10 }),
     "timer.sauna": entity("timer.sauna", "active", { duration: "0:10:00", remaining: "0:10:00", finishes_at: minutes(5) }),
     "timer.tea": entity("timer.tea", "paused", { duration: "0:10:00", remaining: "0:03:20" }),
+    // supported_features: 1 open, 2 close, 4 set position, 8 stop (like HA's cover entity).
+    "cover.living_room": entity("cover.living_room", "open", { current_position: 70, supported_features: 15, device_class: "shutter" }),
+    "cover.garage_door": entity("cover.garage_door", "closed", { supported_features: 3, device_class: "garage" }),
     "input_datetime.festival": entity(
       "input_datetime.festival",
       new Date(Date.now() + 3 * 86400000 + 3600000).toISOString().slice(0, 19).replace("T", " "),
@@ -116,6 +119,59 @@
     return { next: current };
   }
 
+  // Covers: a position cover travels 10 % per tick (opening / closing, then open / closed); one without position
+  // reports only the end states after a fixed run.
+  const COVER_STEP = 10;
+  const COVER_TICK_MS = 400;
+  const COVER_RUN_MS = 2500;
+  const coverTimers = new Map();
+
+  const restingState = (position) => (position === 0 ? "closed" : "open");
+
+  function moveCover(id, target) {
+    clearInterval(coverTimers.get(id));
+    clearTimeout(coverTimers.get(id));
+    const start = states[id];
+    const position = start.attributes.current_position;
+    if (position === undefined) {
+      const opening = target > 50;
+      publish(id, { ...start, state: opening ? "opening" : "closing" });
+      coverTimers.set(id, setTimeout(() => publish(id, { ...states[id], state: opening ? "open" : "closed" }), COVER_RUN_MS));
+      return;
+    }
+    if (position === target) return;
+    const direction = target > position ? 1 : -1;
+    publish(id, { ...start, state: direction > 0 ? "opening" : "closing" });
+    coverTimers.set(id, setInterval(() => {
+      const current = states[id];
+      const reach = current.attributes.current_position + direction * COVER_STEP;
+      const next = direction > 0 ? Math.min(target, reach) : Math.max(target, reach);
+      const done = next === target;
+      publish(id, {
+        ...current,
+        state: done ? restingState(next) : current.state,
+        attributes: { ...current.attributes, current_position: next },
+      });
+      if (done) clearInterval(coverTimers.get(id));
+    }, COVER_TICK_MS));
+  }
+
+  function stopCover(id) {
+    clearInterval(coverTimers.get(id));
+    clearTimeout(coverTimers.get(id));
+    const current = states[id];
+    if (current.state !== "opening" && current.state !== "closing") return;
+    publish(id, { ...current, state: restingState(current.attributes.current_position ?? 100) });
+  }
+
+  function coverService(id, service, data, current) {
+    if (service === "stop_cover") stopCover(id);
+    else if (service === "open_cover") moveCover(id, 100);
+    else if (service === "close_cover") moveCover(id, 0);
+    else if (service === "set_cover_position") moveCover(id, data.position);
+    else if (service === "toggle") moveCover(id, current.state === "closed" ? 100 : 0);
+  }
+
   function callService(domain, service, data, target) {
     document.dispatchEvent(new CustomEvent("mock-service-call", { detail: { domain, service, data, target } }));
     const id = target?.entity_id ?? data?.entity_id;
@@ -130,6 +186,9 @@
       next = result.next;
       publish(id, next);
       if (result.schedule) scheduleTimerEnd(id);
+      return Promise.resolve();
+    } else if (domain === "cover") {
+      coverService(id, service, data, current);
       return Promise.resolve();
     } else if (service === "select_option") {
       next = { ...current, state: data.option };
