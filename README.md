@@ -43,6 +43,7 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Text in the bar with simple placeholders (no templates), tick scale with labels, inside or outside the bar
 - Covers (`cover.*`): drag sets the position, tap opens or closes, hold stops, travel is shown live
 - Bar value from an entity attribute (`bar.attribute`), for example cover position or climate temperature
+- Switches show the state of their own entity (icon and icon color per state, `switches.<slot>.states`); the handle has its own actions and icon per zone (`handle_zones`)
 - Colors, font sizes and CSS variables; theme aware; respects reduced motion
 - English and German texts, visual editor
 
@@ -73,6 +74,24 @@ entity: input_select.heating_mode
 The mode follows the entity domain: `lock` / `alarm_control_panel` give `lock`, `sensor` / `number` /
 `input_number` give `value`, `counter` gives `counter`, `timer` gives `timer`, everything else gives `state`.
 `input_datetime` / `input_date` and `clock` need an explicit `mode:`.
+
+Switch with its own entity, an icon and color per state, and a script as `tap_action`:
+
+```yaml
+type: custom:slabton-card
+entity: cover.living_room
+switches:
+  end:
+    entity: sensor.cover_living_room_mode
+    icon: mdi:calendar-clock
+    tap_action:
+      action: perform-action
+      perform_action: script.cover_living_room_toggle_auto
+    states:
+      - { value: auto, icon: mdi:calendar-clock, color: green }
+      - { value: heat_protection, icon: mdi:weather-sunny, color: orange }
+      - { value: "off", icon: mdi:power, color: grey }
+```
 
 All options, examples and screenshots are on the website:
 

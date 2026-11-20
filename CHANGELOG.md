@@ -5,6 +5,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- `switches.<slot>.states`: a switch shows the state of its own entity. Per state `value`, `icon`, `color` (applied to
+  the icon, CSS color or `var(--…)`) and `label` (accessible name instead of `name`). Unknown, `unavailable` and
+  `unknown` states keep the default `icon` without color.
+- `handle_zones` (`start`, `mid`, `end`): the handle position is split into thirds (the logical position, with
+  `direction: rtl` `start` is visually on the right). Each zone can have its own `tap_action`, `double_tap_action`
+  and `hold_action` (otherwise the card action or the mode default applies, a zone action runs on the zone
+  `entity`) and an `entity` with `icon` / `states` for the handle icon (needs `handle_content: icon`). YAML only,
+  no visual editor fields yet. Demo example "Cover with auto mode".
+
 ## [1.1.0] - 2026-11-20
 
 ### Added

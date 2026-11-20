@@ -129,6 +129,33 @@ scale:
 `,
   },
   {
+    id: "cover-auto",
+    label: "Cover with auto mode",
+    yaml: `type: custom:slabton-card
+entity: cover.living_room
+name: Living room shutter
+handle_content: icon
+switches:
+  end:
+    entity: sensor.cover_living_room_mode
+    icon: mdi:calendar-clock
+    name: Auto / Stop
+    tap_action:
+      action: perform-action
+      perform_action: script.cover_living_room_toggle_auto
+    states:
+      - { value: auto, icon: mdi:calendar-clock, color: green }
+      - { value: heat_protection, icon: mdi:weather-sunny, color: orange }
+      - { value: "off", icon: mdi:power, color: grey }
+handle_zones:
+  start:
+    entity: sensor.cover_living_room_mode
+    states:
+      - { value: auto, icon: mdi:calendar-clock, color: green }
+      - { value: "off", icon: mdi:power, color: grey }
+`,
+  },
+  {
     id: "cover-simple",
     label: "Cover (no position)",
     yaml: `type: custom:slabton-card
@@ -228,7 +255,7 @@ text:
 window.SLABTON_EXAMPLE_LABELS = {
   de: {
     state: "Zustand (Select)", overhang: "Zustand, Griff-Überstand", vertical: "Zustand, vertikal",
-    lock: "Sperre (Swipe)", value: "Wert (Sensor)", "labels-outside": "Wert, Beschriftung außen", "ticks-outside": "Wert, Striche und Beschriftung außen", draggable: "Wert (ziehbare Zahl)", cover: "Rollladen (Position)", "cover-simple": "Rollladen (ohne Position)", counter: "Zähler",
+    lock: "Sperre (Swipe)", value: "Wert (Sensor)", "labels-outside": "Wert, Beschriftung außen", "ticks-outside": "Wert, Striche und Beschriftung außen", draggable: "Wert (ziehbare Zahl)", cover: "Rollladen (Position)", "cover-simple": "Rollladen (ohne Position)", "cover-auto": "Rollladen mit Auto-Modus", counter: "Zähler",
     timer: "Timer", clock: "Uhr (digital)", analog: "Uhr (analog)", "bar-attribute": "Wert aus Attribut", styled: "Farben und Text",
   },
 };

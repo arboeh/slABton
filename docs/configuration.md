@@ -44,13 +44,52 @@ everything else gives `state`. `input_datetime` / `input_date` and `clock` need 
 | `bar_state_color` | `false` | `true` colors the whole bar in the color of the current state (`states[].color`), see [State color](appearance.md#state-color) |
 | `styles` | none | Map of CSS variables, see [Styling](appearance.md#styling) |
 | `tap_action`, `double_tap_action`, `hold_action` | by mode | HA actions plus `cycle`, `cycle_back` |
-| `switches` | none | `start`, `mid`, `end`, each with `entity`, `icon`, `name`, actions |
+| `switches` | none | `start`, `mid`, `end`, each with `entity`, `icon`, `name`, `states`, actions, see [Switch states](#switch-states-and-handle-zones) |
+| `handle_zones` | none | `start`, `mid`, `end`, each with own actions, `entity`, `icon`, `states` for the handle |
 | `text` | defaults | Font size and color per text area, see [Text appearance](appearance.md#text-appearance) |
 | `scale` | none | Tick marks and labels, each inside or outside the bar, see [Scale](appearance.md#scale) |
 
 A `cover` entity runs in the `value` mode without further options: drag sets the position, tap toggles, hold stops, see [Covers](modes.md#covers).
 
 `call-service` (with `service` / `service_data`) is accepted as a deprecated alias of `perform-action` and may be removed in a later version.
+
+## Switch states and handle zones
+
+`switches.<slot>` (`start`, `mid`, `end`) can show the state of its own entity. Each entry in `states` has a `value` (the entity state), an `icon`, a `color` for the icon (CSS color or `var(--…)`) and an optional `label` that replaces `name` as the accessible label. Without a match (also `unavailable` / `unknown`) the switch keeps its `icon` and has no color.
+
+```yaml
+type: custom:slabton-card
+entity: cover.living_room
+name: Living room shutter
+switches:
+  end:
+    entity: sensor.cover_living_room_mode
+    icon: mdi:calendar-clock
+    name: Auto / Stop
+    tap_action:
+      action: perform-action
+      perform_action: script.cover_living_room_toggle_auto
+    states:
+      - { value: auto, icon: mdi:calendar-clock, color: green }
+      - { value: heat_protection, icon: mdi:weather-sunny, color: orange }
+      - { value: nap, icon: mdi:sleep, color: blue }
+      - { value: "off", icon: mdi:power, color: grey, label: Auto off }
+```
+
+`handle_zones` splits the handle position into thirds: `start` below a third, `mid` up to two thirds, `end` above. This is the same in every mode. The position is the logical one, so with `direction: rtl` `start` is visually on the right. Each zone can have `tap_action`, `double_tap_action` and `hold_action` of its own (without an entry the card action or the mode default applies), plus `entity`, `icon` and `states` for the handle icon. A zone action runs on the zone `entity` if there is one. The zone `icon` and `states` need `handle_content: icon`; the icon color is not used for the warning icon.
+
+```yaml
+handle_content: icon
+handle_zones:
+  start:
+    entity: sensor.cover_living_room_mode
+    hold_action:
+      action: perform-action
+      perform_action: script.cover_living_room_pause_auto
+    states:
+      - { value: auto, icon: mdi:calendar-clock, color: green }
+      - { value: "off", icon: mdi:power, color: grey }
+```
 
 ## Unavailable entities
 

@@ -45,6 +45,8 @@ Color the whole bar in the color of the current state with `bar_state_color: tru
 ![separate switches at start, mid and end](assets/shots/switches-light.png#only-light)
 ![separate switches at start, mid and end](assets/shots/switches-dark.png#only-dark)
 
+Switches can show the state of their entity with `states`, the handle can have actions and an icon per zone with `handle_zones`: see [Switch states and handle zones](configuration.md#switch-states-and-handle-zones).
+
 ## Mode `lock`
 
 ![lock mode](assets/shots/lock-light.png#only-light)

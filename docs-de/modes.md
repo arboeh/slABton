@@ -45,6 +45,8 @@ Mit `bar_state_color: true` färbt sich die ganze Bar in der Farbe des aktuellen
 ![Separate Schalter bei Start, Mitte und Ende](/assets/shots/switches-light.png#only-light)
 ![Separate Schalter bei Start, Mitte und Ende](/assets/shots/switches-dark.png#only-dark)
 
+Switches können mit `states` den Zustand ihrer Entity zeigen, der Griff mit `handle_zones` je Zone eigene Aktionen und ein Icon haben: siehe [Switch-Zustände und Griff-Zonen](configuration.md#switch-zustande-und-griff-zonen).
+
 ## Modus `lock`
 
 ![Modus lock](/assets/shots/lock-light.png#only-light)

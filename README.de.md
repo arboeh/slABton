@@ -43,6 +43,7 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Text in der Bar mit einfachen Platzhaltern (ohne Templates), Skala mit Beschriftung, innen oder außerhalb der Bar
 - Covers (`cover.*`): Ziehen setzt die Position, Tippen öffnet oder schließt, Halten stoppt, die Fahrt wird live gezeigt
 - Bar-Wert aus einem Entity-Attribut (`bar.attribute`), zum Beispiel Cover-Position oder Climate-Temperatur
+- Switches zeigen den Zustand ihrer eigenen Entity (Icon und Icon-Farbe je Zustand, `switches.<slot>.states`); der Griff hat je Zone eigene Aktionen und ein Icon (`handle_zones`)
 - Farben, Schriftgrößen und CSS-Variablen; Theme-fähig; beachtet reduzierte Bewegung
 - Texte auf Deutsch und Englisch, visueller Editor
 
@@ -73,6 +74,24 @@ entity: input_select.heating_mode
 Der Modus folgt der Domain der Entity: `lock` / `alarm_control_panel` ergeben `lock`, `sensor` / `number` /
 `input_number` ergeben `value`, `counter` ergibt `counter`, `timer` ergibt `timer`, alles andere `state`.
 `input_datetime` / `input_date` und `clock` brauchen ein ausdrückliches `mode:`.
+
+Switch mit eigener Entity, Icon und Farbe je Zustand und einem Skript als `tap_action`:
+
+```yaml
+type: custom:slabton-card
+entity: cover.living_room
+switches:
+  end:
+    entity: sensor.cover_living_room_mode
+    icon: mdi:calendar-clock
+    tap_action:
+      action: perform-action
+      perform_action: script.cover_living_room_toggle_auto
+    states:
+      - { value: auto, icon: mdi:calendar-clock, color: green }
+      - { value: heat_protection, icon: mdi:weather-sunny, color: orange }
+      - { value: "off", icon: mdi:power, color: grey }
+```
 
 Alle Optionen, Beispiele und Screenshots stehen auf der Website:
 

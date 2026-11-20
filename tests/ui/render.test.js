@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "../../src/ui/slabton-card.js";
 import { normalizeConfig } from "../../src/core/config.js";
-import { renderCard, rootClasses, updateSwitches, updateView } from "../../src/ui/render.js";
+import { renderCard, rootClasses, updateSwitches, updateView, zoneOf } from "../../src/ui/render.js";
 import { buildCss } from "../../src/ui/styles.js";
 import * as stateMode from "../../src/core/modes/state.js";
 import * as lockMode from "../../src/core/modes/lock.js";
@@ -819,5 +819,54 @@ describe("updateSwitches", () => {
     updateSwitches(refs, config, { states: { "switch.a": makeState("switch.a", "on"), "switch.b": makeState("switch.b", "off") } });
     expect(refs.switches.start.classList.contains("active")).toBe(true);
     expect(refs.switches.end.classList.contains("active")).toBe(false);
+  });
+});
+
+describe("switch states", () => {
+  const states = [{ value: "auto", icon: "mdi:robot", color: "green", label: "Auto" }, { value: "off", color: "gray" }];
+  const run = (state) => {
+    const { config, refs } = setup({ switches: { end: { entity: "sensor.m", icon: "mdi:circle-outline", name: "Mode", states } } });
+    updateSwitches(refs, config, createHass(state == null ? {} : { "sensor.m": makeState("sensor.m", state) }));
+    const icon = refs.switches.end.querySelector("ha-icon");
+    return { icon, button: refs.switches.end };
+  };
+
+  it("shows icon, color and label of the matching state", () => {
+    const { icon, button } = run("auto");
+    expect(icon.getAttribute("icon")).toBe("mdi:robot");
+    expect(icon.style.color).toBe("green");
+    expect(button.getAttribute("aria-label")).toBe("Auto");
+  });
+
+  it("keeps the default icon when a state has none", () => {
+    const { icon } = run("off");
+    expect(icon.getAttribute("icon")).toBe("mdi:circle-outline");
+    expect(icon.style.color).toBe("gray");
+  });
+
+  it("falls back to the default icon without color for unknown, unavailable or missing states", () => {
+    for (const state of ["nap", "unavailable", null]) {
+      const { icon, button } = run(state);
+      expect(icon.getAttribute("icon")).toBe("mdi:circle-outline");
+      expect(icon.style.color).toBe("");
+      expect(button.getAttribute("aria-label")).toBe("Mode");
+    }
+  });
+});
+
+describe("zoneOf", () => {
+  it("splits the bar into thirds", () => {
+    expect([0, 0.3, 1 / 3, 0.5, 2 / 3, 0.67, 1].map(zoneOf)).toEqual(["start", "start", "mid", "mid", "mid", "end", "end"]);
+    expect(zoneOf(NaN)).toBe("start");
+  });
+});
+
+describe("switch aria-label", () => {
+  it("drops a state label that no longer matches when the switch has no name", () => {
+    const { config, refs } = setup({ switches: { end: { entity: "sensor.m", states: [{ value: "auto", label: "Auto" }] } } });
+    updateSwitches(refs, config, createHass({ "sensor.m": makeState("sensor.m", "auto") }));
+    expect(refs.switches.end.getAttribute("aria-label")).toBe("Auto");
+    updateSwitches(refs, config, createHass({ "sensor.m": makeState("sensor.m", "nap") }));
+    expect(refs.switches.end.hasAttribute("aria-label")).toBe(false);
   });
 });

@@ -1085,3 +1085,50 @@ describe("bar_state_color", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 });
+
+describe("switch states and handle zones", () => {
+  it("normalizes switch states (value, icon, color, label)", () => {
+    const c = normalizeConfig({
+      ...base,
+      switches: { start: { entity: "sensor.m", states: [{ value: "auto", icon: "mdi:robot", color: "green", label: "Auto" }, "off"] } },
+    });
+    expect(c.switches.start.states).toEqual([
+      { value: "auto", label: "Auto", icon: "mdi:robot", text: null, color: "green" },
+      { value: "off", label: null, icon: null, text: null, color: null },
+    ]);
+  });
+
+  it("defaults switch states to an empty list and rejects an entry without value", () => {
+    expect(normalizeConfig({ ...base, switches: { end: {} } }).switches.end.states).toEqual([]);
+    expect(() => normalizeConfig({ ...base, switches: { end: { states: [{ icon: "mdi:x" }] } } })).toThrow(/needs a "value"/);
+  });
+
+  it("normalizes handle zones with actions, entity and states", () => {
+    const c = normalizeConfig({
+      ...base,
+      handle_zones: { end: { entity: "sensor.m", icon: "mdi:cog", states: ["auto"], hold_action: { action: "toggle" } } },
+    });
+    expect(c.handle_zones.end.entity).toBe("sensor.m");
+    expect(c.handle_zones.end.hold_action).toEqual({ action: "toggle" });
+    expect(c.handle_zones.start).toBeUndefined();
+  });
+
+  it("keeps old configs unchanged and rejects bad handle zones", () => {
+    expect(normalizeConfig(base).handle_zones).toEqual({});
+    expect(() => normalizeConfig({ ...base, handle_zones: [] })).toThrow(/handle_zones must be a map/);
+    expect(() => normalizeConfig({ ...base, handle_zones: { mid: "x" } })).toThrow(/handle_zones.mid/);
+    expect(() => normalizeConfig({ ...base, handle_zones: { mid: { entity: "bad" } } })).toThrow(/handle_zones.mid.entity/);
+  });
+});
+
+describe("state colors", () => {
+  it("drops an unsafe color in switch states and handle zones", () => {
+    const c = normalizeConfig({
+      ...base,
+      switches: { end: { states: [{ value: "a", color: "red;" }] } },
+      handle_zones: { end: { states: [{ value: "a", color: "url(x)" }] } },
+    });
+    expect(c.switches.end.states[0].color).toBeNull();
+    expect(c.handle_zones.end.states[0].color).toBeNull();
+  });
+});

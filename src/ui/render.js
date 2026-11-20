@@ -302,6 +302,8 @@ function setContent(refs, config, view) {
   const label = warning || refs.dial ? "" : kind === "position" ? view.positionText : kind === "text" ? view.text : "";
   icon.hidden = !showIcon;
   if (showIcon) icon.setAttribute("icon", warning ? UNAVAILABLE_ICON : view.icon);
+  if (showIcon && !warning && view.iconColor) icon.style.setProperty("color", view.iconColor);
+  else icon.style.removeProperty("color");
   text.hidden = label === "" || label == null;
   text.textContent = label ?? "";
 }
@@ -362,10 +364,32 @@ export function updateView(refs, config, view, options = {}) {
   }
 }
 
+/** Entry of `states` that matches the state of `stateObj`, else null (missing, unavailable or unknown state). */
+export function matchState(states, stateObj) {
+  if (!states?.length || !stateObj) return null;
+  return states.find((entry) => entry.value === stateObj.state) ?? null;
+}
+
+/** Handle zone (start, mid, end) of a logical position 0..1: thirds of the bar. */
+export function zoneOf(pos) {
+  if (!(pos >= 0)) return "start";
+  return pos < 1 / 3 ? "start" : pos <= 2 / 3 ? "mid" : "end";
+}
+
 export function updateSwitches(refs, config, hass) {
   for (const slot of Object.keys(refs.switches)) {
-    const entity = config.switches[slot].entity;
-    const stateObj = entity ? hass?.states?.[entity] : null;
-    refs.switches[slot].classList.toggle("active", Boolean(stateObj && ON_STATES.includes(stateObj.state)));
+    const sw = config.switches[slot];
+    const stateObj = sw.entity ? hass?.states?.[sw.entity] : null;
+    const button = refs.switches[slot];
+    button.classList.toggle("active", Boolean(stateObj && ON_STATES.includes(stateObj.state)));
+    const entry = matchState(sw.states, stateObj);
+    const icon = button.querySelector("ha-icon");
+    const wanted = entry?.icon ?? sw.icon;
+    if (icon.getAttribute("icon") !== wanted) icon.setAttribute("icon", wanted);
+    if (entry?.color) icon.style.setProperty("color", entry.color);
+    else icon.style.removeProperty("color");
+    const label = entry?.label ?? sw.name;
+    if (label) button.setAttribute("aria-label", label);
+    else button.removeAttribute("aria-label");
   }
 }

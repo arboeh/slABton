@@ -214,7 +214,30 @@ function normalizeSwitches(raw) {
       entity: item.entity == null ? null : checkEntity(item.entity, `switches.${slot}.entity`),
       icon: str(item.icon) ?? DEFAULT_SWITCH_ICON,
       name: str(item.name),
+      states: normalizeStates(item.states),
       ...normalizeTriggers(item, `switches.${slot}.`),
+    };
+  }
+  return out;
+}
+
+/**
+ * `handle_zones`: per handle position (start, mid, end) optional own actions and an own entity whose `states`
+ * set the handle icon. Absent zones change nothing.
+ */
+function normalizeHandleZones(raw) {
+  if (raw == null) return {};
+  if (!isPlainObject(raw)) throw new Error("slabton-card: handle_zones must be a map");
+  const out = {};
+  for (const zone of SWITCH_SLOTS) {
+    const item = raw[zone];
+    if (item == null) continue;
+    if (!isPlainObject(item)) throw new Error(`slabton-card: handle_zones.${zone} must be a map`);
+    out[zone] = {
+      entity: item.entity == null ? null : checkEntity(item.entity, `handle_zones.${zone}.entity`),
+      icon: str(item.icon),
+      states: normalizeStates(item.states),
+      ...normalizeTriggers(item, `handle_zones.${zone}.`),
     };
   }
   return out;
@@ -763,6 +786,7 @@ export function normalizeConfig(raw) {
     preset,
     ...range,
     switches: normalizeSwitches(raw.switches),
+    handle_zones: normalizeHandleZones(raw.handle_zones),
     text: normalizeTextStyle(raw.text),
   };
 }

@@ -1372,3 +1372,63 @@ describe("bar_state_color", () => {
     expect(el.style.getPropertyValue("--slabton-bar-color")).toBe("navy");
   });
 });
+
+describe("handle zones", () => {
+  const MODE_SENSOR = "sensor.cover_mode";
+  const script = (id) => ({ action: "perform-action", perform_action: "script.turn_on", target: { entity_id: id } });
+  const zones = {
+    start: { hold_action: script("script.start") },
+    end: {
+      hold_action: script("script.end"),
+      entity: MODE_SENSOR,
+      states: [{ value: "auto", icon: "mdi:robot", color: "green" }],
+    },
+  };
+  const modeStates = (state, mode = "auto") => ({
+    [SELECT]: selectState(state),
+    [MODE_SENSOR]: makeState(MODE_SENSOR, mode),
+  });
+  const hold = (el) => {
+    pointer(q(el, ".handle"), "pointerdown");
+    vi.advanceTimersByTime(600);
+  };
+
+  it("runs the hold action of the zone the handle sits in", () => {
+    const start = create({ handle_zones: zones }, modeStates("off"));
+    hold(start.el);
+    expect(start.hass.callService).toHaveBeenLastCalledWith("script", "turn_on", {}, { entity_id: "script.start" });
+    const end = create({ handle_zones: zones }, modeStates("idle"));
+    hold(end.el);
+    expect(end.hass.callService).toHaveBeenLastCalledWith("script", "turn_on", {}, { entity_id: "script.end" });
+  });
+
+  it("uses the card hold action in a zone without its own action", () => {
+    const { el, hass } = create({ handle_zones: zones, hold_action: script("script.card") }, modeStates("auto"));
+    hold(el);
+    expect(hass.callService).toHaveBeenLastCalledWith("script", "turn_on", {}, { entity_id: "script.card" });
+  });
+
+  it("shows icon and color of the zone entity state and follows its changes", () => {
+    const { el, hass } = create({ handle_zones: zones }, modeStates("idle", "auto"));
+    const icon = q(el, ".h-icon");
+    expect(icon.getAttribute("icon")).toBe("mdi:robot");
+    expect(icon.style.color).toBe("green");
+    el.hass = withState(hass, MODE_SENSOR, "nap");
+    expect(icon.style.color).toBe("");
+    expect(icon.hidden).toBe(true);
+  });
+
+  it("acts on the zone entity when the zone action has no target", () => {
+    const own = { mid: { entity: MODE_SENSOR, hold_action: { action: "toggle" } } };
+    const { el, hass } = create({ handle_zones: own }, modeStates("on"));
+    hold(el);
+    expect(hass.callService).toHaveBeenLastCalledWith("homeassistant", "toggle", { entity_id: MODE_SENSOR }, undefined);
+  });
+
+  it("keeps the main entity for card actions outside the zone", () => {
+    const own = { end: { entity: MODE_SENSOR, hold_action: { action: "toggle" } } };
+    const { el, hass } = create({ handle_zones: own, hold_action: { action: "toggle" } }, modeStates("off"));
+    hold(el);
+    expect(hass.callService).toHaveBeenLastCalledWith("homeassistant", "toggle", { entity_id: SELECT }, undefined);
+  });
+});

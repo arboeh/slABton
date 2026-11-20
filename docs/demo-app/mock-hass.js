@@ -46,6 +46,7 @@
     "timer.tea": entity("timer.tea", "paused", { duration: "0:10:00", remaining: "0:03:20" }),
     // supported_features: 1 open, 2 close, 4 set position, 8 stop (like HA's cover entity).
     "cover.living_room": entity("cover.living_room", "open", { current_position: 70, supported_features: 15, device_class: "shutter" }),
+    "sensor.cover_living_room_mode": entity("sensor.cover_living_room_mode", "auto"),
     "cover.garage_door": entity("cover.garage_door", "closed", { supported_features: 3, device_class: "garage" }),
     "input_datetime.festival": entity(
       "input_datetime.festival",

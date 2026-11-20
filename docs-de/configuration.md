@@ -44,13 +44,52 @@ alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein a
 | `bar_state_color` | `false` | `true` färbt die ganze Bar in der Farbe des aktuellen Zustands (`states[].color`), siehe [Zustandsfarbe](appearance.md#zustandsfarbe) |
 | `styles` | keine | Map mit CSS-Variablen, siehe [Styling](appearance.md#styling) |
 | `tap_action`, `double_tap_action`, `hold_action` | nach Modus | HA-Aktionen plus `cycle`, `cycle_back` |
-| `switches` | keine | `start`, `mid`, `end`, je mit `entity`, `icon`, `name`, Aktionen |
+| `switches` | keine | `start`, `mid`, `end`, je mit `entity`, `icon`, `name`, `states`, Aktionen, siehe [Switch-Zustände](#switch-zustande-und-griff-zonen) |
+| `handle_zones` | keine | `start`, `mid`, `end`, je mit eigenen Aktionen, `entity`, `icon`, `states` für den Griff |
 | `text` | Standardwerte | Schriftgröße und Farbe je Textbereich, siehe [Textdarstellung](appearance.md#textdarstellung) |
 | `scale` | keine | Striche und Beschriftung, je innen oder außerhalb der Bar, siehe [Skala](appearance.md#skala) |
 
 Ein `cover`-Entity läuft ohne weitere Optionen im Modus `value`: Ziehen setzt die Position, Tippen schaltet um, Halten stoppt, siehe [Covers](modes.md#covers).
 
 `call-service` (mit `service` / `service_data`) wird als veralteter Alias von `perform-action` akzeptiert und kann in einer späteren Version entfallen.
+
+## Switch-Zustände und Griff-Zonen
+
+`switches.<slot>` (`start`, `mid`, `end`) kann den Zustand einer eigenen Entity zeigen. Jeder Eintrag in `states` hat einen `value` (Zustand der Entity), ein `icon`, eine `color` für das Icon (CSS-Farbe oder `var(--…)`) und optional ein `label`, das als zugänglicher Name `name` ersetzt. Ohne Treffer (auch `unavailable` / `unknown`) behält der Switch sein `icon` und hat keine Farbe.
+
+```yaml
+type: custom:slabton-card
+entity: cover.wohnzimmer
+name: Rollladen Wohnzimmer
+switches:
+  end:
+    entity: sensor.cover_living_room_mode
+    icon: mdi:calendar-clock
+    name: Auto / Stopp
+    tap_action:
+      action: perform-action
+      perform_action: script.cover_living_room_toggle_auto
+    states:
+      - { value: auto, icon: mdi:calendar-clock, color: green }
+      - { value: heat_protection, icon: mdi:weather-sunny, color: orange }
+      - { value: nap, icon: mdi:sleep, color: blue }
+      - { value: "off", icon: mdi:power, color: grey, label: Auto aus }
+```
+
+`handle_zones` teilt die Griff-Position in Drittel: `start` unter einem Drittel, `mid` bis zwei Drittel, `end` darüber. Das gilt in jedem Modus. Die Position ist die logische, bei `direction: rtl` liegt `start` also optisch rechts. Jede Zone kann eigene `tap_action`, `double_tap_action` und `hold_action` haben (ohne Eintrag gilt die Karten-Aktion oder der Modus-Standard) sowie `entity`, `icon` und `states` für das Griff-Icon. Eine Zonen-Aktion läuft auf der `entity` der Zone, wenn es eine gibt. `icon` und `states` der Zone brauchen `handle_content: icon`; die Icon-Farbe entfällt beim Warn-Icon.
+
+```yaml
+handle_content: icon
+handle_zones:
+  start:
+    entity: sensor.cover_living_room_mode
+    hold_action:
+      action: perform-action
+      perform_action: script.cover_living_room_pause_auto
+    states:
+      - { value: auto, icon: mdi:calendar-clock, color: green }
+      - { value: "off", icon: mdi:power, color: grey }
+```
 
 ## Nicht verfügbare Entitäten
 

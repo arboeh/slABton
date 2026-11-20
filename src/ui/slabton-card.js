@@ -25,7 +25,7 @@ import * as stateMode from "../core/modes/state.js";
 import * as timerMode from "../core/modes/timer.js";
 import * as valueMode from "../core/modes/value.js";
 import { renderTemplate } from "../core/placeholders.js";
-import { renderCard, updateSwitches, updateView } from "./render.js";
+import { matchState, renderCard, updateSwitches, updateView, zoneOf } from "./render.js";
 import { applyVars, buildCss, cardHeightPx, handleDimensions } from "./styles.js";
 import { isUnavailable, resolveHandlePosition, safeUrl, unavailableReason, warn } from "../core/util.js";
 import { SlabtonCardEditor } from "./editor.js";
@@ -186,7 +186,8 @@ export class SlabtonCard extends HTMLElement {
 
   _entities() {
     const switches = Object.values(this._config.switches).map((s) => s.entity);
-    return [this._config.entity, this._config.bar_entity, ...switches].filter(Boolean);
+    const zones = Object.values(this._config.handle_zones).map((z) => z.entity);
+    return [this._config.entity, this._config.bar_entity, ...switches, ...zones].filter(Boolean);
   }
 
   _relevantChanged(previous, next) {
@@ -280,9 +281,14 @@ export class SlabtonCard extends HTMLElement {
     // (the state position of a cover or climate entity means nothing here). A separate `bar.entity` keeps the
     // handle on the state.
     const handleOnBar = Boolean(bar?.valid && config.bar_own_attribute && config.mode === MODE.STATE);
+    const pos = handleOnBar ? resolveHandlePosition(config, bar.frac, bar.frac > 0) : view.pos;
+    const zone = config.handle_zones[zoneOf(pos)];
+    const zoneState = zone ? matchState(zone.states, zone.entity ? this._hass?.states?.[zone.entity] : null) : null;
     return {
       ...view,
-      pos: handleOnBar ? resolveHandlePosition(config, bar.frac, bar.frac > 0) : view.pos,
+      icon: zoneState?.icon ?? zone?.icon ?? view.icon,
+      iconColor: zoneState?.color ?? null,
+      pos,
       unavailable: Boolean(view.unavailable) || barBroken,
       blocked: Boolean(view.unavailable),
       unavailableText: unavailableKey ? t(ctx.lang, `unavailable.${unavailableKey}`) : null,
@@ -354,8 +360,16 @@ export class SlabtonCard extends HTMLElement {
     this._noticed.clear();
   }
 
+  /** Own action of the handle zone the handle sits in, else the card action, else the mode default. */
   _actionFor(kind) {
-    return this._config[kind] ?? this._mode.defaultActions(this._config, this._stateObj())[kind];
+    const zone = this._config.handle_zones[zoneOf(this._view().pos)];
+    return zone?.[kind] ?? this._config[kind] ?? this._mode.defaultActions(this._config, this._stateObj())[kind];
+  }
+
+  /** Run the action for `kind`; an action of a zone with its own entity acts on that entity (like a switch). */
+  _runTrigger(kind) {
+    const zone = this._config.handle_zones[zoneOf(this._view().pos)];
+    this._runAction(this._actionFor(kind), zone?.[kind] ? (zone.entity ?? undefined) : undefined);
   }
 
   _bind() {
@@ -374,10 +388,10 @@ export class SlabtonCard extends HTMLElement {
       hasHold: () => !this._blocked && hasAction(this._actionFor("hold_action")),
       onTap: () => this._handleTap(),
       onDoubleTap: () => {
-        if (!this._blocked) this._runAction(this._actionFor("double_tap_action"));
+        if (!this._blocked) this._runTrigger("double_tap_action");
       },
       onHold: () => {
-        if (!this._blocked) this._runAction(this._actionFor("hold_action"));
+        if (!this._blocked) this._runTrigger("hold_action");
       },
       onDragStart: () => {
         // The logical position of the mode (lock: locked or not), not the measured bar value.
@@ -418,7 +432,7 @@ export class SlabtonCard extends HTMLElement {
       if (this._config.entity) this._runAction({ action: ACTION.MORE_INFO });
       return;
     }
-    if (!this._dismissExpired()) this._runAction(this._actionFor("tap_action"));
+    if (!this._dismissExpired()) this._runTrigger("tap_action");
   }
 
   _endDrag(frac) {
