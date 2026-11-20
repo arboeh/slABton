@@ -250,6 +250,9 @@ function dialCss() {
     .dial-hub { fill: var(--slabton-hands-color, currentColor); }`;
 }
 
+/** Room kept beyond the stage edge along the bar: the expired glow reaches 14 px blur + 4 px spread. */
+const CLIP_MARGIN_PX = 18;
+
 export function buildCss() {
   return `
     :host { display: block; }
@@ -270,6 +273,11 @@ export function buildCss() {
     .stage { display: flex; justify-content: center; }
     .o-h .stage { padding: var(--slabton-cross-extra, 0px) var(--slabton-overhang, 0px); }
     .o-v .stage { padding: var(--slabton-overhang, 0px) var(--slabton-cross-extra, 0px); }
+    /* The carrier is shifted by its own size times e, so its empty box reaches past the bar and widens the page on
+       narrow screens. Clip along the main axis only: the stage padding keeps the handle overhang, the cross axis stays visible.
+       The clip margin leaves room for the expired glow (14 px blur + 4 px spread, animations.js) at the bar ends. */
+    .o-h .stage { overflow-x: clip; overflow-clip-margin: ${CLIP_MARGIN_PX}px; }
+    .o-v .stage { overflow-y: clip; overflow-clip-margin: ${CLIP_MARGIN_PX}px; }
     .bar {
       position: relative; box-sizing: border-box; flex: none;
       background: var(--slabton-bar-color, var(--secondary-background-color, #e0e0e0));

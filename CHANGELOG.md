@@ -47,8 +47,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 - Lock mode with a bar value: the swipe threshold starts from the lock position, no longer from the measured bar value.
 - Visual editor: clearing the "Attribute" field no longer leaves `bar: attribute: ""` or an empty `bar:` map in the YAML.
 - Scale and fill edge: the ticks at 0 and 100 were offset from the handle centre (24 px with the default handle, 9 to 10 px
-  on thin bars, 36 px for an oval handle); they now sit on it. Labels at the bar ends no longer get cut off.
+  on thin bars, 36 px for an oval handle); they now sit on it. Labels at the bar ends are no longer cut off by the bar (a label that reaches more than 18 px past the bar end, for example a long name on a very small handle, is clipped).
 - Sections view: no empty space under the content of a card (fixed rows are gone).
+- Cards no longer make the page wider than the screen: on a phone the view could be dragged sideways with empty
+  space on the right (the invisible handle carrier reached past the bar). The stage now clips along the bar axis
+  only; the handle overhang, the cross axis and the glow of an expired timer (18 px margin) stay visible. A fixed
+  `length` wider than the card is cut off at the card edge instead of overflowing. The bug was already in 1.0.0.
 
 ## [1.0.0] - 2026-11-17
 

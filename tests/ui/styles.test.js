@@ -497,6 +497,13 @@ describe("buildCss", () => {
     expect(css).toContain(".o-v .stage { padding: var(--slabton-overhang, 0px) var(--slabton-cross-extra, 0px); }");
   });
 
+  it("clips the stage along the main axis only, so the shifted carrier box cannot widen the page", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.o-h \.stage \{ overflow-x: clip; overflow-clip-margin: 18px; \}/);
+    expect(css).toMatch(/\.o-v \.stage \{ overflow-y: clip; overflow-clip-margin: 18px; \}/);
+    expect(css).not.toMatch(/\.o-[hv] \.bar \{[^}]*overflow-[xy]: clip/);
+  });
+
   it("contains theme fallbacks and motion handling", () => {
     const css = buildCss();
     expect(css).toContain("var(--slabton-bar-color, var(--secondary-background-color");
