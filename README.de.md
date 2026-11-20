@@ -18,7 +18,7 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 
 **[Dokumentation](https://slabton.de/de/)** · **[Live-Demo](https://slabton.de/de/demo/)** · [English version](README.md)
 
-**Installation:** HACS, benutzerdefiniertes Repository `arboeh/slABton`, Typ **Dashboard** ([Details](#installation)).
+**Installation:** in HACS nach **slABton** suchen ([Details](#installation)).
 
 ![slABton Promo-Video](https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/promo/slabton-promo.gif)
 
@@ -48,13 +48,15 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 
 ## Installation
 
-### HACS (benutzerdefiniertes Repository)
+### HACS
 
 [![Dieses Repository in HACS öffnen](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=arboeh&repository=slABton&category=plugin)
 
-1. HACS, Dreipunktmenü, **Benutzerdefinierte Repositories**.
-2. `https://github.com/arboeh/slABton` hinzufügen, Typ **Dashboard**.
-3. **slABton** installieren, Browser neu laden.
+1. HACS öffnen und nach **slABton** suchen.
+2. **slABton** herunterladen, Browser neu laden.
+
+Rückfall, falls die Suche es nicht findet: HACS, Dreipunktmenü, **Benutzerdefinierte Repositories**,
+`https://github.com/arboeh/slABton` hinzufügen, Typ **Dashboard**, danach wie oben installieren.
 
 ### Manuell
 

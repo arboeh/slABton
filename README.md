@@ -18,7 +18,7 @@ Switch through several states, swipe to lock / unlock, or show a value.
 
 **[Documentation](https://slabton.de)** · **[Live demo](https://slabton.de/demo/)** · [Deutsche Version](README.de.md)
 
-**Install:** HACS, custom repository `arboeh/slABton`, type **Dashboard** ([details](#installation)).
+**Install:** search for **slABton** in HACS ([details](#installation)).
 
 ![slABton promo video](https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/promo/slabton-promo.gif)
 
@@ -48,13 +48,15 @@ Switch through several states, swipe to lock / unlock, or show a value.
 
 ## Installation
 
-### HACS (custom repository)
+### HACS
 
 [![Open this repository in HACS](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=arboeh&repository=slABton&category=plugin)
 
-1. HACS, three-dot menu, **Custom repositories**.
-2. Add `https://github.com/arboeh/slABton`, type **Dashboard**.
-3. Install **slABton**, reload the browser.
+1. Open HACS and search for **slABton**.
+2. Download **slABton**, reload the browser.
+
+Fallback if the search does not find it: HACS, three-dot menu, **Custom repositories**, add
+`https://github.com/arboeh/slABton`, type **Dashboard**, then install as above.
 
 ### Manual
 

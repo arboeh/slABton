@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-20
+
 ### Added
 
 - Covers: `entity: cover.living_room` is enough. The bar shows the position (`current_position`, 0 = closed, 100 = open,
