@@ -94,6 +94,15 @@ export const CARD_SIZE = Object.freeze({ horizontal: 2, vertical: 4 });
 export const CARD_UNIT_PX = 50;
 /** Card height besides the bar (and the handle's excess over it): ha-card padding (2 x 12) plus its border, in px. */
 export const CARD_CHROME_PX = 26;
+/** Air between a handle that sticks out of the stage and the card edge, on top of the card padding, in px. */
+export const HANDLE_EDGE_GAP_PX = 4;
+/** Card padding plus border on one side, in px (half of `CARD_CHROME_PX`). */
+export const CARD_SIDE_CHROME_PX = CARD_CHROME_PX / 2;
+/** Width of one dashboard grid column and the gap between columns in the sections view, in px (HA default theme, measured). */
+export const GRID_COLUMN_PX = 34;
+export const GRID_COLUMN_GAP_PX = 8;
+/** Columns in a section of the sections view. */
+export const GRID_MAX_COLUMNS = 12;
 /** Overshoot of the content over the masonry size that still counts as fitting (rounding, theme differences), in px. */
 export const GRID_FIT_TOLERANCE_PX = 2;
 

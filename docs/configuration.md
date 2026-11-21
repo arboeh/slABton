@@ -107,7 +107,7 @@ screen readers. The card is locked: a tap opens more-info, gestures and arrow ke
 
 ## Size in sections view
 
-The card takes 6 columns horizontal (3 vertical) and sets no fixed number of rows: the height follows the content
+The card takes 6 columns horizontal (3 vertical; a vertical card with a wider handle takes more, for example 4 for `handle_size: 120`) and sets no fixed number of rows: the height follows the content
 (`rows: "auto"`). Older dashboards may still fix the height and must drop it:
 
 - `card_mod` with a fixed height, for example `ha-card { height: 122px; }`: remove it. A fixed height cuts off

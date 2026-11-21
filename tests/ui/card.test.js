@@ -133,11 +133,17 @@ describe("setConfig", () => {
   it("keeps the same grid options whatever the size of bar and handle (the content sets the height)", () => {
     const horizontal = { columns: 6, rows: "auto", min_columns: 3 };
     const vertical = { columns: 3, rows: "auto", min_columns: 2 };
-    for (const config of [{ thickness: 48, handle_size: 48 }, { thickness: 18, handle_size: 120 }, { thickness: 18, handle_size: 42 }]) {
+    for (const config of [{ thickness: 48, handle_size: 48 }, { thickness: 18, handle_size: 82 }, { thickness: 18, handle_size: 42 }]) {
       expect(create(config).el.getGridOptions()).toEqual(horizontal);
       expect(create({ orientation: "vertical", ...config }).el.getGridOptions()).toEqual(vertical);
     }
+    expect(create({ thickness: 18, handle_size: 120 }).el.getGridOptions()).toEqual(horizontal);
     expect(create({ orientation: "vertical", length: 400, handle_overhang: true }).el.getGridOptions()).toEqual(vertical);
+  });
+
+  it("widens a vertical card whose handle is wider than the default columns, and keeps it from shrinking below that", () => {
+    const wide = create({ orientation: "vertical", thickness: 18, handle_size: 120 }).el.getGridOptions();
+    expect(wide).toEqual({ columns: 4, rows: "auto", min_columns: 4 });
   });
 
   it("sets no number of rows and no min_rows: both would fix the height", () => {
@@ -155,9 +161,9 @@ describe("setConfig", () => {
 
   it("grows the masonry card size for a handle much larger than the bar", () => {
     const { el } = create({ thickness: 18, handle_size: 120 });
-    expect(el.getCardSize()).toBe(3); // need 146 > 100 + 2
+    expect(el.getCardSize()).toBe(4); // need 26 + 120 + 8 (edge gap) = 154 > 100 + 2: two more units
     el.setConfig({ entity: SELECT, orientation: "vertical", thickness: 18, handle_size: 120 });
-    expect(el.getCardSize()).toBe(6); // need 160 + 26 + 2 x 51 = 288: 4 base units of 50 px plus 2
+    expect(el.getCardSize()).toBe(6); // need 160 + 26 + 2 x (51 + 4) = 296: 4 base units of 50 px plus 2
   });
 
   it("measures the masonry size against units of 50 px", () => {
@@ -172,10 +178,6 @@ describe("setConfig", () => {
     expect(el.getCardSize()).toBe(2);
     el.setConfig({ entity: SELECT, thickness: 32, handle_size: 40 });
     expect(el.getCardSize()).toBe(2);
-    el.setConfig({ entity: SELECT, thickness: 48, handle_size: 70 });
-    expect(el.getCardSize()).toBe(2);
-    el.setConfig({ entity: SELECT, thickness: 18, handle_size: 70 });
-    expect(el.getCardSize()).toBe(2);
     el.setConfig({ entity: SELECT, orientation: "vertical", thickness: 32, handle_size: 40 });
     expect(el.getCardSize()).toBe(4);
   });
@@ -183,11 +185,14 @@ describe("setConfig", () => {
   it("adds a masonry unit only when the height need passes the base size plus the tolerance", () => {
     // Horizontal need = 26 + max(thickness, handle_size); base 100, tolerance 2.
     const size = (config) => create(config).el.getCardSize();
-    expect(size({ thickness: 18, handle_size: 76 })).toBe(2); // 102
-    expect(size({ thickness: 18, handle_size: 77 })).toBe(3); // 103
-    // Vertical need = 160 + 26 + 2 x excess; base 200, tolerance 2.
-    expect(size({ orientation: "vertical", thickness: 18, handle_size: 34 })).toBe(4); // 202
-    expect(size({ orientation: "vertical", thickness: 18, handle_size: 35 })).toBe(5); // 203 (half-pixel excess 8.5)
+    // A handle larger than the bar adds the edge gap (4 px on each side): need = 26 + 8 + handle_size.
+    expect(size({ thickness: 18, handle_size: 68 })).toBe(2); // 102
+    expect(size({ thickness: 18, handle_size: 69 })).toBe(3); // 103
+    // Without excess there is no gap: 26 + 48.
+    expect(size({ thickness: 48, handle_size: 48 })).toBe(2); // 74
+    // Vertical need = 160 + 26 + 2 x (excess + 4); base 200, tolerance 2.
+    expect(size({ orientation: "vertical", thickness: 18, handle_size: 26 })).toBe(4); // 202
+    expect(size({ orientation: "vertical", thickness: 18, handle_size: 27 })).toBe(5); // 203 (half-pixel excess 4.5)
   });
 
   it("uses a configured bar length for the vertical need", () => {
@@ -199,13 +204,13 @@ describe("setConfig", () => {
   it("ignores a handle smaller than the bar and uses the longer side of an oval handle", () => {
     const size = (config) => create({ orientation: "vertical", ...config }).el.getCardSize();
     expect(size({ thickness: 80, handle_size: 40 })).toBe(4); // no excess, need 186
-    expect(size({ thickness: 48, handle_size: 60, handle_overhang: true })).toBe(5); // round: 160 + 26 + 60 = 246
-    expect(size({ thickness: 48, handle_size: 60, handle_shape: "oval", handle_overhang: true })).toBe(6); // 282
+    expect(size({ thickness: 48, handle_size: 60, handle_overhang: true })).toBe(6); // round: 160 + 26 + 2 x (30 + 4) = 254
+    expect(size({ thickness: 48, handle_size: 60, handle_shape: "oval", handle_overhang: true })).toBe(6); // 290
   });
 
   it("follows a config change with the masonry size", () => {
     const { el } = create({ thickness: 18, handle_size: 120 });
-    expect(el.getCardSize()).toBe(3);
+    expect(el.getCardSize()).toBe(4);
     el.setConfig({ entity: SELECT, thickness: 18, handle_size: 42 });
     expect(el.getCardSize()).toBe(2);
   });

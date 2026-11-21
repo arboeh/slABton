@@ -16,6 +16,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   `entity`) and an `entity` with `icon` / `states` for the handle icon (needs `handle_content: icon`). YAML only,
   no visual editor fields yet. Demo example "Cover with auto mode".
 
+### Fixed
+
+- A handle that sticks out of the bar (`handle_size` larger than `thickness`, or `handle_overhang`) keeps 4 px of air to the card
+  edge on top of the card padding, across and along the bar; the card height counts it. Such cards are 8 px higher, so
+  masonry sizes and row counts can shift by one unit.
+- Vertical cards in the sections view ask for more columns when the handle (plus padding) is wider than 3 columns:
+  `handle_size: 120` gets `columns: 4` and `min_columns: 4`, so the handle no longer pokes out of the card. A `grid_options`
+  of yours still wins. The column width is estimated from a desktop section; on narrow sections (phone) give the card
+  more columns yourself.
+
 ## [1.1.0] - 2026-11-20
 
 ### Added

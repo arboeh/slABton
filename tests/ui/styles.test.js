@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { normalizeConfig } from "../../src/core/config.js";
 import {
-  applyVars, buildCss, buildVars, cardHeightPx, handleDimensions, handleExtra, handleOverhang,
+  applyVars, buildCss, buildVars, cardHeightPx, gridColumns, handleDimensions, handleExtra, handleOverhang,
 } from "../../src/ui/styles.js";
 
 const cfg = (extra = {}) => normalizeConfig({ entity: "input_select.x", ...extra });
@@ -11,16 +11,68 @@ describe("cardHeightPx", () => {
     // Seen in the Home Assistant default theme (screenshot): 74, 68 and 96 px high. A theme with a different
     // card padding or border changes the chrome; these tests pin the formula, not the theme.
     expect(cardHeightPx(cfg({ thickness: 48, handle_size: 40 }))).toBe(74);
-    expect(cardHeightPx(cfg({ thickness: 18, handle_size: 42 }))).toBe(68);
-    expect(cardHeightPx(cfg({ thickness: 18, handle_size: 70 }))).toBe(96);
+    expect(cardHeightPx(cfg({ thickness: 18, handle_size: 42 }))).toBe(76);
+    expect(cardHeightPx(cfg({ thickness: 18, handle_size: 70 }))).toBe(104);
   });
 
   it("is the bar length plus the chrome plus the overhang at both ends (vertical)", () => {
     const vertical = { orientation: "vertical" };
     expect(cardHeightPx(cfg({ ...vertical, thickness: 48, handle_size: 40 }))).toBe(186);
-    expect(cardHeightPx(cfg({ ...vertical, thickness: 32, handle_size: 40 }))).toBe(194);
-    expect(cardHeightPx(cfg({ ...vertical, thickness: 48, handle_size: 40, handle_overhang: true }))).toBe(226);
+    expect(cardHeightPx(cfg({ ...vertical, thickness: 32, handle_size: 40 }))).toBe(202);
+    expect(cardHeightPx(cfg({ ...vertical, thickness: 48, handle_size: 40, handle_overhang: true }))).toBe(234);
     expect(cardHeightPx(cfg({ ...vertical, length: 200 }))).toBe(226);
+  });
+});
+
+describe("edge gap of a handle that sticks out of the stage", () => {
+  const vertical = { orientation: "vertical" };
+
+  it("adds the gap to the card height only where the handle sticks out", () => {
+    expect(cardHeightPx(cfg({ thickness: 48, handle_size: 40 }))).toBe(74);
+    expect(cardHeightPx(cfg({ thickness: 18, handle_size: 70 }))).toBe(104);
+    expect(cardHeightPx(cfg({ ...vertical, thickness: 32, handle_size: 40 }))).toBe(202);
+    expect(cardHeightPx(cfg({ ...vertical, thickness: 48, handle_size: 40, handle_overhang: true }))).toBe(234);
+  });
+
+  it("sets the gap variables across and along the bar", () => {
+    const sticks = buildVars(cfg({ thickness: 18, handle_size: 70 }));
+    expect(sticks["--slabton-gap-cross"]).toBe("4px");
+    expect(sticks["--slabton-gap-along"]).toBe("4px");
+    const overhangOnly = buildVars(cfg({ thickness: 48, handle_size: 40, handle_overhang: true }));
+    expect(overhangOnly["--slabton-gap-cross"]).toBe("0px");
+    expect(overhangOnly["--slabton-gap-along"]).toBe("4px");
+  });
+
+  it("sets no gap for a handle inside the bar", () => {
+    const v = buildVars(cfg({ thickness: 48, handle_size: 40 }));
+    expect(v["--slabton-gap-cross"]).toBe("0px");
+    expect(v["--slabton-gap-along"]).toBe("0px");
+  });
+
+  it("leaves the overhang and cross-extra variables to the geometry (ticks hang on them)", () => {
+    const v = buildVars(cfg({ thickness: 18, handle_size: 70 }));
+    expect(v["--slabton-overhang"]).toBe("26px");
+    expect(v["--slabton-cross-extra"]).toBe("26px");
+  });
+});
+
+describe("gridColumns (vertical card width for the handle)", () => {
+  const vertical = (extra = {}) => cfg({ orientation: "vertical", ...extra });
+
+  it("keeps 3 columns for the default and for handles that fit", () => {
+    expect(gridColumns(vertical())).toBe(3);
+    expect(gridColumns(vertical({ thickness: 18, handle_size: 82 }))).toBe(3);
+    expect(gridColumns(vertical({ thickness: 18, handle_size: 84 }))).toBe(3);
+  });
+
+  it("adds columns when the handle plus card padding and gap is wider than 3 columns", () => {
+    expect(gridColumns(vertical({ thickness: 18, handle_size: 97 }))).toBe(4);
+    expect(gridColumns(vertical({ thickness: 18, handle_size: 120 }))).toBe(4);
+    expect(gridColumns(vertical({ thickness: 18, handle_size: 200 }))).toBe(6);
+  });
+
+  it("never exceeds the 12 columns of a section", () => {
+    expect(gridColumns({ thickness: 18, handle_size: 900 })).toBe(12);
   });
 });
 
@@ -32,8 +84,8 @@ describe("cardHeightPx with scale labels outside", () => {
 
   it("adds the label font size plus the gap (horizontal)", () => {
     expect(cardHeightPx(outside({ thickness: 48, handle_size: 40 }))).toBe(87);
-    expect(cardHeightPx(outside({ thickness: 14, handle_size: 20 }))).toBe(59);
-    expect(cardHeightPx(outside({ thickness: 18, handle_size: 70 }))).toBe(109);
+    expect(cardHeightPx(outside({ thickness: 14, handle_size: 20 }))).toBe(67);
+    expect(cardHeightPx(outside({ thickness: 18, handle_size: 70 }))).toBe(117);
   });
 
   it("follows text.scale.font_size", () => {
@@ -126,13 +178,13 @@ describe("cardHeightPx with scale ticks outside", () => {
 
   it("adds the tick length (default 8, or scale.size) horizontally", () => {
     expect(cardHeightPx(ticksOut({ thickness: 48, handle_size: 40 }))).toBe(82);
-    expect(cardHeightPx(ticksOut({ thickness: 14, handle_size: 20 }))).toBe(54);
+    expect(cardHeightPx(ticksOut({ thickness: 14, handle_size: 20 }))).toBe(62);
     expect(cardHeightPx(ticksOut({ thickness: 48, handle_size: 40 }, { size: 6 }))).toBe(80);
   });
 
   it("adds ticks and labels when both stand outside", () => {
     expect(cardHeightPx(ticksOut({ thickness: 48, handle_size: 40 }, { labels: true, labels_placement: "outside" }))).toBe(95);
-    expect(cardHeightPx(ticksOut({ thickness: 14, handle_size: 20 }, { labels: true, labels_placement: "outside" }))).toBe(67);
+    expect(cardHeightPx(ticksOut({ thickness: 14, handle_size: 20 }, { labels: true, labels_placement: "outside" }))).toBe(75);
   });
 
   it("adds only the ticks for ticks outside with labels inside", () => {
@@ -493,8 +545,8 @@ describe("handleExtra", () => {
 describe("buildCss", () => {
   it("pads the stage across and along the bar for both orientations", () => {
     const css = buildCss();
-    expect(css).toContain(".o-h .stage { padding: var(--slabton-cross-extra, 0px) var(--slabton-overhang, 0px); }");
-    expect(css).toContain(".o-v .stage { padding: var(--slabton-overhang, 0px) var(--slabton-cross-extra, 0px); }");
+    expect(css).toContain(".o-h .stage { padding: calc(var(--slabton-cross-extra, 0px) + var(--slabton-gap-cross, 0px)) calc(var(--slabton-overhang, 0px) + var(--slabton-gap-along, 0px)); }");
+    expect(css).toContain(".o-v .stage { padding: calc(var(--slabton-overhang, 0px) + var(--slabton-gap-along, 0px)) calc(var(--slabton-cross-extra, 0px) + var(--slabton-gap-cross, 0px)); }");
   });
 
   it("clips the stage along the main axis only, so the shifted carrier box cannot widen the page", () => {

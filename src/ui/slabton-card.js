@@ -26,7 +26,7 @@ import * as timerMode from "../core/modes/timer.js";
 import * as valueMode from "../core/modes/value.js";
 import { renderTemplate } from "../core/placeholders.js";
 import { matchState, renderCard, updateSwitches, updateView, zoneOf } from "./render.js";
-import { applyVars, buildCss, cardHeightPx, handleDimensions } from "./styles.js";
+import { applyVars, buildCss, cardHeightPx, gridColumns, handleDimensions } from "./styles.js";
 import { isUnavailable, resolveHandlePosition, safeUrl, unavailableReason, warn } from "../core/util.js";
 import { SlabtonCardEditor } from "./editor.js";
 
@@ -114,9 +114,14 @@ export class SlabtonCard extends HTMLElement {
     return base + this._extraUnits(base);
   }
 
-  /** Sections view: the width in columns, the height from the content (`rows: "auto"`); a `grid_options:` of the user wins per key. */
+  /**
+   * Sections view: the width in columns, the height from the content (`rows: "auto"`); a `grid_options:` of the user wins per key.
+   * A vertical card whose handle is wider than the default columns gets more columns, and cannot shrink below them.
+   */
   getGridOptions() {
-    return { ...(this._config?.orientation === "vertical" ? GRID.vertical : GRID.horizontal) };
+    if (this._config?.orientation !== "vertical") return { ...GRID.horizontal };
+    const columns = gridColumns(this._config);
+    return columns > GRID.vertical.columns ? { ...GRID.vertical, columns, min_columns: columns } : { ...GRID.vertical };
   }
 
   _baseCardSize() {

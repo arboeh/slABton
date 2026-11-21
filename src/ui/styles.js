@@ -6,7 +6,8 @@
 
 import { animationCss } from "./animations.js";
 import {
-  CARD_CHROME_PX, DEFAULT_SCALE_LABEL_SIZE, DEFAULT_SCALE_SIZE, DEFAULT_VERTICAL_LENGTH, OVAL_RATIO, PILL_RADIUS, SCALE_LABEL_GAP_PX,
+  CARD_CHROME_PX, CARD_SIDE_CHROME_PX, DEFAULT_SCALE_LABEL_SIZE, DEFAULT_SCALE_SIZE, DEFAULT_VERTICAL_LENGTH, GRID, GRID_COLUMN_GAP_PX,
+  GRID_COLUMN_PX, GRID_MAX_COLUMNS, HANDLE_EDGE_GAP_PX, OVAL_RATIO, PILL_RADIUS, SCALE_LABEL_GAP_PX,
   SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO, TEXT_OPTIONS,
 } from "../core/constants.js";
 
@@ -33,6 +34,29 @@ export function handleExtra(config) {
 export function handleOverhang(config) {
   const { along } = handleDimensions(config);
   return Math.max(config.handle_overhang === true ? along / 2 : 0, handleExtra(config));
+}
+
+/**
+ * Air kept between a handle that sticks out of the stage and the card edge, along the bar, in px. Zero when the handle
+ * does not stick out along the bar (the stage then ends at the bar).
+ */
+export function handleGapAlong(config) {
+  return handleOverhang(config) > 0 ? HANDLE_EDGE_GAP_PX : 0;
+}
+
+/** The same across the bar: zero when the handle is not larger than the bar. */
+export function handleGapCross(config) {
+  return handleExtra(config) > 0 ? HANDLE_EDGE_GAP_PX : 0;
+}
+
+/**
+ * Columns a vertical card needs in the sections view so that the handle fits across the card (handle or bar width,
+ * the card padding and, when it sticks out, its edge gap). At least the default columns, at most `GRID_MAX_COLUMNS` (one section).
+ */
+export function gridColumns(config) {
+  const needed = Math.max(config.thickness, config.handle_size) + 2 * (CARD_SIDE_CHROME_PX + handleGapCross(config));
+  const columns = Math.ceil((needed + GRID_COLUMN_GAP_PX) / (GRID_COLUMN_PX + GRID_COLUMN_GAP_PX));
+  return Math.min(GRID_MAX_COLUMNS, Math.max(GRID.vertical.columns, columns));
 }
 
 /** A length in `px` ("14px", "14.5px", ".5px", "14PX") or a bare "0"; nothing else. CSS rejects a unitless non-zero length. */
@@ -74,10 +98,11 @@ function outsideTicksPx(config) {
  */
 export function cardHeightPx(config) {
   if (config.orientation !== "vertical") {
-    return CARD_CHROME_PX + Math.max(config.thickness, config.handle_size) + outsideTicksPx(config) + outsideLabelsPx(config);
+    return CARD_CHROME_PX + 2 * handleGapCross(config) + Math.max(config.thickness, config.handle_size)
+      + outsideTicksPx(config) + outsideLabelsPx(config);
   }
   const length = config.length > 0 ? config.length : DEFAULT_VERTICAL_LENGTH;
-  return length + CARD_CHROME_PX + 2 * handleOverhang(config);
+  return length + CARD_CHROME_PX + 2 * (handleOverhang(config) + handleGapAlong(config));
 }
 
 /** Variables for the configured `text:` options only; unset options keep the CSS default. */
@@ -114,6 +139,9 @@ export function buildVars(config) {
     // the handle's excess over the bar, across the bar the excess only.
     "--slabton-overhang": `${handleOverhang(config)}px`,
     "--slabton-cross-extra": `${extra}px`,
+    // Air between the handle and the card edge where it sticks out (the stage padding adds it; ticks keep using the two above).
+    "--slabton-gap-along": `${handleGapAlong(config)}px`,
+    "--slabton-gap-cross": `${handleGapCross(config)}px`,
     "--slabton-bar-radius": `${barRadius}px`,
     "--slabton-handle-radius": square ? `${Math.round(cross * SQUARE_HANDLE_RADIUS_RATIO)}px` : PILL_RADIUS,
     "--slabton-border-width": `${config.border_width}px`,
@@ -271,8 +299,8 @@ export function buildCss() {
     .header.icon-right .title { flex: 1; min-width: 0; }
     .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--slabton-header-color, inherit); }
     .stage { display: flex; justify-content: center; }
-    .o-h .stage { padding: var(--slabton-cross-extra, 0px) var(--slabton-overhang, 0px); }
-    .o-v .stage { padding: var(--slabton-overhang, 0px) var(--slabton-cross-extra, 0px); }
+    .o-h .stage { padding: calc(var(--slabton-cross-extra, 0px) + var(--slabton-gap-cross, 0px)) calc(var(--slabton-overhang, 0px) + var(--slabton-gap-along, 0px)); }
+    .o-v .stage { padding: calc(var(--slabton-overhang, 0px) + var(--slabton-gap-along, 0px)) calc(var(--slabton-cross-extra, 0px) + var(--slabton-gap-cross, 0px)); }
     /* The carrier is shifted by its own size times e, so its empty box reaches past the bar and widens the page on
        narrow screens. Clip along the main axis only: the stage padding keeps the handle overhang, the cross axis stays visible.
        The clip margin leaves room for the expired glow (14 px blur + 4 px spread, animations.js) at the bar ends. */

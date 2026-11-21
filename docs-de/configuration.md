@@ -109,7 +109,7 @@ Screenreader. Die Karte ist gesperrt: Ein Tippen öffnet more-info, Gesten und P
 
 ## Größe in der Sections-Ansicht
 
-Die Karte belegt 6 Spalten waagerecht (3 senkrecht) und legt keine feste Zeilenzahl fest: Die Höhe folgt dem Inhalt
+Die Karte belegt 6 Spalten waagerecht (3 senkrecht; eine senkrechte Karte mit breiterem Griff belegt mehr, zum Beispiel 4 bei `handle_size: 120`) und legt keine feste Zeilenzahl fest: Die Höhe folgt dem Inhalt
 (`rows: "auto"`). Ältere Dashboards können die Höhe noch fest vorgeben und sollten das entfernen:
 
 - `card_mod` mit fester Höhe, zum Beispiel `ha-card { height: 122px; }`: entfernen. Eine feste Höhe schneidet Inhalt
