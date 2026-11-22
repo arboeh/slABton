@@ -36,6 +36,9 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Aktionen Klick, Doppelklick, Halten
 - Icon je Zustand, Positionszahl oder Text im Griff
 - Optionale separate Schalter bei Start, Mitte, Ende
+- Schalter zeigen den Zustand ihrer eigenen Entity: Icon und Icon-Farbe je Zustand (`switches.<slot>.states`)
+- Griff-Zonen (`handle_zones`): eigene Aktionen und eigenes Griff-Icon bei Start, Mitte und Ende
+- Stickshift (`stickshift:`): feste Schaltkulisse mit einem anklickbaren Punkt je Zustand, optional eigene Aktion je Punkt
 - Header und Header-Icon
 - Animationen: `none`, `slide`, `fade`, `pulse`, `shimmer` (beachtet reduzierte Bewegung)
 - Theme-fähig, Farben und CSS-Variablen überschreibbar

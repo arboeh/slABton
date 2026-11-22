@@ -1,4 +1,4 @@
-"""Record the slABton promo video (about 14 s) from the real card.
+"""Record the slABton promo video (about 19 s) from the real card.
 
 Usage (after `npm run build`; needs playwright and ffmpeg on PATH):
     python scripts/promo/make-promo.py
@@ -95,6 +95,13 @@ def timeline(page: Page) -> None:
         )
         page.wait_for_timeout(190)
     page.wait_for_timeout(250)
+
+    page.evaluate("show('s-new')")  # stickshift: tap a point to jump straight to its state
+    page.wait_for_timeout(900)
+    for index in (2, 0, 3, 1):
+        page.locator("#s-new .sx-pt").nth(index).click()
+        page.wait_for_timeout(750)
+    page.wait_for_timeout(500)
 
     page.evaluate("show('s-more')")
     page.wait_for_timeout(800)

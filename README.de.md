@@ -34,6 +34,18 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/value-scale-dark.png">
   <img alt="Wert mit Skala" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/value-scale-light.png" width="480">
 </picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/switch-states-dark.png">
+  <img alt="Switch mit Zustands-Icon" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/switch-states-light.png" width="480">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/handle-zones-dark.png">
+  <img alt="Griff-Zonen-Icon" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/handle-zones-light.png" width="480">
+</picture>
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-dark.png">
+  <img alt="Stickshift" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-light.png" width="480">
+</picture>
 
 ## Funktionen
 

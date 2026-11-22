@@ -73,6 +73,10 @@
     <div class="copy"><div class="kicker">Value</div><div class="caption">Any sensor,<br>as a <em>gauge</em></div></div>
     <div class="stage" id="stage-value"></div>
   </div>
+  <div id="s-new" class="layer scene row">
+    <div class="copy"><div class="kicker">New in 1.2</div><div class="caption">Stickshift.<br>States <em>on the switch.</em></div></div>
+    <div class="stage wide" id="stage-new"></div>
+  </div>
   <div id="s-more" class="layer scene row">
     <div class="copy"><div class="kicker">And more</div><div class="caption">Counter. Timer.<br><em>Analog clock.</em></div></div>
     <div class="stage wide" id="stage-more"></div>
@@ -99,6 +103,20 @@
       state: [{ entity: HEATING, name: "Heating", icon: "mdi:radiator", bar_state_color: true, thickness: 56, handle_size: 64, states: ICONS }],
       lock: [{ entity: "lock.front_door", name: "Front door", mode: "lock", thickness: 56, handle_size: 64 }],
       value: [{ entity: "sensor.battery_soc", mode: "value", preset: "soc", name: "Battery", thickness: 56, handle_size: 64, scale: { ticks: 10, labels: true } }],
+      new: [
+        { entity: HEATING, name: "Stickshift", stickshift: true, states: ICONS },
+        {
+          entity: "cover.living_room", name: "Living room shutter", handle_content: "icon",
+          switches: { end: { entity: "sensor.cover_living_room_mode", icon: "mdi:calendar-clock", tap_action: { action: "none" }, states: [
+            { value: "auto", icon: "mdi:calendar-clock", color: "#2fb67c" },
+            { value: "off", icon: "mdi:power", color: "#9198a1" },
+          ] } },
+          handle_zones: { end: { entity: "sensor.cover_living_room_mode", states: [
+            { value: "auto", icon: "mdi:calendar-clock", color: "#2fb67c" },
+            { value: "off", icon: "mdi:power", color: "#9198a1" },
+          ] } },
+        },
+      ],
       more: [
         { entity: "counter.guests", name: "Guests", bar_text: "{value} of 10", counter: { max: 10 } },
         { entity: "timer.sauna", name: "Sauna", icon: "mdi:timer-outline" },

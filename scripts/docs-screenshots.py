@@ -52,6 +52,42 @@ SHOTS: dict[str, dict[str, Any]] = {
             "end": {"icon": "mdi:fire", "tap_action": {"action": "none"}},
         },
     },
+    # 1.2.0: switch states, handle zones, stickshift
+    "switch-states": {
+        "entity": "cover.living_room", "name": "Living room shutter", "handle_content": "icon",
+        "switches": {
+            "end": {
+                "entity": "sensor.cover_living_room_mode", "icon": "mdi:calendar-clock", "name": "Auto / Stop",
+                "tap_action": {"action": "none"},
+                "states": [
+                    {"value": "auto", "icon": "mdi:calendar-clock", "color": "green"},
+                    {"value": "heat_protection", "icon": "mdi:weather-sunny", "color": "orange"},
+                    {"value": "off", "icon": "mdi:power", "color": "grey"},
+                ],
+            },
+        },
+    },
+    "handle-zones": {
+        "entity": "cover.living_room", "name": "Living room shutter", "handle_content": "icon",
+        "handle_zones": {
+            "end": {
+                "entity": "sensor.cover_living_room_mode",
+                "states": [
+                    {"value": "auto", "icon": "mdi:calendar-clock", "color": "green"},
+                    {"value": "off", "icon": "mdi:power", "color": "grey"},
+                ],
+            },
+        },
+    },
+    "stickshift": {
+        "entity": HEATING, "name": "Stickshift", "stickshift": True,
+        "states": [
+            {"value": "Off", "icon": "mdi:power", "color": "blue"},
+            {"value": "Auto", "icon": "mdi:calendar-clock", "color": "green"},
+            {"value": "On", "icon": "mdi:fire", "color": "red"},
+            {"value": "Idle", "icon": "mdi:sleep", "color": "orange"},
+        ],
+    },
     # Lock, value, counter
     "lock": {"entity": "lock.front_door", "name": "Front door", "mode": "lock"},
     "value": {"entity": "sensor.living_room_temperature", "mode": "value", "preset": "thermometer", "name": "Living room"},

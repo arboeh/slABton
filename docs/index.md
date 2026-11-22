@@ -36,6 +36,9 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Tap, double tap and hold actions
 - Icon per state, position number or text in the handle
 - Optional separate switches at start, mid, end
+- Switches show the state of their own entity: icon and icon color per state (`switches.<slot>.states`)
+- Handle zones (`handle_zones`): own actions and own handle icon at start, mid and end
+- Stickshift (`stickshift:`): fixed gate with one clickable point per state, optional own action per point
 - Header and header icon
 - Animations: `none`, `slide`, `fade`, `pulse`, `shimmer` (respects reduced motion)
 - Theme aware, colors and CSS variables overridable

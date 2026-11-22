@@ -5,6 +5,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-11-22
+
 ### Added
 
 - `switches.<slot>.states`: a switch shows the state of its own entity. Per state `value`, `icon`, `color` (applied to
