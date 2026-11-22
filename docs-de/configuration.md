@@ -117,3 +117,44 @@ Die Karte belegt 6 Spalten waagerecht (3 senkrecht; eine senkrechte Karte mit br
 - `grid_options: rows: <Zahl>` in der Kartenconfig: aus demselben Grund entfernen.
 - `grid_options: columns: ...` (und die übrigen Schlüssel) überschreiben die Standardwerte der Karte weiterhin, je
   Schlüssel. Damit wird die Karte breiter, zum Beispiel `columns: 12` für die volle Breite.
+
+## Stickshift-Aktionen
+
+Mit [`stickshift:`](modes.md#stickshift) kann jeder Eintrag von `states` eine eigene `tap_action`, `double_tap_action`
+und `hold_action` haben. Sie nutzen dieselbe Aktions-Syntax wie die Karte, und eine Aktion kann eine eigene `entity` nennen,
+unabhängig von der Haupt-Entity (wie bei den Griff-Zonen oben):
+
+```yaml
+type: custom:slabton-card
+entity: input_select.lade_modus
+stickshift: true
+states:
+  - { value: "Stopp", icon: mdi:stop }
+  - value: "Auto"
+    icon: mdi:flash-auto
+    tap_action: { action: toggle, entity: switch.ladegeraet }
+  - value: "Boost"
+    icon: mdi:flash
+    hold_action: { action: more-info, entity: sensor.ladegeraet_leistung }
+```
+
+Die `tap_action` eines Punkts läuft nach dem Zustandswechsel, der auf ihm landet (Tipp auf den Punkt, Ziehen, Pfeiltaste).
+Ein Tipp auf den aktiven Punkt führt nur dessen Aktion aus; Doppeltipp und Halten wirken nur auf dem aktiven Punkt und
+ändern den Zustand nie. Ohne `stickshift:` werden diese Schlüssel eines Zustands ignoriert.
+
+Ein Punkt kann außerdem den Zustand einer eigenen Entity anzeigen, wie eine Griff-Zone: dem Zustand eine `entity` und eine
+`states`-Liste (`value`, `icon`, `color`, `text`) geben. Icon, Farbe und Text des passenden Eintrags ersetzen die des
+Punkts, und der Griff zeigt sie, solange der Punkt aktiv ist. Die `entity` eines Zustands speist nur diese Anzeige: eine
+Aktion wirkt auf die Haupt-Entity, sofern sie nicht eine eigene `entity` nennt. Die `hold_action` unten schaltet um, der Punkt
+zeigt, welcher Wert gilt:
+
+```yaml
+states:
+  - value: "Auto"
+    icon: mdi:solar-power
+    entity: select.lade_min
+    states:
+      - { value: "pv", icon: mdi:solar-power, color: green }
+      - { value: "min", icon: mdi:solar-power-variant-outline, color: orange }
+    hold_action: { action: perform-action, perform_action: script.toggle_lade_min }
+```

@@ -13,7 +13,8 @@ import {
 import {
   ANIMATIONS, COVER_DOMAIN, DEFAULT_FACE_TICKS, MAX_FONT_SIZE, MAX_SCALE_TICKS, MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS,
   MIN_STEP, MIN_THICKNESS, MODE, MODES, SCALE_ALIASES, SCALE_LABEL_PLACEMENTS, DEFAULT_SCALE_LABEL_PLACEMENT,
-  SCALE_TICK_PLACEMENTS, DEFAULT_SCALE_TICK_PLACEMENT, TEXT_AREAS, TEXT_OPTIONS, VALUE_SETTABLE_DOMAINS, scalePositionsFor,
+  SCALE_TICK_PLACEMENTS, DEFAULT_SCALE_TICK_PLACEMENT, STICKSHIFT_MAX_GATE_SIZE, STICKSHIFT_MIN_GATE_SIZE,
+  STICKSHIFT_MIN_POINT_SIZE, TEXT_AREAS, TEXT_OPTIONS, VALUE_SETTABLE_DOMAINS, scalePositionsFor,
 } from "../core/constants.js";
 import { DEFAULT_LANGUAGE, hasTranslation, resolveLanguage, t } from "../core/i18n.js";
 import { isPlainObject, safeCss, toNumber, warn } from "../core/util.js";
@@ -53,10 +54,41 @@ function canDrag(config) {
   return (VALUE_SETTABLE_DOMAINS.includes(domain) || domain === COVER_DOMAIN) && ownBar;
 }
 
+/** The display styles of the state mode: the plain bar, or the bar with the stickshift points. */
+const STYLES = Object.freeze(["standard", "stickshift"]);
+
+/** True when `stickshift` switches the layer on (`true`, or a map that is not `enabled: false`). */
+const stickshiftOn = (value) => value === true || (isPlainObject(value) && value.enabled !== false);
+
+/**
+ * Stickshift options (a section shown while stickshift is on). `labelKey` everywhere: "shape", "size" and "color"
+ * would clash with other labels.
+ * The per-state point actions stay YAML-only (`states`).
+ */
+function stickshiftFields(config, lang) {
+  if (!stickshiftOn(config.stickshift)) return [];
+  return [{
+    ...section("stickshift", t(lang, "editor.section.stickshift"), [
+      { name: "shape", labelKey: "editor.sx_shape", selector: select(HANDLE_SHAPES) },
+      { name: "point_size", labelKey: "editor.sx_point_size", selector: number(STICKSHIFT_MIN_POINT_SIZE, 200) },
+      { name: "point_opacity", labelKey: "editor.sx_point_opacity", selector: number(0, 1, 0.05) },
+      { name: "active_color", labelKey: "editor.sx_active_color", selector: text() },
+      section("gate", t(lang, "editor.section.sx_gate"), [
+        { name: "visible", labelKey: "editor.sx_gate_visible", selector: bool() },
+        { name: "size", labelKey: "editor.sx_gate_size", selector: number(STICKSHIFT_MIN_GATE_SIZE, STICKSHIFT_MAX_GATE_SIZE) },
+        { name: "color", labelKey: "editor.sx_gate_color", selector: text() },
+      ]),
+    ]),
+    labelKey: "editor.section.stickshift",
+  }];
+}
+
 /** Fields that only apply to one mode. */
 function modeFields(mode, lang, config) {
   return {
     [MODE.STATE]: [
+      { name: "style", default: STYLES[0], selector: select(STYLES) },
+      ...stickshiftFields(config, lang),
       { name: "drag", selector: bool() },
       { name: "hold_reverse", selector: bool() },
       { name: "allow_unavailable_actions", selector: bool() },
@@ -246,9 +278,44 @@ export function cleanConfig(data) {
  */
 function formData(config) {
   const { scale, ...base } = config;
-  const rest = withFaceDefaults(base);
+  const rest = withStickshiftForm(withFaceDefaults(base));
   if (scale === true) return { ...rest, scale: { ...DEFAULT_PLACEMENTS, enabled: true } };
   return isPlainObject(scale) ? { ...rest, scale: { ...DEFAULT_PLACEMENTS, ...scale, enabled: true } } : rest;
+}
+
+/** Keys of a `stickshift` map that the form shapes itself: `enabled` is form-only, the gate is a section. */
+const STICKSHIFT_FORM_KEYS = Object.freeze(["enabled", "gate"]);
+
+/** Copy of `map` without the `keys`. */
+const omitKeys = (map, keys) => Object.fromEntries(Object.entries(map).filter(([name]) => !keys.includes(name)));
+
+/** Form shape of `stickshift.gate`(`true` / `false` become a map with the `visible` switch). */
+const gateForm = (gate) => (gate === false ? { visible: false } : isPlainObject(gate) ? { ...gate } : {});
+
+/**
+ * Form data of the display style: `style` ("standard" / "stickshift") is form-only, and a stickshift that is on
+ * becomes a section whose gate the form can show. Without stickshift the data stays as it is (the form
+ * shows the style field's `default`, "standard").
+ */
+function withStickshiftForm(config) {
+  const { stickshift, ...rest } = config;
+  if (!stickshiftOn(stickshift)) return config;
+  const block = isPlainObject(stickshift) ? stickshift : {};
+  const fields = omitKeys(block, STICKSHIFT_FORM_KEYS);
+  return { ...rest, style: "stickshift", stickshift: { ...fields, gate: gateForm(block.gate) } };
+}
+
+/**
+ * Stickshift to store after a form change: the option map, `true` (defaults) or undefined (off). `style` undefined
+ * (a form without the field, i.e. another mode) leaves the stored value alone; so does a block that is off
+ * (`enabled: false`), which the form cannot show.
+ */
+function resolveStickshift(style, block, previous) {
+  if (style === undefined) return previous;
+  if (style !== "stickshift") return previous !== undefined && !stickshiftOn(previous) ? previous : undefined;
+  const source = isPlainObject(block) ? block : {};
+  const options = pruneCleared({ ...omitKeys(source, STICKSHIFT_FORM_KEYS), gate: source.gate });
+  return Object.keys(options).length > 0 ? options : true;
 }
 
 /** The placements a scale has without options: the form shows them, the editor never stores them (`dropDefaultPlacements`). */
@@ -338,10 +405,19 @@ const COLOR_FIELDS = ["bar_color", "fill_color", "handle_color", "text_color", "
 
 const isSet = (value) => value !== undefined && value !== null && value !== "";
 
+/** `[name, value]` of the color options of a `stickshift` map (active point, gate). */
+function stickshiftColors(sx) {
+  return [
+    ["stickshift.active_color", sx.active_color],
+    ["stickshift.gate.color", isPlainObject(sx.gate) ? sx.gate.color : undefined],
+  ];
+}
+
 /** Names (as written in YAML) of the color options in `config` that the card would not accept. */
 function invalidColorFields(config) {
   const entries = COLOR_FIELDS.map((name) => [name, config[name]]);
   if (isPlainObject(config.scale)) entries.push(["scale.color", config.scale.color]);
+  if (isPlainObject(config.stickshift)) entries.push(...stickshiftColors(config.stickshift));
   if (isPlainObject(config.text)) {
     for (const [area, options] of Object.entries(config.text)) {
       if (!isPlainObject(options)) continue;
@@ -468,13 +544,15 @@ export class SlabtonCardEditor extends HTMLElement {
 
   _onChanged(event) {
     event.stopPropagation();
-    const { scale: formScale, ...rest } = event.detail.value ?? {};
+    const { scale: formScale, style, stickshift: formStickshift, ...rest } = event.detail.value ?? {};
     const cleaned = withoutUnusedFace(withoutDefaultFace(cleanConfig(rest)));
+    const stickshift = resolveStickshift(style, formStickshift, this._config.stickshift);
     const resolved = scaleForOrientation(
       resolveScale(formScale, this._config.scale), orientationOf(this._config), orientationOf(cleaned),
     );
     const scale = scaleForThickness(resolved, thicknessOf(this._config), thicknessOf(cleaned));
-    this._config = scale === undefined ? cleaned : { ...cleaned, scale };
+    const withScale = scale === undefined ? cleaned : { ...cleaned, scale };
+    this._config = stickshift === undefined ? withScale : { ...withScale, stickshift };
     this.dispatchEvent(new CustomEvent("config-changed", {
       detail: { config: this._config }, bubbles: true, composed: true,
     }));

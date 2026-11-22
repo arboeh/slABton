@@ -38,6 +38,17 @@ Details zur Cover-Unterstützung (siehe [Modus value](modes.md#covers)):
 - `animation: pulse` lässt den Griff beim Ziehen bei jedem Schritt aufploppen, in jedem Modus, nicht nur bei Covers (es läuft bei jeder Änderung des gezeigten Werts). Mit `slide` entfällt das.
 - Bekannte Grenze: Die gezogene Position bleibt, bis das Cover eine Bewegung meldet. Bekommt das Cover vor dem Losfahren ein neues State-Objekt (zum Beispiel ein Attribut-Update), kann der Griff kurz auf die gemeldete Position zurückspringen.
 
+## Stickshift
+
+Details zu `stickshift:` (siehe [Modus state](modes.md#stickshift)):
+
+- Konfigurationsschlüssel: `enabled`, `shape`, `point_size`, `point_opacity`, `active_color`, `gate`. Unbekannte Schlüssel werden mit Warnung ignoriert; ein ungültiges `shape` ist ein Fehler, wie bei `handle_shape`.
+- Die Punkte entstehen zur Laufzeit aus den Zuständen, die die Karte verwendet (`states:`, sonst `options` / `hvac_modes`); Entity-Zustände erscheinen also ohne Konfiguration. Weniger als zwei Zustände zeigen keine Punkte.
+- `tap_action`, `double_tap_action` und `hold_action` eines Zustands werden nur aus `states:` gelesen. Aus der Entity abgeleitete Zustände haben keine.
+- Ein Zustandswechsel über einen Punkt, ein Ziehen oder eine Taste setzt erst den Zustand und führt danach die `tap_action` des neuen Zustands aus. Der Service-Aufruf des Zustandswechsels ändert sich dadurch nicht.
+- Nicht unterstützt: Stickshift in den anderen Modi, mit `bar.attribute` auf der Haupt-Entity, mit einem Griff, der dem Zustand nicht folgt (`handle_position` außer `flex` wird auf `flex` zurückgesetzt).
+- Bekannte Grenze: Die Punktgröße ist der einzige Schutz gegen Überlappen; ohne `length` hat die Bar ihre natürliche Breite und die Karte kann nicht warnen.
+
 ## Entwicklung
 
 ```bash

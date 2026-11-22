@@ -115,3 +115,43 @@ The card takes 6 columns horizontal (3 vertical; a vertical card with a wider ha
 - `grid_options: rows: <number>` in the card config: remove it for the same reason.
 - `grid_options: columns: ...` (and the other keys) still override the card's defaults, key by key. Use it to widen the
   card, for example `columns: 12` for the full width.
+
+## Stickshift actions
+
+With [`stickshift:`](modes.md#stickshift) every entry of `states` can have its own `tap_action`, `double_tap_action` and
+`hold_action`. They use the same action syntax as the card, and an action can name its own `entity`, independent of the main entity
+(the same way as for the handle zones above):
+
+```yaml
+type: custom:slabton-card
+entity: input_select.charge_mode
+stickshift: true
+states:
+  - { value: "Stop", icon: mdi:stop }
+  - value: "Auto"
+    icon: mdi:flash-auto
+    tap_action: { action: toggle, entity: switch.charger }
+  - value: "Boost"
+    icon: mdi:flash
+    hold_action: { action: more-info, entity: sensor.charger_power }
+```
+
+The `tap_action` of a point runs after the state change that lands on it (tap on the point, drag, arrow key). A tap on the active
+point runs only its action; double tap and hold only work on the active point and never change the state. Without
+`stickshift:` these keys of a state are ignored.
+
+A point can also show the state of an entity of its own, like a handle zone: give the state an `entity` and a `states` list
+(`value`, `icon`, `color`, `text`). Icon, color and text of the matching entry replace those of the point, and the handle
+shows them while the point is active. The `entity` of a state only feeds this display: an action acts on the main entity unless it names
+its own `entity`. The `hold_action` below toggles a flag, the point shows whether it is on:
+
+```yaml
+states:
+  - value: "Auto"
+    icon: mdi:solar-power
+    entity: select.charge_min
+    states:
+      - { value: "pv", icon: mdi:solar-power, color: green }
+      - { value: "min", icon: mdi:solar-power-variant-outline, color: orange }
+    hold_action: { action: perform-action, perform_action: script.toggle_charge_min }
+```

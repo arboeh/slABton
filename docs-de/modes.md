@@ -47,6 +47,63 @@ Mit `bar_state_color: true` färbt sich die ganze Bar in der Farbe des aktuellen
 
 Switches können mit `states` den Zustand ihrer Entity zeigen, der Griff mit `handle_zones` je Zone eigene Aktionen und ein Icon haben: siehe [Switch-Zustände und Griff-Zonen](configuration.md#switch-zustande-und-griff-zonen).
 
+### Stickshift
+
+`stickshift:` ersetzt die Bar durch eine feste Schaltkulisse (die Bar selbst, ihre Füllung und ihr Rand entfallen) mit einem direkt anklickbaren Punkt je Zustand (wie
+die Schaltkulisse einer Automatik-Schaltung): `O---O---O---O`. Die Punkte liegen gleichmäßig verteilt hinter dem
+Griff, der Griff ruht auf dem Punkt des aktiven Zustands. Ein Tipp auf einen beliebigen Punkt springt direkt in
+diesen Zustand (0 auf 3 ohne 1 und 2); Ziehen des Griffs rastet wie bisher auf einem Punkt ein. Jeder Zustand kann
+zusätzlich eine eigene Aktion ausführen, unabhängig von der Haupt-Entity.
+
+```yaml
+type: custom:slabton-card
+entity: input_select.heizung_modus
+name: Heizung
+stickshift: true
+states:
+  - { value: "Aus", icon: mdi:power }
+  - { value: "Auto", icon: mdi:calendar-clock }
+  - value: "An"
+    icon: mdi:fire
+    tap_action:
+      action: perform-action
+      perform_action: script.turn_on
+      target: { entity_id: script.boost }
+  - { value: "Idle", icon: mdi:sleep }
+```
+
+`stickshift: true` nimmt die Standardwerte; eine Map schaltet ihn durch ihr Vorhandensein ein (`enabled: false`
+schaltet wieder aus). Nur der Modus `state` unterstützt ihn; anderswo wird er mit Konsolenwarnung ignoriert, ebenso
+bei `bar.attribute` auf der Haupt-Entity und bei nur einem konfigurierten Zustand; ein `handle_position` außer `flex`
+wird auf `flex` zurückgesetzt. Der visuelle Editor bietet die Auswahl **Darstellung: Standard / Stickshift** und die
+Optionen unten; die Aktionen je Zustand bleiben YAML-only.
+
+| Option | Standard | Beschreibung |
+| --- | --- | --- |
+| `shape` | `round` | Form der Punkte: `round`, `oval`, `square` |
+| `point_size` | 80 % von `handle_size` | Punktgröße in px (8 bis `handle_size`, nie größer als der Griff) |
+| `point_opacity` | `0.35` | Deckkraft der Punkte (0 bis 1), deutlich schwächer als der Griff; Hover und Fokus erhöhen sie |
+| `active_color` | `color` des Zustands | Icon-Farbe des Griffs am aktiven Punkt (CSS-Farbe) |
+| `gate` | dünne Linie | Nur zwischen den Punkten, von Punktrand zu Punktrand. `false` blendet sie aus, oder eine Map: `visible` (`true`), `size` in px (`4`, 1 bis 40), `color`. Fester Stil: keine Zustandsfarbe, keine Fortschrittsfüllung |
+
+Inaktive Punkte zeigen, was der Griff in diesem Zustand zeigt: das `icon`, sonst `text`, `label` oder den `value`,
+in der `color` des Zustands. Die Punkte sind echte Buttons mit dem `label` (sonst dem `value`) als zugänglichem
+Namen; der aktive trägt `aria-current`.
+
+Aktionen je Zustand (`tap_action`, `double_tap_action`, `hold_action`, je mit optionaler eigener `entity` wie bei den
+[Griff-Zonen](configuration.md#switch-zustande-und-griff-zonen)):
+
+- Tipp auf einen inaktiven Punkt: erst der Zustandswechsel, dann die `tap_action` dieses Punkts. Den Griff auf einen
+  Punkt ziehen oder eine Pfeiltaste, die dort landet, macht dasselbe.
+- Tipp auf den aktiven Punkt (den Griff): nur dessen `tap_action`, kein Zustandswechsel. Ohne eine gilt die
+  Karten-Aktion oder der Modus-Standard (durchschalten).
+- Doppeltipp und Halten führen die `double_tap_action` / `hold_action` nur des aktiven Punkts (des Griffs) aus, ohne den Zustand
+  zu ändern. Auf einem inaktiven Punkt ist langes Drücken nur ein Tipp: es wählt den Zustand.
+- Pfeiltasten schalten wie bisher; Enter und Leertaste wählen den fokussierten Punkt.
+
+Bei vielen Zuständen können sich die Punkte auf einer kurzen Bar überlappen; die Karte warnt, wenn `length` für die
+Punkte zu klein ist (`states` in der Konfiguration gelistet). Farben und CSS-Variablen: [Aussehen](appearance.md#stickshift).
+
 ## Modus `lock`
 
 ![Modus lock](/assets/shots/lock-light.png#only-light)

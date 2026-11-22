@@ -7,12 +7,15 @@
 
 import {
   ACTION, ACTION_TYPES, ANIMATIONS, CLOCK_FACE_NUMBERS, CLOCK_FACE_OPTIONS, CLOCK_LABEL_STEP,
-  CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, COVER_DOMAIN, COVER_POSITION_UNIT, DEFAULT_ANIMATION, DEFAULT_FACE_TICKS, DEFAULT_SCALE_LABEL_PLACEMENT,
+  CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, COVER_DOMAIN, HANDLE_FLEX, COVER_POSITION_UNIT, DEFAULT_ANIMATION, DEFAULT_FACE_TICKS, DEFAULT_SCALE_LABEL_PLACEMENT,
   DEFAULT_SCALE_POSITION, DEFAULT_SCALE_TICK_PLACEMENT,
   DEFAULT_SCALE_TICKS, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES, MAX_FONT_SIZE, MAX_SCALE_TICKS,
   MAX_THICKNESS, MIN_ANALOG_HANDLE_SIZE, MIN_DIAL_NUMBERS_SIZE, MIN_DIAL_QUARTERS_SIZE, MIN_FONT_SIZE, MIN_LABEL_THICKNESS,
-  MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_STEP, MIN_THICKNESS, OFF_VALUES, READ_ONLY_MODES, SCALE_ALIASES, SCALE_AXIS_POSITIONS,
-  SCALE_LABEL_PLACEMENTS, SCALE_OPTIONS, SCALE_TICK_PLACEMENTS, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS, VALUE_SETTABLE_DOMAINS,
+  MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_STEP, MIN_THICKNESS, OFF_VALUES, OVAL_RATIO, READ_ONLY_MODES, SCALE_ALIASES,
+  SCALE_AXIS_POSITIONS, SCALE_LABEL_PLACEMENTS, SCALE_OPTIONS, SCALE_TICK_PLACEMENTS, STICKSHIFT_DEFAULT_GATE_SIZE,
+  STICKSHIFT_DEFAULT_OPACITY, STICKSHIFT_MAX_GATE_SIZE, STICKSHIFT_MIN_GATE_SIZE,
+  STICKSHIFT_MIN_POINT_SIZE, STICKSHIFT_OPTIONS, STICKSHIFT_POINT_RATIO, TEXT_AREAS, TEXT_OPTIONS, TOGGLE_DOMAINS,
+  VALUE_SETTABLE_DOMAINS,
 } from "./constants.js";
 import { unknownPlaceholders } from "./placeholders.js";
 import { isValidTimeZone } from "./time.js";
@@ -71,6 +74,7 @@ export const DEFAULTS = {
   animation: DEFAULT_ANIMATION,
 };
 
+const STICKSHIFT_GATE_OPTIONS = ["visible", "size", "color"];
 const COLOR_KEYS = ["bar_color", "fill_color", "handle_color", "text_color", "border_color"];
 const STYLE_KEY_RE = /^(--slabton-[a-z0-9-]+|[a-z0-9][a-z0-9-]*)$/;
 
@@ -153,7 +157,12 @@ function normalizeTriggers(raw, prefix = "") {
   };
 }
 
-function normalizeStates(list) {
+/**
+ * `actions`: stickshift points. Keeps the own tap, double tap and hold action of every state and an own `entity` whose
+ * `states` (icon, color, text per entity state) set what the point and the handle show, like `handle_zones`. Off for
+ * the states of switches and handle zones, which do not use them.
+ */
+function normalizeStates(list, { actions = false } = {}) {
   if (list == null) return [];
   if (!Array.isArray(list)) throw new Error("slabton-card: states must be a list");
   return list.map((entry, i) => {
@@ -167,8 +176,18 @@ function normalizeStates(list) {
       icon: str(item.icon),
       text: str(item.text),
       color: safeCss(item.color, null),
+      ...(actions ? normalizePointExtras(item, i) : {}),
     };
   });
+}
+
+/** Stickshift point: own actions plus the optional own entity and its display `states`. */
+function normalizePointExtras(item, i) {
+  return {
+    ...normalizeTriggers(item, `states[${i}].`),
+    entity: item.entity == null ? null : checkEntity(item.entity, `states[${i}].entity`),
+    states: normalizeStates(item.states),
+  };
 }
 
 /** Warn once at config time when free state values cannot be set on an on/off domain. */
@@ -241,6 +260,82 @@ function normalizeHandleZones(raw) {
     };
   }
   return out;
+}
+
+/** True when the `stickshift` value switches the layer on (`true` or a map that is not `enabled: false`). */
+function stickshiftRequested(raw) {
+  return raw === true || (isPlainObject(raw) && raw.enabled !== false);
+}
+
+/** Why stickshift cannot be used with this config (text for the warning), or null. */
+function stickshiftBlocker(mode, { states, barOwnAttribute }) {
+  if (mode !== MODE.STATE) return `is only available in mode "state" (is "${mode}")`;
+  if (barOwnAttribute) return "cannot be combined with bar.attribute of the main entity (the handle sits on the measured value)";
+  if (states.length === 1) return "needs at least two states (states lists one)";
+  return null;
+}
+
+/** `stickshift.gate`: the line behind the points. `true` / missing = defaults, `false` = hidden. */
+function normalizeGate(raw) {
+  const defaults = { visible: true, size: STICKSHIFT_DEFAULT_GATE_SIZE, color: null };
+  if (raw == null || raw === true) return defaults;
+  if (raw === false) return { ...defaults, visible: false };
+  if (!isPlainObject(raw)) throw new Error("slabton-card: stickshift.gate must be true, false or a map");
+  for (const key of Object.keys(raw)) {
+    if (!STICKSHIFT_GATE_OPTIONS.includes(key)) warn(`stickshift.gate.${key} is not a known option and was ignored`);
+  }
+  return {
+    visible: raw.visible !== false,
+    size: toNumber(raw.size, defaults.size, STICKSHIFT_MIN_GATE_SIZE, STICKSHIFT_MAX_GATE_SIZE),
+    color: textColor(raw.color, "stickshift.gate.color"),
+  };
+}
+
+/** Warn when the points are wider than the configured bar length (they would overlap). */
+function warnCrowdedPoints(shape, size, { length, states }) {
+  const along = shape === "oval" ? size * OVAL_RATIO : size;
+  if (length > 0 && states.length * along > length) {
+    warn(`stickshift: ${states.length} points of ${Math.round(along)} px do not fit the bar length of ${length} px; they will overlap`);
+  }
+}
+
+/**
+ * The `stickshift:` block (state mode): fixed gate with one clickable point per state. `true` = defaults, a map
+ * turns it on by its presence (`enabled: false` = off), missing/`false` = off (null). A mode or config it cannot work
+ * with warns and gives null. `context`: the resolved layout, the configured states and `barOwnAttribute`.
+ */
+function normalizeStickshift(raw, mode, context) {
+  if (isBlank(raw) || raw === false) return null;
+  if (raw !== true && !isPlainObject(raw)) throw new Error("slabton-card: stickshift must be true, false or a map");
+  const source = raw === true ? {} : raw;
+  if (source.enabled === false) return null;
+  const blocker = stickshiftBlocker(mode, context);
+  if (blocker) {
+    warn(`stickshift ${blocker} and was ignored`);
+    return null;
+  }
+  for (const key of Object.keys(source)) {
+    if (!STICKSHIFT_OPTIONS.includes(key)) warn(`stickshift.${key} is not a known option and was ignored`);
+  }
+  const handleSize = context.layout.handle_size;
+  const shape = pickEnum(source.shape, HANDLE_SHAPES, DEFAULTS.handle_shape, "stickshift.shape");
+  const fallbackSize = Math.max(STICKSHIFT_MIN_POINT_SIZE, Math.round(handleSize * STICKSHIFT_POINT_RATIO));
+  const size = toNumber(source.point_size, fallbackSize, STICKSHIFT_MIN_POINT_SIZE, handleSize);
+  warnCrowdedPoints(shape, size, { length: context.layout.length, states: context.states });
+  return {
+    shape,
+    point_size: size,
+    point_opacity: toNumber(source.point_opacity, STICKSHIFT_DEFAULT_OPACITY, 0, 1),
+    active_color: textColor(source.active_color, "stickshift.active_color"),
+    gate: normalizeGate(source.gate),
+  };
+}
+
+/** The handle rests on the point of its state: only the flexible handle position can do that (warns otherwise). */
+function stickshiftLayout(layout) {
+  if (layout.handle_position === HANDLE_FLEX) return layout;
+  warn(`stickshift needs handle_position "flex" (is "${layout.handle_position}"); using "flex"`);
+  return { ...layout, handle_position: HANDLE_FLEX };
 }
 
 /** Bar and handle geometry options. */
@@ -751,10 +846,13 @@ export function normalizeConfig(raw) {
   const { source, barEntity, barAttribute } = resolveBar(raw, entity);
   const preset = pickEnum(source.preset, PRESET_NAMES, "none", "preset");
   const presetDefaults = PRESETS[preset] ?? coverDefaults(mode, domain, barEntity);
-  const states = normalizeStates(raw.states);
+  const states = normalizeStates(raw.states, { actions: stickshiftRequested(raw.stickshift) });
   if (mode === MODE.STATE) warnUnreachableStates(states, domain);
   warnUnusedKeys(raw, mode);
-  const layout = normalizeLayout(raw, mode);
+  const barOwnAttribute = Boolean(barAttribute && barEntity === entity);
+  const plainLayout = normalizeLayout(raw, mode);
+  const stickshift = normalizeStickshift(raw.stickshift, mode, { states, barOwnAttribute, layout: plainLayout });
+  const layout = stickshift ? stickshiftLayout(plainLayout) : plainLayout;
   const clock = mode === MODE.CLOCK ? normalizeClock(raw, layout) : { ...CLOCK_DEFAULTS, face: { ...CLOCK_FACE_DEFAULTS } };
   const counter = mode === MODE.COUNTER ? normalizeCounter(raw) : { ...COUNTER_DEFAULTS };
   const range = normalizeRange(source, presetDefaults);
@@ -769,7 +867,7 @@ export function normalizeConfig(raw) {
     bar_entity: barEntity,
     bar_attribute: barAttribute,
     // The bar measures an attribute of the main entity itself (no separate `bar.entity`).
-    bar_own_attribute: Boolean(barAttribute && barEntity === entity),
+    bar_own_attribute: barOwnAttribute,
     bar_text: normalizeText(raw.bar_text, "bar_text", mode),
     counter,
     timer: mode === MODE.TIMER ? normalizeTimer(raw) : { ...TIMER_DEFAULTS },
@@ -787,6 +885,7 @@ export function normalizeConfig(raw) {
     ...range,
     switches: normalizeSwitches(raw.switches),
     handle_zones: normalizeHandleZones(raw.handle_zones),
+    stickshift,
     text: normalizeTextStyle(raw.text),
   };
 }

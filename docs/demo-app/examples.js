@@ -15,6 +15,20 @@ states:
 `,
   },
   {
+    id: "stickshift",
+    label: "State, stickshift",
+    yaml: `type: custom:slabton-card
+entity: input_select.heating_mode
+name: Stickshift
+stickshift: true
+states:
+  - { value: "Off", icon: mdi:power, color: blue }
+  - { value: "Auto", icon: mdi:calendar-clock, color: green }
+  - { value: "On", icon: mdi:fire, color: red }
+  - { value: "Idle", icon: mdi:sleep, color: orange }
+`,
+  },
+  {
     id: "overhang",
     label: "State, handle overhang",
     yaml: `type: custom:slabton-card

@@ -25,7 +25,9 @@ import * as stateMode from "../core/modes/state.js";
 import * as timerMode from "../core/modes/timer.js";
 import * as valueMode from "../core/modes/value.js";
 import { renderTemplate } from "../core/placeholders.js";
-import { matchState, renderCard, updateSwitches, updateView, zoneOf } from "./render.js";
+import {
+  matchState, renderCard, renderPoints, stickshiftSignature, updatePointContent, updatePoints, updateSwitches, updateView, zoneOf,
+} from "./render.js";
 import { applyVars, buildCss, cardHeightPx, gridColumns, handleDimensions } from "./styles.js";
 import { isUnavailable, resolveHandlePosition, safeUrl, unavailableReason, warn } from "../core/util.js";
 import { SlabtonCardEditor } from "./editor.js";
@@ -63,6 +65,8 @@ export class SlabtonCard extends HTMLElement {
     this._mode = null;
     this._varKeys = [];
     this._interactions = [];
+    // Stickshift points: rebuilt whenever the list of states changes, so they are kept apart.
+    this._pointInteractions = [];
     this._pending = null;
     this._pendingTimer = null;
     this._dragPos = null;
@@ -192,7 +196,9 @@ export class SlabtonCard extends HTMLElement {
   _entities() {
     const switches = Object.values(this._config.switches).map((s) => s.entity);
     const zones = Object.values(this._config.handle_zones).map((z) => z.entity);
-    return [this._config.entity, this._config.bar_entity, ...switches, ...zones].filter(Boolean);
+    // Stickshift points show the state of their own entity: a change of it redraws the card, too.
+    const points = this._config.stickshift ? this._config.states.map((state) => state.entity) : [];
+    return [this._config.entity, this._config.bar_entity, ...switches, ...zones, ...points].filter(Boolean);
   }
 
   _relevantChanged(previous, next) {
@@ -289,10 +295,12 @@ export class SlabtonCard extends HTMLElement {
     const pos = handleOnBar ? resolveHandlePosition(config, bar.frac, bar.frac > 0) : view.pos;
     const zone = config.handle_zones[zoneOf(pos)];
     const zoneState = zone ? matchState(zone.states, zone.entity ? this._hass?.states?.[zone.entity] : null) : null;
+    // Stickshift: the active point with an own entity shows that entity's state (above the zone and the main state).
+    const pointState = this._pointMatch(this._activeEntry());
     return {
       ...view,
-      icon: zoneState?.icon ?? zone?.icon ?? view.icon,
-      iconColor: zoneState?.color ?? null,
+      icon: pointState?.icon ?? zoneState?.icon ?? zone?.icon ?? view.icon,
+      iconColor: pointState?.color ?? zoneState?.color ?? this._stickshiftIconColor(view),
       pos,
       unavailable: Boolean(view.unavailable) || barBroken,
       blocked: Boolean(view.unavailable),
@@ -305,6 +313,13 @@ export class SlabtonCard extends HTMLElement {
       barText: config.bar_text ? renderTemplate(config.bar_text, values, config.mode) : null,
       info: config.timer.info ? renderTemplate(config.timer.info, values, config.mode) : null,
     };
+  }
+
+  /** Stickshift: icon color of the handle on the active point (`active_color`, else the color of the state). */
+  _stickshiftIconColor(view) {
+    const sx = this._config.stickshift;
+    // No active point (state not among the points): nothing to mark.
+    return sx && this._activeEntry() ? (sx.active_color ?? view.color ?? null) : null;
   }
 
   /**
@@ -339,7 +354,110 @@ export class SlabtonCard extends HTMLElement {
     updateView(this._refs, this._config, view, { dragPos: this._dragPos });
     this._syncNoDrag();
     updateSwitches(this._refs, this._config, this._hass);
+    this._syncStickshift();
     this._syncTick(view);
+  }
+
+  // --- stickshift ---------------------------------------------------------
+
+  /** Value of the active state: the optimistic value while a change is pending, else the entity's state. */
+  _currentValue() {
+    return this._pendingValue() ?? this._stateObj()?.state;
+  }
+
+  /** The state entry (with its own actions) for `value`, else undefined. */
+  _stateEntry(value) {
+    return stateMode.resolveStates(this._config, this._stateObj()).find((entry) => entry.value === value);
+  }
+
+  /** Stickshift only: the entry of the active state (its actions rank above the zone's and the card's). */
+  _activeEntry() {
+    return this._config.stickshift ? this._stateEntry(this._currentValue()) : undefined;
+  }
+
+  /** The `states` entry of the point's own entity that matches its current state, else null (no own entity). */
+  _pointMatch(entry) {
+    if (!entry?.entity || !entry.states?.length) return null;
+    return matchState(entry.states, this._hass?.states?.[entry.entity]);
+  }
+
+  /** The point as shown: icon, color and text of the matching state of its own entity win over its own. */
+  _pointDisplay(entry) {
+    const match = this._pointMatch(entry);
+    if (!match) return entry;
+    return { ...entry, icon: match.icon ?? entry.icon, color: match.color ?? entry.color, text: match.text ?? entry.text };
+  }
+
+  /** Keep the points in step with the states of the entity; they are rebuilt only when the list changed. */
+  _syncStickshift() {
+    if (!this._config.stickshift) return;
+    const all = stateMode.resolveStates(this._config, this._stateObj()).map((entry) => this._pointDisplay(entry));
+    // Fewer than two states leave nothing to choose from.
+    const states = all.length >= 2 ? all : [];
+    if (this._refs.pointSignature !== stickshiftSignature(states)) this._rebuildPoints(states);
+    updatePointContent(this._refs, states);
+    updatePoints(this._refs, states.findIndex((entry) => entry.value === this._currentValue()), this._blocked);
+  }
+
+  _rebuildPoints(states) {
+    for (const interaction of this._pointInteractions) interaction.destroy();
+    const buttons = renderPoints(this._refs, this._config, states);
+    this._pointInteractions = buttons.map((button, i) => this._bindPoint(button, states[i]));
+  }
+
+  _bindPoint(button, state) {
+    const config = this._config;
+    return createInteraction({
+      horizontal: config.orientation === "horizontal",
+      reversed: config.direction === "rtl",
+      handle: button,
+      // Double tap and hold belong to the active point (the handle): an inactive point only selects its state.
+      hasDoubleTap: () => !this._blocked && this._isActivePoint(state) && hasAction(state.double_tap_action),
+      hasHold: () => !this._blocked && this._isActivePoint(state) && hasAction(state.hold_action),
+      onTap: () => this._pointTap(state),
+      onDoubleTap: () => this._runPointAction(state, "double_tap_action"),
+      onHold: () => this._runPointAction(state, "hold_action"),
+      onStep: (step) => this._step(step),
+    });
+  }
+
+  /**
+   * Tap on a point. An inactive point selects its state at once (any distance) and then runs its own tap action;
+   * the active point only runs its own action (else the card's or the mode's default), without a state change.
+   */
+  _pointTap(state) {
+    if (this._blocked) return;
+    if (state.value === this._currentValue()) {
+      this._runTrigger("tap_action");
+      return;
+    }
+    this._runAction(stateMode.selectAction(this._config, state.value));
+    this._setPending(state.value);
+    this._runPointAction(state, "tap_action");
+    this._update();
+  }
+
+  _isActivePoint(state) {
+    return state.value === this._currentValue();
+  }
+
+  /** Run the own action of a point (double tap and hold only run on the active point, never change the state). */
+  _runPointAction(entry, kind) {
+    if (this._blocked || !this._config.stickshift) return;
+    const action = entry?.[kind];
+    // A point action that cycles lands on the next point, whose action may cycle again: no re-entry.
+    if (!hasAction(action) || this._runningPointAction) return;
+    this._runningPointAction = true;
+    try {
+      this._runAction(action);
+    } finally {
+      this._runningPointAction = false;
+    }
+  }
+
+  /** The handle arrived on the point of `value` (drag, key or cycle): run that point's tap action. */
+  _runArrivalAction(value) {
+    if (this._config.stickshift) this._runPointAction(this._stateEntry(value), "tap_action");
   }
 
   /**
@@ -355,8 +473,9 @@ export class SlabtonCard extends HTMLElement {
   // --- interaction --------------------------------------------------------
 
   _teardown() {
-    for (const interaction of this._interactions) interaction.destroy();
+    for (const interaction of [...this._interactions, ...this._pointInteractions]) interaction.destroy();
     this._interactions = [];
+    this._pointInteractions = [];
     this._clearPending();
     this._stopTick();
     this._dragPos = null;
@@ -365,16 +484,24 @@ export class SlabtonCard extends HTMLElement {
     this._noticed.clear();
   }
 
-  /** Own action of the handle zone the handle sits in, else the card action, else the mode default. */
+  /**
+   * Own action of the active stickshift point, else of the handle zone the handle sits in, else the card action,
+   * else the mode default.
+   */
   _actionFor(kind) {
     const zone = this._config.handle_zones[zoneOf(this._view().pos)];
-    return zone?.[kind] ?? this._config[kind] ?? this._mode.defaultActions(this._config, this._stateObj())[kind];
+    return this._activeEntry()?.[kind] ?? zone?.[kind] ?? this._config[kind]
+      ?? this._mode.defaultActions(this._config, this._stateObj())[kind];
   }
 
-  /** Run the action for `kind`; an action of a zone with its own entity acts on that entity (like a switch). */
+  /**
+   * Run the action for `kind`; an action of a zone with its own entity acts on that entity (like a switch). An
+   * action of a point carries its own `entity` and never takes the zone's.
+   */
   _runTrigger(kind) {
     const zone = this._config.handle_zones[zoneOf(this._view().pos)];
-    this._runAction(this._actionFor(kind), zone?.[kind] ? (zone.entity ?? undefined) : undefined);
+    const zoneOwn = !this._activeEntry()?.[kind] && zone?.[kind];
+    this._runAction(this._actionFor(kind), zoneOwn ? (zone.entity ?? undefined) : undefined);
   }
 
   _bind() {
@@ -460,6 +587,7 @@ export class SlabtonCard extends HTMLElement {
     if (!result) return;
     this._runAction(result.action);
     this._setPending(result.pending);
+    this._runArrivalAction(result.pending);
   }
 
   /** Arrow keys. Lock mode ignores them on purpose: one stray key press must not (un)lock. */
@@ -489,6 +617,7 @@ export class SlabtonCard extends HTMLElement {
     if (!result) return;
     this._runAction(result.action);
     this._setPending(result.value);
+    this._runArrivalAction(result.value);
     this._update();
   }
 

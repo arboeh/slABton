@@ -44,6 +44,7 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Covers (`cover.*`): Ziehen setzt die Position, Tippen öffnet oder schließt, Halten stoppt, die Fahrt wird live gezeigt
 - Bar-Wert aus einem Entity-Attribut (`bar.attribute`), zum Beispiel Cover-Position oder Climate-Temperatur
 - Switches zeigen den Zustand ihrer eigenen Entity (Icon und Icon-Farbe je Zustand, `switches.<slot>.states`); der Griff hat je Zone eigene Aktionen und ein Icon (`handle_zones`)
+- Stickshift (`stickshift:`): feste Schaltkulisse mit einem anklickbaren Punkt je Zustand, ein Tipp springt direkt in einen Zustand, optional eigene Aktion je Punkt
 - Farben, Schriftgrößen und CSS-Variablen; Theme-fähig; beachtet reduzierte Bewegung
 - Texte auf Deutsch und Englisch, visueller Editor
 

@@ -37,6 +37,17 @@ Details of the cover support (see [Mode value](modes.md#covers)):
 - `animation: pulse` also makes the handle pop on every step while dragging, in every mode, not only for covers (it plays whenever the shown value changes). Use `slide` to avoid it.
 - Known limit: the dragged position is kept until the cover reports a movement. If the cover entity gets a new state object before it starts moving (for example an attribute update), the handle can briefly return to the reported position.
 
+## Stickshift
+
+Details of `stickshift:` (see [Mode state](modes.md#stickshift)):
+
+- Config keys: `enabled`, `shape`, `point_size`, `point_opacity`, `active_color`, `gate`. Unknown keys are ignored with a warning; an invalid `shape` is an error, like `handle_shape`.
+- The points are built at runtime from the states the card uses (`states:`, else `options` / `hvac_modes`), so entity states appear without any config. Fewer than two states show no points.
+- The `tap_action`, `double_tap_action` and `hold_action` of a state are read from `states:` only. States derived from the entity have none.
+- A state change through a point, a drag or a key presses the state first and runs the `tap_action` of the new state afterwards. The service call of the state change is not changed by it.
+- Not supported: stickshift in the other modes, with `bar.attribute` on the main entity, with a handle that does not follow the state (`handle_position` other than `flex` is set back to `flex`).
+- Known limit: the point size is the only guard against overlap; with `length` unset the bar has its natural width and the card cannot warn.
+
 ## Development
 
 ```bash

@@ -231,3 +231,31 @@ Skala: `--slabton-scale-size` und `--slabton-scale-color` setzen `scale.size` un
 Skala-Beschriftung: `--slabton-scale-label-size` und `--slabton-scale-label-color` (gesetzt durch `text.scale`).
 Analoguhr: `--slabton-dial-color` (Striche und Ziffern), `--slabton-hands-color` (Stunden- und Minutenzeiger, Nabe)
 und `--slabton-second-hand-color` (Standard: Primärfarbe).
+
+## Stickshift
+
+Aussehen der Punkte, und der Kulisse des [Stickshift](modes.md#stickshift). Die Optionen setzen diese Variablen, `styles:` kann sie überschreiben:
+
+| Variable | Gesetzt durch | Standard |
+| --- | --- | --- |
+| `--slabton-sx-d` | `point_size` | 80 % von `handle_size` |
+| `--slabton-sx-opacity` | `point_opacity` | `0.35` |
+| `--slabton-sx-gate-size` | `gate.size` | `4px` |
+| `--slabton-sx-gate-color` | `gate.color` | Textfarbe mit 25 % |
+
+```yaml
+type: custom:slabton-card
+entity: input_select.heizung_modus
+stickshift:
+  shape: square
+  active_color: white
+  gate: { size: 3, color: grey }
+states:
+  - { value: "Aus", icon: mdi:power, color: blue }
+  - { value: "Auto", icon: mdi:calendar-clock, color: green }
+  - { value: "An", icon: mdi:fire, color: red }
+```
+
+Die Kulisse läuft nur zwischen den Punkten (von Rand zu Rand, nicht dahinter) und hat einen festen Stil: keine Zustandsfarbe und keine Fortschrittsfüllung (`bar_state_color` färbt die Bar,
+nicht die Kulisse). Das Griff-Icon nimmt `active_color`, sonst die `color` des Zustands. Bei `prefers-reduced-motion`
+animieren die Punkte nicht.

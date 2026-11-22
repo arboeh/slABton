@@ -44,6 +44,7 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Covers (`cover.*`): drag sets the position, tap opens or closes, hold stops, travel is shown live
 - Bar value from an entity attribute (`bar.attribute`), for example cover position or climate temperature
 - Switches show the state of their own entity (icon and icon color per state, `switches.<slot>.states`); the handle has its own actions and icon per zone (`handle_zones`)
+- Stickshift (`stickshift:`): a fixed gate with one clickable point per state, a tap jumps straight to a state, optional own action per point
 - Colors, font sizes and CSS variables; theme aware; respects reduced motion
 - English and German texts, visual editor
 

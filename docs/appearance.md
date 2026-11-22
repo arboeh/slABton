@@ -230,3 +230,30 @@ Scale: `--slabton-scale-size` and `--slabton-scale-color` are set by `scale.size
 Scale labels: `--slabton-scale-label-size` and `--slabton-scale-label-color` (set by `text.scale`).
 Analog dial: `--slabton-dial-color` (ticks and numbers), `--slabton-hands-color` (hour and minute hand, hub) and
 `--slabton-second-hand-color` (default: primary color).
+
+## Stickshift
+
+Looks of the [stickshift](modes.md#stickshift) points and gate. The options set these variables, `styles:` can override them:
+
+| Variable | Set by | Default |
+| --- | --- | --- |
+| `--slabton-sx-d` | `point_size` | 80 % of `handle_size` |
+| `--slabton-sx-opacity` | `point_opacity` | `0.35` |
+| `--slabton-sx-gate-size` | `gate.size` | `4px` |
+| `--slabton-sx-gate-color` | `gate.color` | text color at 25 % |
+
+```yaml
+type: custom:slabton-card
+entity: input_select.heating_mode
+stickshift:
+  shape: square
+  active_color: white
+  gate: { size: 3, color: grey }
+states:
+  - { value: "Off", icon: mdi:power, color: blue }
+  - { value: "Auto", icon: mdi:calendar-clock, color: green }
+  - { value: "On", icon: mdi:fire, color: red }
+```
+
+The gate runs only between the points (from edge to edge, not behind them) and has a fixed style: no state color and no progress fill (`bar_state_color` colors the bar, not the gate). The
+handle icon takes `active_color`, else the `color` of the state. With `prefers-reduced-motion` the points do not animate.

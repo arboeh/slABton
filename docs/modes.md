@@ -47,6 +47,62 @@ Color the whole bar in the color of the current state with `bar_state_color: tru
 
 Switches can show the state of their entity with `states`, the handle can have actions and an icon per zone with `handle_zones`: see [Switch states and handle zones](configuration.md#switch-states-and-handle-zones).
 
+### Stickshift
+
+`stickshift:` replaces the bar with a fixed gate (the bar itself, its fill and border are not drawn) with one directly clickable point per state (like the gear gate of
+an automatic stickshift): `O---O---O---O`. The points sit evenly spread behind the handle, the handle rests on the
+point of the active state. Tap any point to jump straight to its state (0 to 3 without passing 1 and 2); dragging
+the handle snaps to a point as before. Every state can also run an action of its own, independent of the main entity.
+
+```yaml
+type: custom:slabton-card
+entity: input_select.heating_mode
+name: Heating
+stickshift: true
+states:
+  - { value: "Off", icon: mdi:power }
+  - { value: "Auto", icon: mdi:calendar-clock }
+  - value: "On"
+    icon: mdi:fire
+    tap_action:
+      action: perform-action
+      perform_action: script.turn_on
+      target: { entity_id: script.boost }
+  - { value: "Idle", icon: mdi:sleep }
+```
+
+`stickshift: true` uses the defaults; a map turns it on by its presence (`enabled: false` switches it off again).
+Only the `state` mode supports it; anywhere else it is ignored with a console warning, as it is with
+`bar.attribute` on the main entity, with a single configured state, and `handle_position` other than `flex` is
+set back to `flex`. The visual editor offers the choice **Display style: standard / stickshift** and the options below;
+the actions per state stay YAML-only.
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `shape` | `round` | Shape of the points: `round`, `oval`, `square` |
+| `point_size` | 80 % of `handle_size` | Point size in px (8 up to `handle_size`, never larger than the handle) |
+| `point_opacity` | `0.35` | Opacity of the points (0 to 1), clearly weaker than the handle; hover and focus raise it |
+| `active_color` | state `color` | Icon color of the handle on the active point (CSS color) |
+| `gate` | thin line | Drawn only between the points, from one point edge to the next. `false` hides it, or a map: `visible` (`true`), `size` in px (`4`, 1 to 40), `color`. Fixed style: no state color, no progress fill |
+
+Inactive points show what the handle shows at that state: the `icon`, else `text`, `label` or the `value`,
+in the state's `color`. Points are real buttons with the `label` (else the `value`) as accessible name; the active
+one carries `aria-current`.
+
+Actions per state (`tap_action`, `double_tap_action`, `hold_action`, each with an optional own `entity` like
+the [handle zones](configuration.md#switch-states-and-handle-zones)):
+
+- Tap on an inactive point: state change first, then the `tap_action` of that point. Dragging the handle onto a
+  point or an arrow key that lands on it does the same.
+- Tap on the active point (the handle): only its `tap_action`, no state change. Without one the card action
+  or the mode default (cycle) applies.
+- Double tap and hold run the `double_tap_action` / `hold_action` of the active point only (the handle), without changing the state.
+  On an inactive point a long press is just a tap: it selects the state.
+- Arrow keys step as before; Enter and Space select the focused point.
+
+With many states the points can overlap on a short bar; the card warns when `length` is too small for the points
+(`states` listed in the config). Colors and CSS variables: [Appearance](appearance.md#stickshift).
+
 ## Mode `lock`
 
 ![lock mode](assets/shots/lock-light.png#only-light)

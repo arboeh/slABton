@@ -15,6 +15,16 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   and `hold_action` (otherwise the card action or the mode default applies, a zone action runs on the zone
   `entity`) and an `entity` with `icon` / `states` for the handle icon (needs `handle_content: icon`). YAML only,
   no visual editor fields yet. Demo example "Cover with auto mode".
+- `stickshift:` (state mode): the bar is replaced by a fixed gate with one directly clickable point per state (`O---O---O---O`; the bar, its fill and border are not drawn, the gate line runs only between the points),
+  evenly spread, the handle rests on the active point. A tap on a point jumps straight to its state (also 0 to 3);
+  dragging the handle snaps to a point as before. Every state in `states` can have its own `tap_action`,
+  `double_tap_action` and `hold_action` (with an optional own `entity`): the `tap_action` runs after the state change that
+  lands on the point, a tap on the active point runs only its action, double tap and hold only run on the active point
+  (a long press on an inactive point is a tap) without changing the state. A state can also have its own `entity` with `states` (`icon`, `color`, `text`): the point
+  and, while it is active, the handle show the state of that entity, like a handle zone. Options `shape` (`round`, `oval`, `square`), `point_size`, `point_opacity`, `active_color`,
+  `gate` (thin line, fixed style); variables `--slabton-sx-*`. The points are real
+  buttons (`aria-current` on the active one). The visual editor offers **Display style: standard / stickshift**
+  and the options; the actions per state stay YAML-only. Without `stickshift:` nothing changes. Demo example "Stickshift".
 
 ### Fixed
 

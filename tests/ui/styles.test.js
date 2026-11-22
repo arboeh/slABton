@@ -606,16 +606,16 @@ describe("buildCss", () => {
 
   it("draws the scale behind the handle without capturing the pointer", () => {
     const css = buildCss();
-    expect(css).toMatch(/\.rail, \.switches, \.scale \{[^}]*pointer-events: none/);
-    expect(css).toMatch(/\.o-h \.switches, \.o-h \.scale \{[^}]*left: calc\(var\(--slabton-pad\) \+ var\(--slabton-hl\) \/ 2\)/);
-    expect(css).toMatch(/\.o-v \.switches, \.o-v \.scale \{[^}]*top: calc\(var\(--slabton-pad\) \+ var\(--slabton-hl\) \/ 2\)/);
+    expect(css).toMatch(/\.rail, \.switches, \.scale, \.sx \{[^}]*pointer-events: none/);
+    expect(css).toMatch(/\.o-h \.switches, \.o-h \.scale, \.o-h \.sx \{[^}]*left: calc\(var\(--slabton-pad\) \+ var\(--slabton-hl\) \/ 2\)/);
+    expect(css).toMatch(/\.o-v \.switches, \.o-v \.scale, \.o-v \.sx \{[^}]*top: calc\(var\(--slabton-pad\) \+ var\(--slabton-hl\) \/ 2\)/);
   });
 
   it("keeps the scale and the switches on the handle-centre track in every mode (no full-bar scale)", () => {
     const css = buildCss();
     expect(css).not.toContain("scale-full");
-    expect(css).toMatch(/\.o-h \.switches, \.o-h \.scale \{[^}]*width: calc\(100% - 2 \* var\(--slabton-pad\) - var\(--slabton-hl\)\)/);
-    expect(css).toMatch(/\.o-v \.switches, \.o-v \.scale \{[^}]*height: calc\(100% - 2 \* var\(--slabton-pad\) - var\(--slabton-hl\)\)/);
+    expect(css).toMatch(/\.o-h \.switches, \.o-h \.scale, \.o-h \.sx \{[^}]*width: calc\(100% - 2 \* var\(--slabton-pad\) - var\(--slabton-hl\)\)/);
+    expect(css).toMatch(/\.o-v \.switches, \.o-v \.scale, \.o-v \.sx \{[^}]*height: calc\(100% - 2 \* var\(--slabton-pad\) - var\(--slabton-hl\)\)/);
   });
 
   it("centres every label on its tick, the first and the last one too (no edge alignment)", () => {

@@ -29,6 +29,14 @@ function switchesHtml(config) {
   return `<div class="switches">${buttons}</div>`;
 }
 
+/**
+ * Stickshift layer: the points and the gate segments are added at runtime (see `renderPoints`), because the states of an entity (`options`, `hvac_modes`) are not known when the config is read.
+ */
+function stickshiftHtml(config) {
+  if (!config.stickshift) return "";
+  return `<div class="sx sxs-${config.stickshift.shape}"></div>`;
+}
+
 /** True when the scale's ticks stand outside the bar (`ticks_placement` is "outside"). */
 const ticksOutside = (config) => config.scale?.ticksPlacement === "outside";
 
@@ -177,6 +185,7 @@ export function rootClasses(config) {
   if (!config.drag || ownAttribute || READ_ONLY_MODES.includes(config.mode)) classes.push("nodrag");
   if (config.allow_unavailable_actions) classes.push("allow-actions");
   if (config.bar_state_color) classes.push("bar-state");
+  if (config.stickshift) classes.push("sx-on");
   return classes.join(" ");
 }
 
@@ -219,6 +228,7 @@ export function renderCard(shadow, config, css) {
             ${barText}
             ${horizontal ? info : ""}
             ${switchesHtml(config)}
+            ${stickshiftHtml(config)}
             <div class="rail"><div class="carrier">
               <div class="handle" tabindex="0">
                 <div class="content"><ha-icon class="h-icon"></ha-icon><span class="h-text" hidden></span>${isAnalog(config) ? dialHtml(config) : ""}</div>
@@ -260,8 +270,100 @@ export function renderCard(shadow, config, css) {
     info: q(".info"),
     boundLabels,
     switches,
+    sx: q(".sx"),
+    points: [],
+    pointSignature: null,
     signature: null,
   };
+}
+
+/** The structure of the points (values and names); a change of it rebuilds them. */
+export function stickshiftSignature(states) {
+  return states.map((s) => [s.value, s.label].join("\u0001")).join("\u0002");
+}
+
+/** What a point shows (icon, text, color): a change of it only redraws the content, the button stays. */
+const pointDisplayKey = (s) => [s.icon, s.text, s.label, s.value, s.color].join("\u0001");
+
+/** Content of a point: the state's icon, else its text, label or value. Text only, never markup. */
+function pointContent(doc, state) {
+  const el = state.icon ? doc.createElement("ha-icon") : doc.createElement("span");
+  if (state.icon) {
+    el.setAttribute("icon", state.icon);
+  } else {
+    el.className = "sx-text";
+    el.textContent = state.text ?? state.label ?? state.value;
+  }
+  if (state.color) el.style.setProperty("color", state.color);
+  return el;
+}
+
+/**
+ * (Re)build the stickshift points, one button per state, evenly spread on the handle-centre track and mirrored like the
+ * handle itself. The old buttons go (their listeners are removed by the card). Stores them in `refs.points`.
+ * @returns {HTMLButtonElement[]} the new buttons, in state order
+ */
+export function renderPoints(refs, config, states) {
+  const { sx } = refs;
+  if (!sx) return [];
+  sx.querySelectorAll(".sx-pt, .sx-seg").forEach((old) => old.remove());
+  const doc = sx.ownerDocument;
+  const horizontal = config.orientation === "horizontal";
+  const reversed = config.direction === "rtl";
+  const last = Math.max(1, states.length - 1);
+  if (config.stickshift.gate.visible) {
+    // One segment per pair of neighbours, from point edge to point edge (the CSS takes half a point off each end).
+    for (let i = 0; i < states.length - 1; i += 1) {
+      const [a, b] = [i / last, (i + 1) / last].map((f) => axisFraction(f, horizontal, reversed)).sort((x, y) => x - y);
+      const seg = doc.createElement("div");
+      seg.className = "sx-seg";
+      seg.setAttribute("aria-hidden", "true");
+      seg.style.setProperty("--slabton-sx-a", String(a));
+      seg.style.setProperty("--slabton-sx-b", String(b));
+      sx.appendChild(seg);
+    }
+  }
+  refs.points = states.map((state, i) => {
+    const button = doc.createElement("button");
+    button.type = "button";
+    button.className = "sx-pt";
+    button.setAttribute("aria-label", state.label ?? state.value);
+    button.style.setProperty("--slabton-sx-e", String(axisFraction(i / last, horizontal, reversed)));
+    button.appendChild(pointContent(doc, state));
+    sx.appendChild(button);
+    return button;
+  });
+  refs.pointSignature = stickshiftSignature(states);
+  refs.pointDisplay = states.map(pointDisplayKey);
+  return refs.points;
+}
+
+/** Redraw the content of the points whose icon, text or color changed (the buttons, focus and gestures stay). */
+export function updatePointContent(refs, states) {
+  if (!refs.sx) return;
+  const doc = refs.sx.ownerDocument;
+  refs.points.forEach((button, i) => {
+    const key = pointDisplayKey(states[i]);
+    if (refs.pointDisplay[i] === key) return;
+    refs.pointDisplay[i] = key;
+    button.replaceChildren(pointContent(doc, states[i]));
+  });
+}
+
+/**
+ * Mark the point of the active state (`aria-current`, `.active`); the covered point leaves the tab order.
+ * `blocked`: the entity cannot be set (unavailable), the points look clickable but do nothing.
+ */
+export function updatePoints(refs, activeIndex, blocked = false) {
+  refs.points.forEach((button, i) => {
+    if (blocked) button.setAttribute("aria-disabled", "true");
+    else button.removeAttribute("aria-disabled");
+    const active = i === activeIndex;
+    button.classList.toggle("active", active);
+    if (active) button.setAttribute("aria-current", "true");
+    else button.removeAttribute("aria-current");
+    button.tabIndex = active ? -1 : 0;
+  });
 }
 
 function setRole(handle, config, view) {

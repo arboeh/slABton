@@ -118,6 +118,18 @@ function textVars(text) {
   return vars;
 }
 
+/** Variables of the stickshift layer: point size and opacity and the gate; colors only when configured. */
+function stickshiftVars(sx) {
+  if (!sx) return {};
+  const vars = {
+    "--slabton-sx-d": `${sx.point_size}px`,
+    "--slabton-sx-opacity": String(sx.point_opacity),
+    "--slabton-sx-gate-size": `${sx.gate.size}px`,
+  };
+  if (sx.gate.color) vars["--slabton-sx-gate-color"] = sx.gate.color;
+  return vars;
+}
+
 /** CSS custom properties derived from the config (name -> value). */
 export function buildVars(config) {
   const { cross, along } = handleDimensions(config);
@@ -151,6 +163,7 @@ export function buildVars(config) {
   if (config.handle_color) vars["--slabton-handle-color"] = config.handle_color;
   if (config.text_color) vars["--slabton-text-color"] = config.text_color;
   if (config.border_color) vars["--slabton-border-color"] = config.border_color;
+  Object.assign(vars, stickshiftVars(config.stickshift));
   if (config.scale?.size != null) vars["--slabton-scale-size"] = `${config.scale.size}px`;
   if (config.scale?.color) vars["--slabton-scale-color"] = config.scale.color;
   // `text:` comes after `styles:` so that it wins: text option > styles > default.
@@ -278,6 +291,47 @@ function dialCss() {
     .dial-hub { fill: var(--slabton-hands-color, currentColor); }`;
 }
 
+/**
+ * Stickshift layer (`.sx`, on the handle-centre track like the switches): the gate (thin line) and one button per state. The points stay below the handle (DOM order). Sizes, opacity and
+ * colors come from `--slabton-sx-*`.
+ */
+function stickshiftCss() {
+  const d = "var(--slabton-sx-d, 32px)";
+  const gate = "var(--slabton-sx-gate-size, 4px)";
+  const ink = "var(--slabton-text-color, var(--primary-text-color, #212121))";
+  return `
+    .sx { --slabton-sx-pl: ${d}; }
+    .sxs-oval { --slabton-sx-pl: calc(${d} * ${OVAL_RATIO}); }
+    /* Gate: one segment per pair of neighbours, from the edge of one point to the edge of the next (a and b are the
+       track fractions of the two point centres, a < b; half a point length is taken off each end). */
+    .sx-seg { position: absolute; pointer-events: none; border-radius: 999px; background: var(--slabton-sx-gate-color, color-mix(in srgb, ${ink} 25%, transparent)); }
+    .o-h .sx-seg { top: 50%; height: ${gate}; margin-top: calc(${gate} / -2); left: calc(var(--slabton-sx-a, 0) * 100% + var(--slabton-sx-pl) / 2); width: max(0px, calc((var(--slabton-sx-b, 1) - var(--slabton-sx-a, 0)) * 100% - var(--slabton-sx-pl))); }
+    .o-v .sx-seg { left: 50%; width: ${gate}; margin-left: calc(${gate} / -2); top: calc(var(--slabton-sx-a, 0) * 100% + var(--slabton-sx-pl) / 2); height: max(0px, calc((var(--slabton-sx-b, 1) - var(--slabton-sx-a, 0)) * 100% - var(--slabton-sx-pl))); }
+    .sx-pt {
+      position: absolute; pointer-events: auto; box-sizing: border-box; padding: 0; margin: 0; overflow: hidden;
+      width: ${d}; height: ${d}; display: flex; align-items: center; justify-content: center;
+      border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2)); border-radius: 999px;
+      background: var(--card-background-color, #fff); color: ${ink};
+      font: inherit; font-weight: 600; font-size: min(var(--slabton-button-size, 14px), calc(${d} * 0.45));
+      opacity: var(--slabton-sx-opacity, 0.35); cursor: pointer; transform: translate(-50%, -50%);
+      transition: opacity 150ms ease, transform 150ms ease;
+    }
+    .o-h .sx-pt { top: 50%; left: calc(var(--slabton-sx-e, 0) * 100%); }
+    .o-v .sx-pt { left: 50%; top: calc(var(--slabton-sx-e, 0) * 100%); }
+    .sxs-square .sx-pt { border-radius: calc(${d} * ${SQUARE_HANDLE_RADIUS_RATIO}); }
+    .o-h .sxs-oval .sx-pt { width: calc(${d} * ${OVAL_RATIO}); }
+    .o-v .sxs-oval .sx-pt { height: calc(${d} * ${OVAL_RATIO}); }
+    .sx-pt ha-icon { --mdc-icon-size: calc(${d} * 0.55); }
+    .sx-pt .sx-text { padding: 0 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sx-pt:hover { opacity: min(1, calc(var(--slabton-sx-opacity, 0.35) + 0.35)); }
+    .sx-pt:active { transform: translate(-50%, -50%) scale(0.94); }
+    .sx-pt:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; opacity: 1; }
+    @media (prefers-reduced-motion: reduce) {
+      .sx-pt { transition: none; }
+      .sx-pt:active { transform: translate(-50%, -50%); }
+    }`;
+}
+
 /** Room kept beyond the stage edge along the bar: the expired glow reaches 14 px blur + 4 px spread. */
 const CLIP_MARGIN_PX = 18;
 
@@ -314,6 +368,9 @@ export function buildCss() {
     }
     /* bar_state_color: the whole bar in the color of the current state (none: bar_color or the default). */
     .bar-state .bar { background: var(--slabton-active-color, var(--slabton-bar-color, var(--secondary-background-color, #e0e0e0))); }
+    /* Stickshift: the bar itself is gone (no background, border or fill); the points, the gate and the handle stay on its track. */
+    .root.sx-on .bar { background: none; border-color: transparent; }
+    .root.sx-on .fill-clip { display: none; }
     .o-h .bar { width: var(--slabton-length); height: var(--slabton-thickness); }
     .o-v .bar { height: var(--slabton-length); width: var(--slabton-thickness); }
     .fill-clip { position: absolute; inset: 0; overflow: hidden; border-radius: calc(var(--slabton-bar-radius) - var(--slabton-border-width)); pointer-events: none; }
@@ -349,12 +406,12 @@ export function buildCss() {
     .o-v .stage.has-info { flex-direction: column; align-items: center; gap: 6px; }
     .o-v .info { position: static; max-width: 100%; }
 
-    .rail, .switches, .scale { position: absolute; pointer-events: none; }
+    .rail, .switches, .scale, .sx { position: absolute; pointer-events: none; }
     .o-h .rail { left: var(--slabton-pad); top: 0; height: 100%; width: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
     .o-v .rail { top: var(--slabton-pad); left: 0; width: 100%; height: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
-    /* Switches (and ticks in state and lock) sit on the handle-centre track, so a mark is exactly under the handle at its value. */
-    .o-h .switches, .o-h .scale { left: calc(var(--slabton-pad) + var(--slabton-hl) / 2); top: 0; height: 100%; width: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
-    .o-v .switches, .o-v .scale { top: calc(var(--slabton-pad) + var(--slabton-hl) / 2); left: 0; width: 100%; height: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
+    /* Switches, stickshift points (and ticks in state and lock) sit on the handle-centre track, so a mark is exactly under the handle at its value. */
+    .o-h .switches, .o-h .scale, .o-h .sx { left: calc(var(--slabton-pad) + var(--slabton-hl) / 2); top: 0; height: 100%; width: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
+    .o-v .switches, .o-v .scale, .o-v .sx { top: calc(var(--slabton-pad) + var(--slabton-hl) / 2); left: 0; width: 100%; height: calc(100% - 2 * var(--slabton-pad) - var(--slabton-hl)); }
 
     /* Scale ticks (scale:): across the bar at the start, centre or end edge. */
     .tick { position: absolute; background: var(--slabton-scale-color, color-mix(in srgb, var(--slabton-text-color, var(--primary-text-color, #212121)) 45%, transparent)); }
@@ -409,6 +466,8 @@ export function buildCss() {
     .o-v .sw { left: 50%; top: calc(var(--slabton-sw-e) * 100%); }
     .sw ha-icon { --mdc-icon-size: min(16px, calc(var(--slabton-sw-d) * 0.6)); }
     .sw.active { color: var(--primary-color, #03a9f4); border-color: var(--primary-color, #03a9f4); }
+
+    ${stickshiftCss()}
 
     .unavailable .bar { opacity: 0.5; }
     /* The lock lives in the card (it blocks every gesture but a tap); the handle stays tappable for more-info. */

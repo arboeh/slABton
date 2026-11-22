@@ -202,6 +202,18 @@ export function scalePositionsFor(orientation) {
   return [...Object.keys(SCALE_ALIASES[orientation] ?? SCALE_ALIASES.horizontal), ...SCALE_AXIS_POSITIONS];
 }
 
+/**
+ * Stickshift (state mode): a fixed gate with one directly clickable point per state. The point defaults to 80 % of
+ * the handle (never larger), the gate is a thin line between the points.
+ */
+export const STICKSHIFT_OPTIONS = Object.freeze(["enabled", "shape", "point_size", "point_opacity", "active_color", "gate"]);
+export const STICKSHIFT_POINT_RATIO = 0.8;
+export const STICKSHIFT_MIN_POINT_SIZE = 8;
+export const STICKSHIFT_DEFAULT_OPACITY = 0.35;
+export const STICKSHIFT_DEFAULT_GATE_SIZE = 4;
+export const STICKSHIFT_MIN_GATE_SIZE = 1;
+export const STICKSHIFT_MAX_GATE_SIZE = 40;
+
 /** Bar thickness limits in px (the upper one is also the longest tick of a scale). */
 export const MIN_THICKNESS = 12;
 export const MAX_THICKNESS = 200;
