@@ -124,6 +124,11 @@ export function needsTick(view) {
   return view.ticking === true;
 }
 
+/** Pending values of a released swipe: the handle waits at the full end (on) or the start (off). */
+const SWIPE_ON = "on";
+const SWIPE_OFF = "off";
+const SWIPE_FRAC = Object.freeze({ [SWIPE_ON]: 1, [SWIPE_OFF]: 0 });
+
 function iconFor(config, stateObj, status) {
   return config.icon ?? stateObj?.attributes?.icon ?? ICONS[status] ?? ICONS.idle;
 }
@@ -132,7 +137,7 @@ function stateLabel(lang, status, raw) {
   return [TIMER_STATUS.IDLE, TIMER_STATUS.ACTIVE, TIMER_STATUS.PAUSED, TIMER_STATUS.EXPIRED].includes(status) ? t(lang, `timer.${status}`) : (raw ?? "");
 }
 
-export function view(config, stateObj, _pending, ctx) {
+export function view(config, stateObj, pending, ctx) {
   const s = sample(config, stateObj, ctx);
   const lang = ctx.lang;
   const status = ctx.expired ? TIMER_STATUS.EXPIRED : s.status;
@@ -144,6 +149,8 @@ export function view(config, stateObj, _pending, ctx) {
   if (known && s.kind === TIMER_SOURCE.TARGET) frac = clamp(s.remaining / (config.timer.span * DAY_SECONDS), 0, 1);
   // Switch layout: a timer that is off shows an empty bar, the handle at the start ("off").
   if (s.status === TIMER_STATUS.IDLE && isSwitchLike(config)) frac = 0;
+  // A released swipe holds the handle at its target until the entity answers (display only).
+  if (s.kind === TIMER_SOURCE.HA && isSwitchLike(config) && Object.hasOwn(SWIPE_FRAC, pending)) frac = SWIPE_FRAC[pending];
 
   const remainingText = known ? formatRemaining(s.remaining, lang) : null;
   const text = ctx.expired ? label : (remainingText ?? (s.status === TIMER_STATUS.UNKNOWN ? "–" : label));
@@ -251,9 +258,9 @@ export function isDraggable(config, stateObj) {
 export function onRelease({ frac, startPos, config, stateObj }) {
   if (!isDraggable(config, stateObj)) return null;
   if (stateObj.state === TIMER_STATUS.IDLE) {
-    return frac >= SWIPE_START_FRAC ? { action: startAction(config), pending: undefined } : null;
+    return frac >= SWIPE_START_FRAC ? { action: startAction(config), pending: SWIPE_ON } : null;
   }
-  if (frac >= 1 - EDGE_ZONE && startPos < 1 - EDGE_ZONE) return { action: startAction(config), pending: undefined };
-  if (frac <= EDGE_ZONE && startPos > EDGE_ZONE) return { action: cancelAction(config), pending: undefined };
+  if (frac >= 1 - EDGE_ZONE && startPos < 1 - EDGE_ZONE) return { action: startAction(config), pending: SWIPE_ON };
+  if (frac <= EDGE_ZONE && startPos > EDGE_ZONE) return { action: cancelAction(config), pending: SWIPE_OFF };
   return null;
 }

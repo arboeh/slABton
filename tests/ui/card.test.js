@@ -93,6 +93,53 @@ describe("timer start and end actions", () => {
     expect(hass.callService).toHaveBeenLastCalledWith("timer", "start", {}, { entity_id: TIMER });
   });
 
+  describe("handle after a released swipe", () => {
+    const fill = (el) => q(el, ".root").style.getPropertyValue("--slabton-p");
+    const edge = (el) => q(el, ".root").style.getPropertyValue("--slabton-e");
+
+    it("stays at the full end after a start swipe until Home Assistant answers, then follows the entity", () => {
+      const { el, hass } = setup(idleState());
+      swipe(el, 20, 180);
+      expect([fill(el), edge(el)]).toEqual(["1", "1"]);
+      el.hass = withState(hass, TIMER, "active", activeState(600000).attributes);
+      expect(fill(el)).toBe("0.5");
+    });
+
+    it("stays at the start after a stop swipe until the answer", () => {
+      const { el, hass } = setup(activeState(900000));
+      expect(fill(el)).toBe("0.75");
+      swipe(el, 140, 20);
+      expect([fill(el), edge(el)]).toEqual(["0", "0"]);
+      el.hass = withState(hass, TIMER, "idle", { duration: "0:20:00", remaining: "0:20:00" });
+      expect(fill(el)).toBe("0");
+    });
+
+    it("stays at the full end after a restart or resume swipe, and ends with the new state object", () => {
+      const { el, hass } = setup(activeState(900000));
+      swipe(el, 140, 220);
+      expect(fill(el)).toBe("1");
+      el.hass = withState(hass, TIMER, "active", activeState(1000000).attributes);
+      expect(fill(el)).not.toBe("1");
+      const paused = setup(pausedState());
+      swipe(paused.el, 100, 220);
+      expect(fill(paused.el)).toBe("1");
+    });
+
+    it("falls back to the entity state when no answer comes", () => {
+      const { el } = setup(idleState());
+      swipe(el, 20, 180);
+      expect(fill(el)).toBe("1");
+      vi.advanceTimersByTime(PENDING_TIMEOUT_MS + 100);
+      expect(fill(el)).toBe("0");
+    });
+
+    it("keeps the entity's text while waiting", () => {
+      const { el } = setup(idleState(), {}, { handle_content: "text" });
+      swipe(el, 20, 180);
+      expect(q(el, ".handle").textContent).toContain("20:00");
+    });
+  });
+
   it("springs back after a short swipe", () => {
     const { el, hass } = setup(idleState());
     swipe(el, 20, 60);

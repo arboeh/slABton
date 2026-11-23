@@ -496,7 +496,8 @@ export class SlabtonCard extends HTMLElement {
 
   /** The handle arrived on the point of `value` (drag, key or cycle): run that point's tap action. */
   _runArrivalAction(value) {
-    if (this._config.stickshift) this._runPointAction(this._stateEntry(value), "tap_action");
+    // The timer swipe's pending ("on" / "off") is a display value, never a state entry.
+    if (this._config.stickshift && this._mode.id !== MODE.TIMER) this._runPointAction(this._stateEntry(value), "tap_action");
   }
 
   /** Timer card with both a start and an end action (the swipe layout); other timer cards stay as they were. */
@@ -633,7 +634,7 @@ export class SlabtonCard extends HTMLElement {
     });
     if (!result) return;
     this._runAction(result.action);
-    // A result without a pending value (timer swipe) leaves the display to the entity.
+    // A result without a pending value leaves the display to the entity.
     if (result.pending === undefined) return;
     this._setPending(result.pending);
     this._runArrivalAction(result.pending);

@@ -255,7 +255,33 @@ describe("start and end actions: edges and swipe", () => {
   it("starts a timer that is off when the handle is swiped past the middle towards the full end", () => {
     const result = onRelease({ frac: 0.8, startPos: 0, config: hooked(), stateObj: idle() });
     expect(result.action).toEqual(START);
-    expect(result.pending).toBeUndefined();
+    expect(result.pending).toBe("on");
+  });
+
+  it("holds the handle at the target after a release: on for start, restart and resume, off for stop", () => {
+    expect(onRelease({ frac: 0.95, startPos: 0.4, config: hooked(), stateObj: active(1000) }).pending).toBe("on");
+    expect(onRelease({ frac: 0.95, startPos: 0.4, config: hooked(), stateObj: paused("0:01:00") }).pending).toBe("on");
+    expect(onRelease({ frac: 0.05, startPos: 0.4, config: hooked(), stateObj: active(1000) }).pending).toBe("off");
+  });
+
+  it("shows the pending target in the switch layout, text and status stay the entity's", () => {
+    const on = view(hooked(), idle(), "on", ctx());
+    expect([on.pos, on.fillPos, on.positionText, on.ariaNow]).toEqual([1, 1, "100", 100]);
+    expect(on.text).toBe("10:00");
+    expect(on.values.state).toBe("Ready");
+    const off = view(hooked(), active(450000), "off", ctx());
+    expect([off.pos, off.fillPos, off.positionText]).toEqual([0, 0, "0"]);
+    expect(off.text).toBe("7:30");
+    expect(off.ticking).toBe(true);
+    expect(off.timing).toEqual({ active: true, finishesAt: NOW + 450000, upcoming: true });
+    expect(view(hooked(), paused("0:02:30"), "on", ctx()).fillPos).toBe(1);
+  });
+
+  it("ignores a pending value without the switch layout or for a countdown target", () => {
+    expect(view(cfg(SAUNA), idle(), "off", ctx()).fillPos).toBe(1);
+    expect(view(cfg(SAUNA), active(300000), "on", ctx()).fillPos).toBe(0.5);
+    expect(view(hooked(), active(300000), undefined, ctx()).fillPos).toBe(0.5);
+    expect(view(hooked(), active(300000), "toString", ctx()).fillPos).toBe(0.5);
   });
 
   it("springs back at or before the middle for a timer that is off, and when nothing can be dragged", () => {

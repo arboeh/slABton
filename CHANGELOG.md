@@ -19,6 +19,12 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   full end starts it again, dragging back into the start end stops it (`drag: false` turns it off). Without the new
   options nothing changes.
 
+### Fixed
+
+- Timer swipe (switch layout): after releasing the handle it no longer jumps back to its old position before Home
+  Assistant answers. It stays at the full end (start, restart, resume) or at the start (stop) until the entity changes,
+  at most a few seconds if the answer does not come. Text, icon and state stay those of the entity.
+
 ## [1.2.0] - 2026-11-22
 
 ### Added
