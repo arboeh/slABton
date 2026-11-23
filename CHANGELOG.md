@@ -5,6 +5,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- `text.header.font_weight` (number 1 to 1000, keyword or `var(--...)`) sets `--slabton-header-weight`; the header also reads `--slabton-header-opacity` (default 1) and `--slabton-header-icon-size` (default 20px) as CSS variables (settable in `styles:`). Defaults are the old values, so nothing changes without them. Editor field and docs.
+- `timer.start_action` and `timer.end_action` (timer mode, `timer.*` entity): the card runs an action when it starts
+  the timer (before `timer.start`, on a tap or a swipe; resuming from pause and a start from outside do not count) and
+  when the timer ends (runs out, also with `pulse: false`, or the card cancels it with a hold). The end action runs
+  in the browser, only while a dashboard with the card is open: see the docs for the `timer.finished` automation as a
+  safeguard. Both must be a `perform-action` (anything else is ignored with a warning). Ignored with a warning for `input_datetime` / `input_date` targets. Visual editor fields and demo example
+  "Timer, start and end action".
+- Timer swipe (switch layout): with both a start and an end action configured, a timer that is off shows the handle at
+  the start of an empty bar. Dragging it past the middle starts the timer; while it runs or is paused, dragging into the
+  full end starts it again, dragging back into the start end stops it (`drag: false` turns it off). Without the new
+  options nothing changes.
+
 ## [1.2.0] - 2026-11-22
 
 ### Added

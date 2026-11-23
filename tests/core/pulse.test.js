@@ -14,6 +14,54 @@ function started(endsIn = 3000, options = OPTIONS) {
   return pulse;
 }
 
+describe("Pulse expiry event", () => {
+  const QUIET = { pulse: false, pulse_seconds: 5 };
+
+  it("reports the end of a running timer once, with pulse on", () => {
+    const pulse = started();
+    expect(pulse.advance(running(3000), NOW + 1000, OPTIONS)).toBe(false);
+    expect(pulse.advance(idle, NOW + 3000, OPTIONS)).toBe(true);
+    expect(pulse.advance(idle, NOW + 4000, OPTIONS)).toBe(false);
+    expect(pulse.firedFor).toBe(NOW + 3000);
+  });
+
+  it("reports the end with pulse off, without starting the pulse", () => {
+    const pulse = started(3000, QUIET);
+    expect(pulse.advance(idle, NOW + 3000, QUIET)).toBe(true);
+    expect(pulse.active).toBe(false);
+  });
+
+  it("reports an end time once, even when it is reported late again", () => {
+    const pulse = started(3000, QUIET);
+    expect(pulse.advance(idle, NOW + 3000, QUIET)).toBe(true);
+    expect(pulse.advance(running(3000), NOW + 9000, QUIET)).toBe(false);
+    expect(pulse.advance(idle, NOW + 9000, QUIET)).toBe(false);
+  });
+
+  it("reports the end of the next run again", () => {
+    const pulse = started(3000, QUIET);
+    pulse.advance(idle, NOW + 3000, QUIET);
+    pulse.advance(running(6000), NOW + 3000, QUIET);
+    expect(pulse.advance(idle, NOW + 6000, QUIET)).toBe(true);
+  });
+
+  it("reports nothing for a cancelled timer, a stale state or a fresh pulse", () => {
+    expect(started(600000).advance(idle, NOW + 1000, OPTIONS)).toBe(false);
+    expect(new Pulse().advance(idle, NOW, OPTIONS)).toBe(false);
+    expect(new Pulse().advance({ active: true, finishesAt: NOW - 1000, upcoming: false }, NOW, OPTIONS)).toBe(false);
+    expect(new Pulse().firedFor).toBeNull();
+  });
+
+  it("forgets the reported end time on reset", () => {
+    const pulse = started(3000, QUIET);
+    pulse.advance(idle, NOW + 3000, QUIET);
+    pulse.reset();
+    expect(pulse.firedFor).toBeNull();
+    pulse.advance(running(3000), NOW, QUIET);
+    expect(pulse.advance(idle, NOW + 3000, QUIET)).toBe(true);
+  });
+});
+
 describe("Pulse", () => {
   it("is inactive until a timer ran out", () => {
     const pulse = started();

@@ -102,6 +102,7 @@ text:
 | --- | --- | --- | --- |
 | `header` | `font_size` | 14 px | Header text (title) |
 | `header` | `color` | text color | Header text only; the icon is not affected |
+| `header` | `font_weight` | 500 | Header text only (title) |
 | `header` | `icon_color` | text color | Header icon only |
 | `bar` | `font_size` | 13 px | `bar_text` |
 | `bar` | `color` | text color | `bar_text` |
@@ -114,6 +115,7 @@ text:
 
 - `font_size`: number from 8 to 48 (px), or decimal text such as `"12"`. Other values are ignored with a console warning.
 - `color`: any CSS color accepted by `styles:`. Unsafe values are ignored with a console warning.
+- `font_weight` exists only in `header`: a number from 1 to 1000 (`700`), a keyword (`normal`, `bold`, `lighter`, `bolder`) or a CSS variable such as `var(--font-weight-l)`. Other values are ignored with a console warning.
 - `icon_color` exists only in `header`. Other unknown keys are ignored with a warning.
 - Priority: `text:` beats `styles:`, `styles:` beats the default. Invalid values do not stop the card; the other values still apply.
 - `button.font_size` sets only the handle text; the handle icon follows `handle_size`. `button.color` also colors the icon.
@@ -222,9 +224,11 @@ styles:
 Values are checked; unsafe values are ignored with a console warning.
 
 The [`text:` block](appearance.md#text-appearance) sets these variables. `styles:` can set them too, but a `text:` value wins over `styles:`:
-`--slabton-header-size`, `--slabton-header-color`, `--slabton-header-icon-color`,
+`--slabton-header-size`, `--slabton-header-color`, `--slabton-header-weight`, `--slabton-header-icon-color`,
 `--slabton-bar-text-size`, `--slabton-bar-text-color`, `--slabton-info-size`, `--slabton-info-color`,
 `--slabton-button-size`, `--slabton-button-color`. Size defaults: header 14 px, bar 13 px, info 13 px, button 14 px.
+
+Header only as `styles:` variables (no `text:` option): `--slabton-header-opacity` (default 1) and `--slabton-header-icon-size` (default 20px).
 
 Scale: `--slabton-scale-size` and `--slabton-scale-color` are set by `scale.size` and `scale.color`; `styles:` can override them.
 Scale labels: `--slabton-scale-label-size` and `--slabton-scale-label-color` (set by `text.scale`).

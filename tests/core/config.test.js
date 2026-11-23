@@ -10,6 +10,72 @@ const valueBase = { ...base, entity: "sensor.x", mode: "value", min: 0, max: 100
 const scaleOf = (scale, extra = {}) => normalizeConfig({ ...valueBase, ...extra, scale }).scale;
 const warnSpy = () => vi.spyOn(console, "warn").mockImplementation(() => {});
 
+describe("timer.start_action and timer.end_action", () => {
+  const timerBase = { ...base, entity: "timer.klima" };
+  const on = { action: "perform-action", perform_action: "climate.turn_on", target: { entity_id: "climate.a" } };
+  const off = { action: "perform-action", perform_action: "climate.turn_off", target: { entity_id: "climate.a" } };
+  const timerOf = (timer, extra = {}) => normalizeConfig({ ...timerBase, ...extra, timer }).timer;
+
+  it("default to no action", () => {
+    expect(timerOf(undefined)).toMatchObject({ start_action: null, end_action: null });
+    expect(normalizeConfig({ ...base, entity: "sensor.x" }).timer).toMatchObject({ start_action: null, end_action: null });
+  });
+
+  it("normalize both actions like the card's other actions", () => {
+    const timer = timerOf({ start_action: { ...on, data: { x: 1 } }, end_action: { action: "call-service", service: "climate.turn_off", service_data: { y: 2 } } });
+    expect(timer.start_action).toEqual({ action: "perform-action", perform_action: "climate.turn_on", target: { entity_id: "climate.a" }, data: { x: 1 } });
+    expect(timer.end_action).toMatchObject({ action: "perform-action", perform_action: "climate.turn_off", data: { y: 2 } });
+  });
+
+  it("accept one action without the other", () => {
+    expect(timerOf({ end_action: off })).toMatchObject({ start_action: null, end_action: off });
+    expect(timerOf({ start_action: on })).toMatchObject({ start_action: on, end_action: null });
+  });
+
+  it("throw a readable error for a malformed action", () => {
+    expect(() => timerOf({ start_action: { perform_action: "x.y" } })).toThrow(/timer\.start_action needs an "action"/);
+    expect(() => timerOf({ end_action: { action: "perform-action", perform_action: "nope" } })).toThrow(/timer\.end_action\.perform_action/);
+    expect(() => timerOf({ end_action: { action: "fly" } })).toThrow(/timer\.end_action\.action/);
+  });
+
+  it("warn and drop an ignored Home Assistant action", () => {
+    const warn = warnSpy();
+    expect(timerOf({ end_action: { action: "assist" } }).end_action).toBeNull();
+    expect(warn.mock.calls.flat().join(" ")).toContain("timer.end_action.action");
+  });
+
+  it("drop action none without a warning, and unattended-unsuitable actions with one", () => {
+    const warn = warnSpy();
+    expect(timerOf({ end_action: { action: "none" } }).end_action).toBeNull();
+    expect(warn).not.toHaveBeenCalled();
+    for (const bad of [{ action: "toggle" }, { action: "more-info" }, { action: "navigate", navigation_path: "/x" }, { action: "url", url_path: "https://a.b" }]) {
+      expect(timerOf({ start_action: bad }).start_action).toBeNull();
+    }
+    expect(warn).toHaveBeenCalledTimes(4);
+    expect(warn.mock.calls[0][0]).toContain("timer.start_action must be a perform-action");
+  });
+
+  it("drop a toggle even when it names its entity (two cards would flip the device back)", () => {
+    const warn = warnSpy();
+    expect(timerOf({ end_action: { action: "toggle", entity: "switch.a" } }).end_action).toBeNull();
+    expect(warn.mock.calls[0][0]).toContain("timer.end_action must be a perform-action");
+  });
+
+  it("warn and drop both for a countdown target, and keep the card running", () => {
+    const warn = warnSpy();
+    const timer = normalizeConfig({ ...base, entity: "input_datetime.fest", mode: "timer", timer: { start_action: on, end_action: off } }).timer;
+    expect(timer).toMatchObject({ start_action: null, end_action: null });
+    expect(warn).toHaveBeenCalledTimes(2);
+    expect(warn.mock.calls[0][0]).toContain("timer.start_action only works with a timer.* entity");
+  });
+
+  it("do not warn without an action for a countdown target", () => {
+    const warn = warnSpy();
+    normalizeConfig({ ...base, entity: "input_date.fest", mode: "timer" });
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
 describe("scale.labels_placement", () => {
   it("defaults to inside", () => {
     expect(scaleOf({ labels: true }).labelsPlacement).toBe("inside");
@@ -588,14 +654,14 @@ describe("new modes", () => {
 
   it("normalizes the timer block with defaults", () => {
     expect(normalizeConfig({ entity: "timer.a" }).timer).toEqual({
-      pulse: true, pulse_seconds: 10, info: null, time_zone: null, span: 30,
+      pulse: true, pulse_seconds: 10, info: null, time_zone: null, span: 30, start_action: null, end_action: null,
     });
     const c = normalizeConfig({
       entity: "input_datetime.t",
       mode: "timer",
       timer: { pulse: false, pulse_seconds: 0, info: "Ende {target}", time_zone: "Europe/Berlin", span: 7 },
     });
-    expect(c.timer).toEqual({ pulse: false, pulse_seconds: 0, info: "Ende {target}", time_zone: "Europe/Berlin", span: 7 });
+    expect(c.timer).toEqual({ pulse: false, pulse_seconds: 0, info: "Ende {target}", time_zone: "Europe/Berlin", span: 7, start_action: null, end_action: null });
   });
 
   it("rejects unknown time zones", () => {
@@ -975,7 +1041,7 @@ describe("analog clock", () => {
 
 describe("text block", () => {
   const empty = {
-    header: { font_size: null, color: null, icon_color: null },
+    header: { font_size: null, color: null, font_weight: null, icon_color: null },
     bar: { font_size: null, color: null },
     info: { font_size: null, color: null },
     button: { font_size: null, color: null },
@@ -991,7 +1057,7 @@ describe("text block", () => {
     const c = normalizeConfig({
       ...base,
       text: {
-        header: { font_size: 16, color: "#ff9800", icon_color: "#2196f3" },
+        header: { font_size: 16, color: "#ff9800", font_weight: 700, icon_color: "#2196f3" },
         bar: { font_size: "12", color: "var(--secondary-text-color)" },
         info: { font_size: 11, color: "grey" },
         button: { font_size: 18, color: "white" },
@@ -999,7 +1065,7 @@ describe("text block", () => {
       },
     });
     expect(c.text).toEqual({
-      header: { font_size: 16, color: "#ff9800", icon_color: "#2196f3" },
+      header: { font_size: 16, color: "#ff9800", font_weight: "700", icon_color: "#2196f3" },
       bar: { font_size: 12, color: "var(--secondary-text-color)" },
       info: { font_size: 11, color: "grey" },
       button: { font_size: 18, color: "white" },
@@ -1045,8 +1111,27 @@ describe("text block", () => {
   it.each([["abc"], [0], [-3], [7], [49], [NaN], [{}], [true], ["0x10"], ["1e1"], ["-12"], ["12px"]])("ignores font_size %j with a warning", (value) => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     const c = normalizeConfig({ ...base, text: { header: { font_size: value, color: "red" } } });
-    expect(c.text.header).toEqual({ font_size: null, color: "red", icon_color: null });
+    expect(c.text.header).toEqual({ font_size: null, color: "red", font_weight: null, icon_color: null });
     expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.header\.font_size/));
+  });
+
+  it.each([[700, "700"], ["600", "600"], [" 700 ", "700"], [1, "1"], [1000, "1000"], ["bold", "bold"], ["Bolder", "Bolder"], ["var(--font-weight-l)", "var(--font-weight-l)"], ["var(--w, 700)", "var(--w, 700)"]])(
+    "keeps font_weight %j as CSS text",
+    (value, css) => {
+      expect(normalizeConfig({ ...base, text: { header: { font_weight: value } } }).text.header.font_weight).toBe(css);
+    },
+  );
+
+  it.each([[0], [1001], [-5], [0.5], ["heavy"], ["0x10"], ["700px"], ["bold 700"], ["inherit"], ["calc(1 + 1)"], ["var(--w;)"], ["abc;"], ["url(http://x)"], [{}], [true]])("ignores font_weight %j with a warning", (value) => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ ...base, text: { header: { font_weight: value } } }).text.header.font_weight).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.header\.font_weight/));
+  });
+
+  it("rejects font_weight outside the header", () => {
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    expect(normalizeConfig({ ...base, text: { bar: { font_weight: 700 } } }).text.bar).toEqual({ font_size: null, color: null });
+    expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.bar\.font_weight/));
   });
 
   it("accepts the limits 8 and 48", () => {
@@ -1060,7 +1145,7 @@ describe("text block", () => {
     (value) => {
       const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
       const c = normalizeConfig({ ...base, text: { header: { color: value, icon_color: value, font_size: 20 } } });
-      expect(c.text.header).toEqual({ font_size: 20, color: null, icon_color: null });
+      expect(c.text.header).toEqual({ font_size: 20, color: null, font_weight: null, icon_color: null });
       expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.header\.color/));
       expect(warn).toHaveBeenCalledWith(expect.stringMatching(/text\.header\.icon_color/));
     },

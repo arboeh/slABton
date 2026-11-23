@@ -9,7 +9,7 @@
  * `timing` samples by `detectExpiry`.
  */
 
-import { ACTION, MODE, NOTICE, TIMER_SOURCE, TIMER_STATUS, infoActions } from "../constants.js";
+import { ACTION, HANDLE_FLEX, MODE, NOTICE, TIMER_SOURCE, TIMER_STATUS, infoActions } from "../constants.js";
 import { t } from "../i18n.js";
 import {
   formatRemaining, formatRemainingText, formatTarget, isTimeOnly, parseDuration, resolveTimeZone, splitDuration,
@@ -142,6 +142,8 @@ export function view(config, stateObj, _pending, ctx) {
   let frac = 0;
   if (known && s.kind === TIMER_SOURCE.HA && s.duration > 0) frac = clamp(s.remaining / s.duration, 0, 1);
   if (known && s.kind === TIMER_SOURCE.TARGET) frac = clamp(s.remaining / (config.timer.span * DAY_SECONDS), 0, 1);
+  // Switch layout: a timer that is off shows an empty bar, the handle at the start ("off").
+  if (s.status === TIMER_STATUS.IDLE && isSwitchLike(config)) frac = 0;
 
   const remainingText = known ? formatRemaining(s.remaining, lang) : null;
   const text = ctx.expired ? label : (remainingText ?? (s.status === TIMER_STATUS.UNKNOWN ? "–" : label));
@@ -181,18 +183,77 @@ export function view(config, stateObj, _pending, ctx) {
   };
 }
 
+/** The `timer.<name>` service call on this entity: the mode's defaults and the card's start / end hooks share it. */
+const timerService = (config, name) => ({
+  action: ACTION.PERFORM, perform_action: `timer.${name}`, target: { entity_id: config.entity },
+});
+
 /** Home Assistant timers start / pause / cancel; countdown targets open more-info. */
 export function defaultActions(config, stateObj) {
   if (sourceOf(config) !== TIMER_SOURCE.HA) return infoActions();
-  const target = { entity_id: config.entity };
-  const service = (name) => ({ action: ACTION.PERFORM, perform_action: `timer.${name}`, target });
   return {
-    tap_action: service(stateObj?.state === TIMER_STATUS.ACTIVE ? "pause" : "start"),
+    tap_action: timerService(config, stateObj?.state === TIMER_STATUS.ACTIVE ? "pause" : "start"),
     double_tap_action: { action: ACTION.NONE },
-    hold_action: service("cancel"),
+    hold_action: timerService(config, "cancel"),
   };
 }
 
-export function isDraggable() {
-  return false;
+/** Edges of a Home Assistant timer run that the `timer.start_action` / `timer.end_action` hook onto. */
+export const EDGE = Object.freeze({ START: "start", CANCEL: "cancel" });
+
+/** Share of the track the handle must pass towards the full end to start a timer that is off. */
+const SWIPE_START_FRAC = 0.5;
+
+const startAction = (config) => timerService(config, "start");
+
+/**
+ * Which edge of the timer run `action` causes, or null: `start` (timer.start of this entity while it is idle: a
+ * resume from paused is no new start) or `cancel` (timer.cancel of this entity while it runs or is paused).
+ * Only the card's own actions count; a start from outside never reaches this.
+ */
+export function edgeOf(config, stateObj, action) {
+  if (sourceOf(config) !== TIMER_SOURCE.HA || action?.action !== ACTION.PERFORM) return null;
+  const ids = [action.target?.entity_id].flat();
+  if (ids.length !== 1 || ids[0] !== config.entity) return null;
+  if (action.perform_action === "timer.start" && stateObj?.state === TIMER_STATUS.IDLE) return EDGE.START;
+  const running = [TIMER_STATUS.ACTIVE, TIMER_STATUS.PAUSED].includes(stateObj?.state);
+  return action.perform_action === "timer.cancel" && running ? EDGE.CANCEL : null;
+}
+
+const cancelAction = (config) => timerService(config, "cancel");
+
+/** A running timer is stopped or restarted by dragging the handle into this outer share of the track. */
+const EDGE_ZONE = 0.1;
+
+/**
+ * Switch layout of a Home Assistant timer: both `start_action` and `end_action` are configured. The handle then
+ * sits at the start of the track while the timer is off, and the timer drains from the full end back to it.
+ * Without both actions the card behaves as before.
+ */
+function isSwitchLike(config) {
+  return sourceOf(config) === TIMER_SOURCE.HA && Boolean(config.timer.start_action && config.timer.end_action);
+}
+
+/**
+ * In the switch layout the handle can be dragged: from off towards the full end starts the timer, while it runs
+ * or is paused to the full end restarts it (resumes a paused one) and back to the start stops it.
+ */
+export function isDraggable(config, stateObj) {
+  if (!config?.drag || config.handle_position !== HANDLE_FLEX || !isSwitchLike(config)) return false;
+  if (![TIMER_STATUS.IDLE, TIMER_STATUS.ACTIVE, TIMER_STATUS.PAUSED].includes(stateObj?.state)) return false;
+  return secondsOrNull(parseDuration(stateObj.attributes?.duration)) > 0;
+}
+
+/**
+ * Drag release. Off: past the middle starts. Running or paused: into the full end (from outside it) starts again,
+ * into the start end (from outside it) cancels. Anything else springs the handle back.
+ */
+export function onRelease({ frac, startPos, config, stateObj }) {
+  if (!isDraggable(config, stateObj)) return null;
+  if (stateObj.state === TIMER_STATUS.IDLE) {
+    return frac >= SWIPE_START_FRAC ? { action: startAction(config), pending: undefined } : null;
+  }
+  if (frac >= 1 - EDGE_ZONE && startPos < 1 - EDGE_ZONE) return { action: startAction(config), pending: undefined };
+  if (frac <= EDGE_ZONE && startPos > EDGE_ZONE) return { action: cancelAction(config), pending: undefined };
+  return null;
 }

@@ -76,6 +76,9 @@ export class SlabtonCard extends HTMLElement {
     this._lastCall = { key: "", at: 0 };
     this._tick = null;
     this._pulse = new Pulse();
+    // Timer start / end actions: no re-entry, and the end time whose end action the card ran by cancelling.
+    this._runningTimerAction = false;
+    this._endRanFor = null;
     this._noticed = new Set();
     this._onVisibility = () => this._handleVisibility();
   }
@@ -177,11 +180,47 @@ export class SlabtonCard extends HTMLElement {
 
   // --- timer expiry (pulse) -----------------------------------------------
 
-  /** Sample the timer and let the pulse start or end. Only `_update()` calls this. */
+  /** Sample the timer and let the pulse start or end; a timer that ran out runs `timer.end_action`. Only `_update()` calls this. */
   _advance(now) {
     if (!this._mode.timing) return;
     const ctx = this._context(now, false);
-    this._pulse.advance(this._mode.timing(this._config, this._stateObj(), ctx), now, this._config.timer);
+    const expired = this._pulse.advance(this._mode.timing(this._config, this._stateObj(), ctx), now, this._config.timer);
+    // A cancel that already ran the end action may land within the expiry tolerance: that end counts once.
+    if (!expired || this._pulse.firedFor === this._endRanFor) return;
+    this._endRanFor = this._pulse.firedFor;
+    this._runTimerAction(this._config.timer.end_action);
+  }
+
+  /** Run `timer.start_action` / `timer.end_action` (a missing one does nothing; one that starts the timer again cannot loop). */
+  _runTimerAction(action) {
+    if (!hasAction(action) || this._runningTimerAction) return;
+    this._runningTimerAction = true;
+    try {
+      this._runAction(action);
+    } finally {
+      this._runningTimerAction = false;
+    }
+  }
+
+  /**
+   * Edge of the timer run that `action` causes (`timerMode.edgeOf`), or null: the start action runs before
+   * `timer.start`, the end action after `timer.cancel` (the device must not stay on).
+   */
+  _timerEdge(action) {
+    if (this._runningTimerAction || !this._mode.edgeOf) return null;
+    return this._mode.edgeOf(this._config, this._stateObj(), action);
+  }
+
+  /**
+   * Remember the end time of the timer run the card cancels: its end action runs with the cancel. Returns true when
+   * that end action already ran for this run (the timer expired just before a late hold).
+   */
+  _markEndRan() {
+    const timing = this._mode.timing?.(this._config, this._stateObj(), this._context(Date.now(), false));
+    const finishesAt = timing?.finishesAt ?? null;
+    const alreadyRan = finishesAt != null && finishesAt === this._endRanFor;
+    this._endRanFor = finishesAt;
+    return alreadyRan;
   }
 
   /** A tap ends the pulse and does nothing else. Returns true when a pulse was running. */
@@ -460,13 +499,19 @@ export class SlabtonCard extends HTMLElement {
     if (this._config.stickshift) this._runPointAction(this._stateEntry(value), "tap_action");
   }
 
+  /** Timer card with both a start and an end action (the swipe layout); other timer cards stay as they were. */
+  _timerSwitchLike() {
+    const { start_action: start, end_action: end } = this._config.timer;
+    return this._mode.id === MODE.TIMER && Boolean(start && end);
+  }
+
   /**
-   * Value mode: `nodrag` (normal touch scrolling over the handle) follows what can really be dragged now, not only
-   * the config: a read-only bar, a fixed handle or an invalid range cannot be dragged either. Only the cursor and
-   * `touch-action` change, never a size.
+   * Value mode and the timer swipe layout: `nodrag` (normal touch scrolling over the handle) follows what can really
+   * be dragged now, not only the config: a read-only bar, a fixed handle or an invalid range cannot be dragged
+   * either. Only the cursor and `touch-action` change, never a size.
    */
   _syncNoDrag() {
-    if (this._mode.id !== MODE.VALUE) return;
+    if (this._mode.id !== MODE.VALUE && !this._timerSwitchLike()) return;
     this._refs.root.classList.toggle("nodrag", !this._mode.isDraggable(this._config, this._stateObj()));
   }
 
@@ -481,6 +526,8 @@ export class SlabtonCard extends HTMLElement {
     this._dragPos = null;
     this._blocked = false;
     this._pulse.reset();
+    this._runningTimerAction = false;
+    this._endRanFor = null;
     this._noticed.clear();
   }
 
@@ -586,6 +633,8 @@ export class SlabtonCard extends HTMLElement {
     });
     if (!result) return;
     this._runAction(result.action);
+    // A result without a pending value (timer swipe) leaves the display to the entity.
+    if (result.pending === undefined) return;
     this._setPending(result.pending);
     this._runArrivalAction(result.pending);
   }
@@ -640,7 +689,11 @@ export class SlabtonCard extends HTMLElement {
       }
       case ACTION.PERFORM: {
         const [domain, service] = action.perform_action.split(".");
+        const edge = this._timerEdge(action);
+        if (edge === timerMode.EDGE.START) this._runTimerAction(this._config.timer.start_action);
+        const endRan = edge === timerMode.EDGE.CANCEL && this._markEndRan();
         this._call(domain, service, action.data ?? {}, action.target);
+        if (edge === timerMode.EDGE.CANCEL && !endRan) this._runTimerAction(this._config.timer.end_action);
         break;
       }
       case ACTION.MORE_INFO:

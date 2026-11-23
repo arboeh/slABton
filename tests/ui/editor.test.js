@@ -62,6 +62,45 @@ describe("scale labels placement", () => {
   });
 });
 
+describe("timer start and end actions", () => {
+  const timerSection = (config) => buildSchema(config).find((item) => item.name === "timer");
+  const hook = { action: "perform-action", perform_action: "climate.turn_on", target: { entity_id: "climate.a" } };
+
+  it("offers both action pickers for a timer.* entity", () => {
+    const fields = timerSection({ entity: "timer.klima" }).schema;
+    for (const name of ["start_action", "end_action"]) {
+      expect(fields.find((field) => field.name === name).selector).toEqual({ ui_action: {} });
+    }
+  });
+
+  it("keeps the other timer fields", () => {
+    expect(names(timerSection({ entity: "timer.klima" }).schema)).toEqual(
+      expect.arrayContaining(["pulse", "pulse_seconds", "info", "time_zone", "span", "start_action", "end_action"]),
+    );
+  });
+
+  it("offers them neither for a countdown target nor without an entity", () => {
+    for (const config of [{ entity: "input_datetime.fest", mode: "timer" }, { entity: "input_date.fest", mode: "timer" }, { mode: "timer" }]) {
+      expect(names(timerSection(config).schema), JSON.stringify(config)).not.toContain("start_action");
+      expect(names(timerSection(config).schema), JSON.stringify(config)).not.toContain("end_action");
+    }
+  });
+
+  it("labels the pickers in both languages", () => {
+    for (const lang of ["en", "de"]) {
+      expect(t(lang, "editor.start_action")).not.toBe("editor.start_action");
+      expect(t(lang, "editor.end_action")).not.toBe("editor.end_action");
+    }
+  });
+
+  it("drops a cleared action from the timer block and keeps a set one", () => {
+    expect(cleanConfig({ entity: "timer.klima", timer: { pulse: false, start_action: undefined, end_action: null } }))
+      .toEqual({ entity: "timer.klima", timer: { pulse: false } });
+    expect(cleanConfig({ entity: "timer.klima", timer: { start_action: undefined } })).toEqual({ entity: "timer.klima" });
+    expect(cleanConfig({ entity: "timer.klima", timer: { start_action: hook } }).timer).toEqual({ start_action: hook });
+  });
+});
+
 describe("buildSchema", () => {
   it("always offers the common fields", () => {
     const n = names(buildSchema({ entity: "input_select.a" }));
@@ -127,7 +166,7 @@ describe("buildSchema", () => {
     expect(counter.find((item) => item.name === "counter").schema.map((f) => f.name)).toEqual(["min", "max"]);
     const timer = buildSchema({ entity: "timer.a" });
     expect(timer.find((item) => item.name === "timer").schema.map((f) => f.name)).toEqual(
-      ["pulse", "pulse_seconds", "info", "time_zone", "span"],
+      ["pulse", "pulse_seconds", "info", "time_zone", "span", "start_action", "end_action"],
     );
     const clock = buildSchema({ mode: "clock" });
     expect(clock.find((item) => item.name === "clock").schema.map((f) => f.name)).toEqual(
@@ -237,7 +276,7 @@ describe("buildSchema", () => {
     expect(appearance.type).toBe("expandable");
     expect(appearance.schema.map((item) => item.name)).toEqual(["header", "bar", "info", "button", "scale"]);
     const fields = (area) => appearance.schema.find((item) => item.name === area).schema.map((f) => f.name);
-    expect(fields("header")).toEqual(["font_size", "color", "icon_color"]);
+    expect(fields("header")).toEqual(["font_size", "color", "font_weight", "icon_color"]);
     for (const area of ["bar", "info", "button", "scale"]) expect(fields(area)).toEqual(["font_size", "color"]);
   });
 
@@ -381,12 +420,12 @@ describe("SlabtonCardEditor", () => {
     expect(labelsOf("en")).toEqual({
       section: "Appearance",
       areas: ["Header", "Bar text", "Timer info", "Handle text", "Scale labels"],
-      fields: ["Font size in px", "Color", "Icon color"],
+      fields: ["Font size in px", "Color", "Font weight (number, bold or var(...))", "Icon color"],
     });
     expect(labelsOf("de")).toEqual({
       section: "Darstellung",
       areas: ["Kopfzeile", "Balkentext", "Timer-Info", "Griff-Text", "Skala-Beschriftung"],
-      fields: ["Schriftgröße in px", "Farbe", "Symbolfarbe"],
+      fields: ["Schriftgröße in px", "Farbe", "Schriftstärke (Zahl, bold oder var(...))", "Symbolfarbe"],
     });
   });
 
@@ -638,6 +677,16 @@ describe("SlabtonCardEditor", () => {
         "text.header.icon_color: this value is not accepted as a color and is ignored by the card.",
       ]);
       expect(validationHints({ bar_color: "red", step: "", scale: { size: 20, color: "var(--x)" } })).toEqual([]);
+    });
+
+    it("name an unusable header font weight, and accept a good one", () => {
+      expect(validationHints({ text: { header: { font_weight: "heavy" }, bar: { font_weight: 0 } } })).toEqual([
+        "text.header.font_weight: use a number from 1 to 1000, normal, bold, lighter, bolder or var(--name); the card ignores this value.",
+        "text.bar.font_weight: use a number from 1 to 1000, normal, bold, lighter, bolder or var(--name); the card ignores this value.",
+      ]);
+      expect(validationHints({ text: { header: { font_weight: "700" } } })).toEqual([]);
+      expect(validationHints({ text: { header: { font_weight: "var(--font-weight-l)" } } })).toEqual([]);
+      expect(validationHints({ text: { header: { font_weight: "" } } })).toEqual([]);
     });
 
     it("report an unusable step", () => {

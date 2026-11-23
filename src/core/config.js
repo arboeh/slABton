@@ -484,6 +484,48 @@ function textColor(value, key) {
   return css;
 }
 
+/** Smallest and largest numeric CSS `font-weight`. */
+const MIN_FONT_WEIGHT = 1;
+const MAX_FONT_WEIGHT = 1000;
+
+/** Keywords a `font-weight` takes that make sense for a header title. */
+const FONT_WEIGHT_KEYWORDS = Object.freeze(["normal", "bold", "lighter", "bolder"]);
+/** A CSS variable with an optional fallback, e.g. `var(--font-weight-l)`. */
+const CSS_VAR_RE = /^var\(\s*--[A-Za-z0-9_-]+\s*(,[^()]*)?\)$/;
+
+/**
+ * Font weight as CSS text, or null when the value is not usable: a number from 1 to 1000, one of the keywords
+ * (`normal`, `bold`, `lighter`, `bolder`) or a CSS variable (`var(--font-weight-l)`). A blank value is null too.
+ * Shared by the card config and the editor hints.
+ */
+export function fontWeightCss(value) {
+  if (isBlank(value)) return null;
+  const plain = typeof value === "number" || (typeof value === "string" && PLAIN_NUMBER_RE.test(value.trim()));
+  if (plain) {
+    const n = parsePlainNumber(value);
+    return n >= MIN_FONT_WEIGHT && n <= MAX_FONT_WEIGHT ? String(n) : null;
+  }
+  const css = safeCss(value, null);
+  if (css == null) return null;
+  return FONT_WEIGHT_KEYWORDS.includes(css.toLowerCase()) || CSS_VAR_RE.test(css) ? css : null;
+}
+
+/** `text.header.font_weight`: see `fontWeightCss`; warns about an unusable value. */
+function textFontWeight(value, key) {
+  if (isBlank(value)) return null;
+  const css = fontWeightCss(value);
+  if (css == null) {
+    warn(`${key} must be a number from ${MIN_FONT_WEIGHT} to ${MAX_FONT_WEIGHT}, normal, bold, lighter, bolder or var(--name) and was ignored`);
+  }
+  return css;
+}
+
+/** The reader for one `text:` option: sizes, weights, everything else is a CSS color. */
+function textReader(key, option) {
+  if (option.unit) return textFontSize;
+  return key === "font_weight" ? textFontWeight : textColor;
+}
+
 function normalizeTextArea(raw, area) {
   const options = TEXT_OPTIONS[area];
   if (raw != null && !isPlainObject(raw)) throw new Error(`slabton-card: text.${area} must be a map`);
@@ -495,7 +537,7 @@ function normalizeTextArea(raw, area) {
   const out = {};
   for (const key of keys) {
     const path = `text.${area}.${key}`;
-    out[key] = options[key].unit ? textFontSize(source[key], path) : textColor(source[key], path);
+    out[key] = textReader(key, options[key])(source[key], path);
   }
   return out;
 }
@@ -707,7 +749,9 @@ function normalizeTimeZone(value, key) {
 }
 
 const COUNTER_DEFAULTS = Object.freeze({ min: null, max: null });
-const TIMER_DEFAULTS = Object.freeze({ pulse: true, pulse_seconds: 10, info: null, time_zone: null, span: 30 });
+const TIMER_DEFAULTS = Object.freeze({
+  pulse: true, pulse_seconds: 10, info: null, time_zone: null, span: 30, start_action: null, end_action: null,
+});
 const CLOCK_FACE_DEFAULTS = Object.freeze({ numbers: "none", ticks: DEFAULT_FACE_TICKS });
 const CLOCK_DEFAULTS = Object.freeze({
   display: "digital", face: CLOCK_FACE_DEFAULTS, time_zone: null, hour_format: "auto", seconds: false,
@@ -725,7 +769,28 @@ function normalizeCounter(raw) {
   return { min, max };
 }
 
-function normalizeTimer(raw) {
+/**
+ * `timer.start_action` / `timer.end_action`: an action of the card at the start and at the end of a Home Assistant
+ * timer run. Missing = null. They only hook onto a `timer.*` entity: for a countdown target (input_datetime,
+ * input_date) there is no start and no end the card could know, so they warn and are dropped.
+ */
+function normalizeTimerAction(raw, key, domain) {
+  const action = normalizeAction(raw, key) ?? null;
+  if (!action || action.action === ACTION.NONE) return null;
+  if (domain !== "timer") {
+    warn(`${key} only works with a timer.* entity and was ignored`);
+    return null;
+  }
+  // The action runs unattended, e.g. at the end of a timer: only a service call. A toggle would flip the device
+  // back on when two cards or dashboards run it.
+  if (action.action !== ACTION.PERFORM) {
+    warn(`${key} must be a perform-action and was ignored`);
+    return null;
+  }
+  return action;
+}
+
+function normalizeTimer(raw, domain) {
   const block = blockOf(raw, MODE.TIMER);
   return {
     pulse: block.pulse !== false,
@@ -733,6 +798,8 @@ function normalizeTimer(raw) {
     info: normalizeText(block.info, "timer.info", MODE.TIMER),
     time_zone: normalizeTimeZone(block.time_zone, "timer.time_zone"),
     span: toNumber(block.span, TIMER_DEFAULTS.span, 0.01, 3650),
+    start_action: normalizeTimerAction(block.start_action, "timer.start_action", domain),
+    end_action: normalizeTimerAction(block.end_action, "timer.end_action", domain),
   };
 }
 
@@ -870,7 +937,7 @@ export function normalizeConfig(raw) {
     bar_own_attribute: barOwnAttribute,
     bar_text: normalizeText(raw.bar_text, "bar_text", mode),
     counter,
-    timer: mode === MODE.TIMER ? normalizeTimer(raw) : { ...TIMER_DEFAULTS },
+    timer: mode === MODE.TIMER ? normalizeTimer(raw, domain) : { ...TIMER_DEFAULTS },
     clock,
     ...layout,
     scale: normalizeScale(raw.scale, mode, { clock, counter, range, domain, states, barEntity, barAttribute, ...layout }),

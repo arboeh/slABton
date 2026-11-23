@@ -103,6 +103,7 @@ text:
 | --- | --- | --- | --- |
 | `header` | `font_size` | 14 px | Header-Text (Titel) |
 | `header` | `color` | Textfarbe | Nur der Header-Text; das Icon bleibt unverändert |
+| `header` | `font_weight` | 500 | Nur der Header-Text (Titel) |
 | `header` | `icon_color` | Textfarbe | Nur das Header-Icon |
 | `bar` | `font_size` | 13 px | `bar_text` |
 | `bar` | `color` | Textfarbe | `bar_text` |
@@ -115,6 +116,7 @@ text:
 
 - `font_size`: Zahl von 8 bis 48 (px) oder Dezimaltext wie `"12"`. Andere Werte werden mit Konsolenwarnung ignoriert.
 - `color`: jede CSS-Farbe, die `styles:` akzeptiert. Unsichere Werte werden mit Konsolenwarnung ignoriert.
+- `font_weight` gibt es nur im Bereich `header`: eine Zahl von 1 bis 1000 (`700`), ein Schlüsselwort (`normal`, `bold`, `lighter`, `bolder`) oder eine CSS-Variable wie `var(--font-weight-l)`. Andere Werte werden mit Konsolenwarnung ignoriert.
 - `icon_color` gibt es nur im Bereich `header`. Andere unbekannte Schlüssel werden mit Warnung ignoriert.
 - Rangfolge: `text:` schlägt `styles:`, `styles:` schlägt den Standardwert. Ungültige Werte stoppen die Karte nicht; die übrigen Werte gelten weiter.
 - `button.font_size` setzt nur den Griff-Text; das Griff-Icon folgt `handle_size`. `button.color` färbt auch das Icon.
@@ -223,9 +225,11 @@ styles:
 Werte werden geprüft; unsichere Werte werden mit Konsolenwarnung ignoriert.
 
 Der Block [`text:`](appearance.md#textdarstellung) setzt diese Variablen. `styles:` kann sie ebenfalls setzen, ein Wert aus `text:` gewinnt aber gegen `styles:`:
-`--slabton-header-size`, `--slabton-header-color`, `--slabton-header-icon-color`,
+`--slabton-header-size`, `--slabton-header-color`, `--slabton-header-weight`, `--slabton-header-icon-color`,
 `--slabton-bar-text-size`, `--slabton-bar-text-color`, `--slabton-info-size`, `--slabton-info-color`,
 `--slabton-button-size`, `--slabton-button-color`. Standardgrößen: Header 14 px, Bar 13 px, Info 13 px, Griff 14 px.
+
+Nur Header, nur als `styles:`-Variablen (keine `text:`-Option): `--slabton-header-opacity` (Standard 1) und `--slabton-header-icon-size` (Standard 20px).
 
 Skala: `--slabton-scale-size` und `--slabton-scale-color` setzen `scale.size` und `scale.color`; `styles:` kann sie überschreiben.
 Skala-Beschriftung: `--slabton-scale-label-size` und `--slabton-scale-label-color` (gesetzt durch `text.scale`).

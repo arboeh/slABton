@@ -247,6 +247,8 @@ timer:
 | `timer.info` | none | Extra text with [placeholders](appearance.md#placeholders): beside the handle (horizontal), above the bar (vertical) |
 | `timer.time_zone` | Home Assistant | Zone used to read `input_datetime` / `input_date` (IANA name) |
 | `timer.span` | 30 | Countdown to a date: days left at which the bar is full |
+| `timer.start_action` | none | Action when the card starts a `timer.*` timer, see [Start and end action](#timer-start-and-end-action) |
+| `timer.end_action` | none | Action when the timer ends (runs out, or the card cancels it), see below |
 
 The pulse only starts when the card sees the timer run out (or Home Assistant report its end).
 Cancelling a timer early and opening the dashboard after the end do not pulse. A tap while it pulses only
@@ -257,6 +259,71 @@ the display can be off by that difference.
 
 Daylight saving time: a date and time that does not exist (spring forward) is shifted past the gap, one
 that exists twice (autumn) means the later time. Unknown time zone names are a configuration error.
+
+### Timer: start and end action
+
+With a `timer.*` entity the card can switch a device together with the timer, without a script or an
+automation: `timer.start_action` runs when you start the timer, `timer.end_action` when it ends. Both take
+a `perform-action` (see below). The run time is the `duration` of the timer helper.
+
+```yaml
+type: custom:slabton-card
+entity: timer.climate_20min
+name: Air conditioning
+timer:
+  start_action:
+    action: perform-action
+    perform_action: climate.turn_on
+    target: { entity_id: climate.living_room }
+  end_action:
+    action: perform-action
+    perform_action: climate.turn_off
+    target: { entity_id: climate.living_room }
+```
+
+- **Start:** a tap, or a swipe of the handle from the start of the bar past the middle. The start action runs
+  first, then `timer.start`. Resuming a paused timer does not run it again. A start from outside the card
+  (automation, another card) does not run it.
+- **End:** when the timer runs out, the end action runs once per run, also with `timer.pulse: false`.
+  A hold (`timer.cancel`) runs it too, so the device does not stay on. Pause does not.
+- **Swipe (switch layout):** with both `start_action` and `end_action` set, the handle sits at the start of the bar
+  while the timer is off and the bar is empty; a running timer drains from the full end back to it. Dragging the
+  handle from off past the middle starts the timer. While it runs or is paused, dragging the handle into the full end
+  starts it again (resumes a paused one; the start action does not run again), and dragging it back into the start
+  end stops it (`timer.cancel`, then the end action). A drag that stops short springs back. `drag: false` turns the
+  swipe off. Without both actions the card behaves as before (full bar when ready, no swipe).
+- Both actions must be a `perform-action`: they run unattended, so `toggle`, `more-info`, `navigate` and `url`
+  are ignored with a console warning (a toggle would flip the device back when two cards run it).
+- The end action also runs when you come back to a card that was hidden (other view, background tab) while the
+  timer ran out; it never runs if the card never saw the timer run. It is lost when the timer entity goes
+  `unavailable` during a run (Home Assistant restart). Two cards for the same timer run it twice, so pick idempotent
+  actions (`climate.turn_off`, not a toggle).
+- A running timer whose handle already sits within 10 % of the full end cannot be restarted by dragging, and one
+  within 10 % of the start cannot be stopped by dragging: use a tap or a hold there.
+- If `timer.start` fails after the start action ran, the device stays on without a timer; the error is in the browser console.
+- Not for `input_datetime` / `input_date` countdown targets: there is no start or end the card could know; the
+  actions are ignored with a console warning.
+
+**The end action only runs while a dashboard with the card is open.** The card runs it in the browser. If no such
+dashboard is open when the timer ends, nothing happens and the device stays on. With several open dashboards (phone,
+tablet) every one of them runs the end action: choose an action that is safe to repeat, like `climate.turn_off`,
+not `toggle`. For a guaranteed end, add an automation on the `timer.finished` event of the helper. Keep the
+`end_action` on the card too (the swipe needs both actions): with a dashboard open both run, which is harmless
+for a repeatable action:
+
+```yaml
+automation:
+  - alias: Air conditioning off after the timer
+    triggers:
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.climate_20min
+    actions:
+      - action: climate.turn_off
+        target:
+          entity_id: climate.living_room
+```
 
 ![paused timer](assets/shots/timer-paused-light.png#only-light)
 ![paused timer](assets/shots/timer-paused-dark.png#only-dark)

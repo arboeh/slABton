@@ -115,6 +115,7 @@ export const TEXT_OPTIONS = Object.freeze({
   header: Object.freeze({
     font_size: Object.freeze({ css: "--slabton-header-size", unit: "px" }),
     color: Object.freeze({ css: "--slabton-header-color" }),
+    font_weight: Object.freeze({ css: "--slabton-header-weight" }),
     icon_color: Object.freeze({ css: "--slabton-header-icon-color" }),
   }),
   bar: Object.freeze({

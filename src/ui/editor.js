@@ -8,7 +8,8 @@
 
 import {
   ARM_SERVICES, CLOCK_DISPLAYS, CLOCK_FACE_NUMBERS, DEFAULTS, DIRECTIONS, HANDLE_CONTENTS, HANDLE_POSITIONS, HANDLE_SHAPES,
-  HEADER_ICON_POSITIONS, HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, inferMode, isLegacyCoverConfig,
+  HEADER_ICON_POSITIONS, HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, fontWeightCss, inferMode,
+  isLegacyCoverConfig,
 } from "../core/config.js";
 import {
   ANIMATIONS, COVER_DOMAIN, DEFAULT_FACE_TICKS, MAX_FONT_SIZE, MAX_SCALE_TICKS, MAX_THICKNESS, MIN_FONT_SIZE, MIN_SCALE_SIZE, MIN_SCALE_TICKS,
@@ -53,6 +54,9 @@ function canDrag(config) {
   const ownBar = !(isPlainObject(config.bar) && (config.bar.entity || config.bar.attribute));
   return (VALUE_SETTABLE_DOMAINS.includes(domain) || domain === COVER_DOMAIN) && ownBar;
 }
+
+/** True for a Home Assistant `timer.*` entity: only there the start and end actions have a run to hook onto. */
+const isTimerEntity = (config) => typeof config.entity === "string" && config.entity.startsWith("timer.");
 
 /** The display styles of the state mode: the plain bar, or the bar with the stickshift points. */
 const STYLES = Object.freeze(["standard", "stickshift"]);
@@ -121,6 +125,10 @@ function modeFields(mode, lang, config) {
         { name: "info", selector: text() },
         { name: "time_zone", selector: text() },
         { name: "span", selector: number(0.01, 3650) },
+        ...(isTimerEntity(config) ? [
+          { name: "start_action", selector: { ui_action: {} } },
+          { name: "end_action", selector: { ui_action: {} } },
+        ] : []),
       ]),
     ],
     [MODE.CLOCK]: [
@@ -242,7 +250,7 @@ export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
 }
 
 /** Top-level blocks whose cleared fields are dropped at every depth (so no `header: {}` stays behind). */
-const NESTED_CLEAN_KEYS = ["text", "scale", "clock", "bar"];
+const NESTED_CLEAN_KEYS = ["text", "scale", "clock", "bar", "timer"];
 
 const isCleared = (value) => value === undefined || value === null || value === "";
 
@@ -427,6 +435,14 @@ function invalidColorFields(config) {
   return entries.filter(([, value]) => isSet(value) && safeCss(value, null) === null).map(([name]) => name);
 }
 
+/** Names of the `text.<area>.font_weight` values the card would not accept. */
+function invalidFontWeightFields(config) {
+  if (!isPlainObject(config.text)) return [];
+  return Object.entries(config.text)
+    .filter(([, options]) => isPlainObject(options) && isSet(options.font_weight) && fontWeightCss(options.font_weight) === null)
+    .map(([area]) => `text.${area}.font_weight`);
+}
+
 /**
  * Notes on values the card would ignore (with a warning in the console). The values stay in the form so that
  * typing a longer value is not cut off; the note disappears once the value is usable.
@@ -434,6 +450,7 @@ function invalidColorFields(config) {
  */
 export function validationHints(config, lang = DEFAULT_LANGUAGE) {
   const hints = invalidColorFields(config).map((field) => t(lang, "editor.hint_color", { field }));
+  hints.push(...invalidFontWeightFields(config).map((field) => t(lang, "editor.hint_font_weight", { field })));
 
   // The card takes `bar.step` over the flat `step` (resolveBar) and reads both within +-1e9 (normalizeStep).
   const barStep = isPlainObject(config.bar) ? config.bar.step : undefined;

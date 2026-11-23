@@ -347,8 +347,8 @@ export function buildCss() {
          like for .rail and .scale. */
       --slabton-ext: calc(var(--slabton-pad) + var(--slabton-hl) / 2 + var(--slabton-p, 0) * (100% - 2 * var(--slabton-pad) - var(--slabton-hl)));
     }
-    .header { display: flex; align-items: center; gap: 8px; font-size: var(--slabton-header-size, 14px); font-weight: 500; }
-    .header ha-icon { --mdc-icon-size: 20px; flex: none; color: var(--slabton-header-icon-color, inherit); }
+    .header { display: flex; align-items: center; gap: 8px; font-size: var(--slabton-header-size, 14px); font-weight: var(--slabton-header-weight, 500); opacity: var(--slabton-header-opacity, 1); }
+    .header ha-icon { --mdc-icon-size: var(--slabton-header-icon-size, 20px); flex: none; color: var(--slabton-header-icon-color, inherit); }
     .header.icon-right { flex-direction: row-reverse; }
     .header.icon-right .title { flex: 1; min-width: 0; }
     .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--slabton-header-color, inherit); }

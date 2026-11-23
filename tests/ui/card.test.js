@@ -34,6 +34,211 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
+describe("timer start and end actions", () => {
+  const TIMER = "timer.klima";
+  const CLIMATE = "climate.a";
+  const performOn = (service) => ({ action: "perform-action", perform_action: `climate.${service}`, target: { entity_id: CLIMATE } });
+  const iso = (offsetMs) => new Date(Date.now() + offsetMs).toISOString();
+  const idleState = () => makeState(TIMER, "idle", { duration: "0:20:00", remaining: "0:20:00" });
+  const activeState = (offsetMs = 5000) => makeState(TIMER, "active", { duration: "0:20:00", remaining: "0:20:00", finishes_at: iso(offsetMs) });
+  const pausedState = () => makeState(TIMER, "paused", { duration: "0:20:00", remaining: "0:10:00" });
+  const setup = (state, timer = {}, extra = {}) => create(
+    { entity: TIMER, timer: { start_action: performOn("turn_on"), end_action: performOn("turn_off"), ...timer }, ...extra },
+    { [TIMER]: state },
+  );
+  const calls = (hass) => hass.callService.mock.calls.map(([domain, service]) => `${domain}.${service}`);
+  const swipe = (el, from, to) => {
+    mockRect(q(el, ".rail"), { left: 0, width: 200 });
+    const handle = q(el, ".handle");
+    pointer(handle, "pointerdown", { clientX: from });
+    pointer(handle, "pointermove", { clientX: to });
+    pointer(handle, "pointerup", { clientX: to });
+  };
+
+  it("runs the start action before timer.start on a tap", () => {
+    const { el, hass } = setup(idleState());
+    tap(q(el, ".handle"));
+    expect(calls(hass)).toEqual(["climate.turn_on", "timer.start"]);
+    expect(hass.callService).toHaveBeenNthCalledWith(1, "climate", "turn_on", {}, { entity_id: CLIMATE });
+  });
+
+  it("does not run the start action again when a paused timer resumes", () => {
+    const { el, hass } = setup(pausedState());
+    tap(q(el, ".handle"));
+    expect(calls(hass)).toEqual(["timer.start"]);
+  });
+
+  it("runs only timer.start without a start action", () => {
+    const { el, hass } = setup(idleState(), { start_action: undefined });
+    tap(q(el, ".handle"));
+    expect(calls(hass)).toEqual(["timer.start"]);
+  });
+
+  it("does not run the start action for a start from outside", () => {
+    const { el, hass } = setup(idleState());
+    el.hass = withState(hass, TIMER, "active", activeState().attributes);
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+
+  it("pauses without the end action", () => {
+    const { el, hass } = setup(activeState());
+    tap(q(el, ".handle"));
+    expect(calls(hass)).toEqual(["timer.pause"]);
+  });
+
+  it("starts by swiping the handle from off past the middle: start action first, then timer.start", () => {
+    const { el, hass } = setup(idleState());
+    swipe(el, 20, 180);
+    expect(calls(hass)).toEqual(["climate.turn_on", "timer.start"]);
+    expect(hass.callService).toHaveBeenLastCalledWith("timer", "start", {}, { entity_id: TIMER });
+  });
+
+  it("springs back after a short swipe", () => {
+    const { el, hass } = setup(idleState());
+    swipe(el, 20, 60);
+    expect(hass.callService).not.toHaveBeenCalled();
+    expect(q(el, ".root").classList.contains("dragging")).toBe(false);
+  });
+
+  it("stops a running timer dragged back to the start: cancel, then the end action", () => {
+    // 15 of 20 minutes left: the handle sits at 0.75 of the rail.
+    const { el, hass } = setup(activeState(900000));
+    swipe(el, 140, 20);
+    expect(calls(hass)).toEqual(["timer.cancel", "climate.turn_off"]);
+  });
+
+  it("restarts a running timer dragged into the full end, without the start action", () => {
+    const { el, hass } = setup(activeState(900000));
+    swipe(el, 140, 220);
+    expect(calls(hass)).toEqual(["timer.start"]);
+  });
+
+  it("starts the timer again from a paused state dragged into the full end", () => {
+    const { el, hass } = setup(pausedState());
+    swipe(el, 100, 220);
+    expect(calls(hass)).toEqual(["timer.start"]);
+  });
+
+  it("cannot be swiped without both a start and an end action, or with drag off", () => {
+    for (const [state, timer, extra] of [
+      [idleState(), { start_action: undefined, end_action: undefined }, {}],
+      [idleState(), { start_action: undefined }, {}],
+      [idleState(), { end_action: undefined }, {}],
+      [idleState(), {}, { drag: false }],
+    ]) {
+      const { el, hass } = setup(state, timer, extra);
+      swipe(el, 20, 180);
+      expect(hass.callService).not.toHaveBeenCalled();
+    }
+  });
+
+  it("runs the end action once when a hold lands after the expiry was already seen", () => {
+    const { el, hass } = setup(activeState(5000));
+    vi.advanceTimersByTime(6000);
+    expect(calls(hass)).toEqual(["climate.turn_off"]);
+    hass.callService.mockClear();
+    el._runAction({ action: "perform-action", perform_action: "timer.cancel", target: { entity_id: TIMER } });
+    expect(calls(hass)).toEqual(["timer.cancel"]);
+  });
+
+  it("leaves a timer card without both actions as it was: nodrag", () => {
+    const { el } = setup(idleState(), { end_action: undefined });
+    expect(q(el, ".root").classList.contains("nodrag")).toBe(true);
+  });
+
+  it("shows a timer that is off at the start and marks the handle as draggable in every state", () => {
+    const { el, hass } = setup(idleState());
+    expect(q(el, ".root").classList.contains("nodrag")).toBe(false);
+    el.hass = withState(hass, TIMER, "active", activeState(60000).attributes);
+    expect(q(el, ".root").classList.contains("nodrag")).toBe(false);
+    expect(setup(idleState(), { start_action: undefined, end_action: undefined }).el.shadowRoot.querySelector(".root").classList.contains("nodrag")).toBe(true);
+  });
+
+  it("runs the end action once when the timer runs out, with the pulse on", () => {
+    const { hass } = setup(activeState(5000));
+    vi.advanceTimersByTime(4000);
+    expect(hass.callService).not.toHaveBeenCalled();
+    vi.advanceTimersByTime(2000);
+    expect(calls(hass)).toEqual(["climate.turn_off"]);
+    vi.advanceTimersByTime(30000);
+    expect(calls(hass)).toEqual(["climate.turn_off"]);
+  });
+
+  it("runs the end action with the pulse off, too", () => {
+    const { hass } = setup(activeState(3000), { pulse: false });
+    vi.advanceTimersByTime(5000);
+    expect(calls(hass)).toEqual(["climate.turn_off"]);
+  });
+
+  it("runs the end action when Home Assistant reports idle right at the end", () => {
+    const { el, hass } = setup(activeState(60000));
+    vi.advanceTimersByTime(59000);
+    el.hass = withState(hass, TIMER, "idle", { duration: "0:20:00", remaining: "0:20:00" });
+    expect(calls(hass)).toEqual(["climate.turn_off"]);
+  });
+
+  it("does not run the end action when the timer is cancelled from outside well before its end", () => {
+    const { el, hass } = setup(activeState(600000));
+    el.hass = withState(hass, TIMER, "idle", { duration: "0:20:00", remaining: "0:20:00" });
+    vi.advanceTimersByTime(5000);
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+
+  it("does not run the end action for a timer that was already over when the card loaded", () => {
+    const { hass } = setup(activeState(-60000));
+    vi.advanceTimersByTime(5000);
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+
+  it("does not run the end action when the card has none", () => {
+    const { hass } = setup(activeState(2000), { end_action: undefined });
+    vi.advanceTimersByTime(5000);
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+
+  it("runs the end action after timer.cancel on a hold", () => {
+    const { el, hass } = setup(activeState(600000));
+    pointer(q(el, ".handle"), "pointerdown");
+    vi.advanceTimersByTime(600);
+    expect(calls(hass)).toEqual(["timer.cancel", "climate.turn_off"]);
+  });
+
+  it("runs the end action once when the cancel lands within the expiry tolerance of the end", () => {
+    const { el, hass } = setup(activeState(1500));
+    pointer(q(el, ".handle"), "pointerdown");
+    vi.advanceTimersByTime(600);
+    expect(calls(hass)).toEqual(["timer.cancel", "climate.turn_off"]);
+    el.hass = withState(el.hass, TIMER, "idle", { duration: "0:20:00", remaining: "0:20:00" });
+    vi.advanceTimersByTime(5000);
+    expect(calls(hass)).toEqual(["timer.cancel", "climate.turn_off"]);
+  });
+
+  it("does not run the end action when an idle timer is cancelled", () => {
+    const { el, hass } = setup(idleState());
+    pointer(q(el, ".handle"), "pointerdown");
+    vi.advanceTimersByTime(600);
+    expect(calls(hass)).toEqual(["timer.cancel"]);
+  });
+
+  it("cannot loop when a start action starts the timer itself", () => {
+    const loop = { action: "perform-action", perform_action: "timer.start", target: { entity_id: TIMER } };
+    const { el, hass } = setup(idleState(), { start_action: loop });
+    tap(q(el, ".handle"));
+    expect(calls(hass)).toEqual(["timer.start"]);
+  });
+
+  it("keeps working for a countdown target without actions", () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const target = "input_datetime.fest";
+    const { el, hass } = create(
+      { entity: target, mode: "timer", timer: { start_action: performOn("turn_on"), end_action: performOn("turn_off") } },
+      { [target]: makeState(target, iso(60000).slice(0, 19).replace("T", " "), { has_date: true, has_time: true }) },
+    );
+    swipe(el, 180, 20);
+    expect(hass.callService).not.toHaveBeenCalled();
+  });
+});
+
 describe("grid size with scale labels outside", () => {
   const SENSOR = "sensor.x";
   const sized = (thickness, placement) => create(

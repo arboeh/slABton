@@ -199,6 +199,24 @@ timer:
 `,
   },
   {
+    id: "timer-actions",
+    label: "Timer, start and end action",
+    yaml: `type: custom:slabton-card
+entity: timer.sauna
+name: Air conditioning, 20 min
+icon: mdi:air-conditioner
+timer:
+  start_action:
+    action: perform-action
+    perform_action: climate.turn_on
+    target: { entity_id: climate.living_room }
+  end_action:
+    action: perform-action
+    perform_action: climate.turn_off
+    target: { entity_id: climate.living_room }
+`,
+  },
+  {
     id: "clock",
     label: "Clock (digital)",
     yaml: `type: custom:slabton-card

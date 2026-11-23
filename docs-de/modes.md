@@ -249,6 +249,8 @@ timer:
 | `timer.info` | keiner | Zusatztext mit [Platzhaltern](appearance.md#platzhalter): neben dem Griff (horizontal), über der Bar (vertikal) |
 | `timer.time_zone` | Home Assistant | Zeitzone, in der `input_datetime` / `input_date` gelesen wird (IANA-Name) |
 | `timer.span` | 30 | Countdown auf ein Datum: Tage Restzeit, ab denen die Bar voll ist |
+| `timer.start_action` | keine | Aktion, wenn die Karte einen `timer.*`-Timer startet, siehe [Start- und Ende-Aktion](#timer-start-und-ende-aktion) |
+| `timer.end_action` | keine | Aktion, wenn der Timer endet (Ablauf, oder die Karte bricht ab), siehe unten |
 
 Das Pulsieren startet nur, wenn die Karte den Ablauf mitbekommt (oder Home Assistant das Ende meldet).
 Ein vorzeitig abgebrochener Timer und das Öffnen des Dashboards nach dem Ende pulsieren nicht. Ein Tippen
@@ -260,6 +262,72 @@ weicht die Anzeige um diese Differenz ab.
 
 Sommerzeit: Eine Uhrzeit, die es nicht gibt (Umstellung im Frühjahr), wird hinter die Lücke geschoben; eine,
 die es zweimal gibt (Herbst), meint die spätere. Ein unbekannter Zeitzonenname ist ein Konfigurationsfehler.
+
+### Timer: Start- und Ende-Aktion
+
+Bei einer `timer.*`-Entity kann die Karte ein Gerät zusammen mit dem Timer schalten, ohne Skript oder
+Automation: `timer.start_action` läuft beim Start des Timers, `timer.end_action` an seinem Ende. Beide nehmen eine
+`perform-action` (siehe unten). Die Laufzeit ist die `duration` des Timer-Helpers.
+
+```yaml
+type: custom:slabton-card
+entity: timer.klima_20min
+name: Klima
+timer:
+  start_action:
+    action: perform-action
+    perform_action: climate.turn_on
+    target: { entity_id: climate.wohnzimmer }
+  end_action:
+    action: perform-action
+    perform_action: climate.turn_off
+    target: { entity_id: climate.wohnzimmer }
+```
+
+- **Start:** Tippen, oder den Griff vom Anfang der Bar über die Mitte wischen. Zuerst läuft die
+  Start-Aktion, danach `timer.start`. Das Fortsetzen eines pausierten Timers führt sie nicht erneut aus. Ein Start
+  von außerhalb der Karte (Automation, andere Karte) löst sie nicht aus.
+- **Ende:** Läuft der Timer ab, läuft die Ende-Aktion einmal je Lauf, auch mit `timer.pulse: false`.
+  Auch Halten (`timer.cancel`) führt sie aus, damit das Gerät nicht dauerhaft an bleibt. Pause nicht.
+- **Wisch (Schalter-Darstellung):** Sind `start_action` und `end_action` beide gesetzt, steht der Griff bei
+  ausgeschaltetem Timer am Anfang der Bar, die Bar ist leer; ein laufender Timer entleert sich vom vollen Ende dorthin
+  zurück. Den Griff aus "Aus" über die Mitte ziehen startet den Timer. Läuft er oder ist er pausiert, startet das Ziehen
+  in das volle Ende ihn neu (einen pausierten setzt es fort; die Start-Aktion läuft dabei nicht erneut), das Ziehen
+  zurück in das Anfangsende stoppt ihn (`timer.cancel`, danach die Ende-Aktion). Ein zu kurzer Zug springt zurück.
+  `drag: false` schaltet den Wisch ab. Ohne beide Aktionen verhält sich die Karte wie bisher (volle Bar bei bereit, kein Wisch).
+- Beide Aktionen müssen eine `perform-action` sein: sie laufen ohne Bedienung, daher werden `toggle`, `more-info`,
+  `navigate` und `url` mit einer Warnung in der Konsole ignoriert (ein Toggle schaltet das Gerät wieder um, wenn zwei
+  Karten ihn ausführen).
+- Die Ende-Aktion läuft auch, wenn du zu einer Karte zurückkehrst, die verborgen war (andere Ansicht, Tab im
+  Hintergrund), als der Timer ablief; sie läuft nie, wenn die Karte den Timer nicht laufen sah. Sie geht verloren, wenn
+  die Timer-Entity während eines Laufs `unavailable` wird (Neustart von Home Assistant). Zwei Karten für denselben Timer
+  führen sie doppelt aus: idempotente Aktionen wählen (`climate.turn_off`, kein Toggle).
+- Ein laufender Timer, dessen Griff schon in den äußeren 10 % am vollen Ende steht, lässt sich nicht per Ziehen neu
+  starten, einer in den äußeren 10 % am Anfang nicht per Ziehen stoppen: dort Tippen oder Halten nutzen.
+- Schlägt `timer.start` nach der Start-Aktion fehl, bleibt das Gerät ohne Timer an; der Fehler steht in der Browser-Konsole.
+- Nicht für Countdown-Ziele (`input_datetime` / `input_date`): dort kennt die Karte weder Start noch Ende; die
+  Aktionen werden mit einer Warnung in der Konsole ignoriert.
+
+**Die Ende-Aktion läuft nur, solange ein Dashboard mit der Karte offen ist.** Die Karte führt sie im Browser aus. Ist
+beim Ablauf kein solches Dashboard offen, passiert nichts und das Gerät bleibt an. Bei mehreren offenen Dashboards
+(Handy, Tablet) führt jedes die Ende-Aktion aus: eine Aktion wählen, die sich gefahrlos wiederholen lässt, etwa
+`climate.turn_off`, nicht `toggle`. Für ein sicheres Ende zusätzlich eine Automation auf das Ereignis
+`timer.finished` des Helpers anlegen. Die `end_action` bleibt auf der Karte (der Wisch braucht beide Aktionen): bei
+offenem Dashboard laufen beide, was bei einer wiederholbaren Aktion unschädlich ist:
+
+```yaml
+automation:
+  - alias: Klima aus nach Timer
+    triggers:
+      - trigger: event
+        event_type: timer.finished
+        event_data:
+          entity_id: timer.klima_20min
+    actions:
+      - action: climate.turn_off
+        target:
+          entity_id: climate.wohnzimmer
+```
 
 ![Pausierter Timer](/assets/shots/timer-paused-light.png#only-light)
 ![Pausierter Timer](/assets/shots/timer-paused-dark.png#only-dark)

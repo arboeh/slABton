@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { normalizeConfig } from "../../../src/core/config.js";
-import { EXPIRY_TOLERANCE_MS, defaultActions, detectExpiry, isDraggable, needsTick, timing, view } from "../../../src/core/modes/timer.js";
+import {
+  EDGE, EXPIRY_TOLERANCE_MS, defaultActions, detectExpiry, edgeOf, isDraggable, needsTick, onRelease, timing, view,
+} from "../../../src/core/modes/timer.js";
 import { makeState } from "../../helpers/mock-hass.js";
 
 // 2026-11-12 12:00:00 UTC
@@ -196,6 +198,90 @@ describe("timing and expiry", () => {
 
   it("counts a vanished entity after the end as expiry", () => {
     expect(detectExpiry({ active: true, finishesAt: NOW, upcoming: true }, null, NOW + 1)).toBe(true);
+  });
+});
+
+describe("start and end actions: edges and swipe", () => {
+  const hook = { action: "perform-action", perform_action: "climate.turn_on", target: { entity_id: "climate.a" } };
+  const hooked = (extra = {}) => cfg(SAUNA, { timer: { start_action: hook, end_action: hook }, ...extra });
+  const perform = (name, entity = SAUNA) => ({ action: "perform-action", perform_action: name, target: { entity_id: entity } });
+
+  it("sees timer.start of an idle timer as the start edge", () => {
+    expect(edgeOf(cfg(SAUNA), idle(), perform("timer.start"))).toBe(EDGE.START);
+  });
+
+  it("does not count a resume from paused, a start while running or a start of another entity", () => {
+    expect(edgeOf(cfg(SAUNA), paused("0:01:00"), perform("timer.start"))).toBeNull();
+    expect(edgeOf(cfg(SAUNA), active(1000), perform("timer.start"))).toBeNull();
+    expect(edgeOf(cfg(SAUNA), idle(), perform("timer.start", "timer.other"))).toBeNull();
+    expect(edgeOf(cfg(SAUNA), idle(), { action: "perform-action", perform_action: "timer.start", target: { entity_id: [SAUNA] } })).toBe(EDGE.START);
+    expect(edgeOf(cfg(SAUNA), idle(), { action: "perform-action", perform_action: "timer.start", target: { entity_id: [SAUNA, "timer.other"] } })).toBeNull();
+  });
+
+  it("sees timer.cancel of a running or paused timer as the cancel edge, not of an idle one", () => {
+    expect(edgeOf(cfg(SAUNA), active(1000), perform("timer.cancel"))).toBe(EDGE.CANCEL);
+    expect(edgeOf(cfg(SAUNA), paused("0:01:00"), perform("timer.cancel"))).toBe(EDGE.CANCEL);
+    expect(edgeOf(cfg(SAUNA), idle(), perform("timer.cancel"))).toBeNull();
+  });
+
+  it("ignores pause, other actions and other sources", () => {
+    expect(edgeOf(cfg(SAUNA), active(1000), perform("timer.pause"))).toBeNull();
+    expect(edgeOf(cfg(SAUNA), idle(), { action: "more-info" })).toBeNull();
+    expect(edgeOf(cfg(SAUNA), idle(), undefined)).toBeNull();
+    const target = cfg("input_datetime.fest", { mode: "timer" });
+    expect(edgeOf(target, makeState("input_datetime.fest", "2026-11-20 18:00:00"), perform("timer.start", "input_datetime.fest"))).toBeNull();
+  });
+
+  it("is draggable while ready, running or paused, with a duration, only with both a start and an end action", () => {
+    expect(isDraggable(hooked(), idle())).toBe(true);
+    expect(isDraggable(hooked(), active(1000))).toBe(true);
+    expect(isDraggable(hooked(), paused("0:01:00"))).toBe(true);
+    expect(isDraggable(cfg(SAUNA, { timer: { end_action: hook } }), idle())).toBe(false);
+    expect(isDraggable(cfg(SAUNA, { timer: { start_action: hook } }), idle())).toBe(false);
+    expect(isDraggable(cfg(SAUNA), idle())).toBe(false);
+    expect(isDraggable(hooked(), makeState(SAUNA, "idle", {}))).toBe(false);
+    expect(isDraggable(hooked(), undefined)).toBe(false);
+  });
+
+  it("is not draggable with drag off, a fixed handle or a countdown target", () => {
+    expect(isDraggable(hooked({ drag: false }), idle())).toBe(false);
+    expect(isDraggable(hooked({ handle_position: "start" }), idle())).toBe(false);
+    expect(isDraggable(cfg("input_datetime.fest", { mode: "timer", timer: { start_action: hook, end_action: hook } }), makeState("input_datetime.fest", "2026-11-20 18:00:00"))).toBe(false);
+  });
+
+  const START = { action: "perform-action", perform_action: "timer.start", target: { entity_id: SAUNA } };
+  const CANCEL = { action: "perform-action", perform_action: "timer.cancel", target: { entity_id: SAUNA } };
+
+  it("starts a timer that is off when the handle is swiped past the middle towards the full end", () => {
+    const result = onRelease({ frac: 0.8, startPos: 0, config: hooked(), stateObj: idle() });
+    expect(result.action).toEqual(START);
+    expect(result.pending).toBeUndefined();
+  });
+
+  it("springs back at or before the middle for a timer that is off, and when nothing can be dragged", () => {
+    expect(onRelease({ frac: 0.49, startPos: 0, config: hooked(), stateObj: idle() })).toBeNull();
+    expect(onRelease({ frac: 0.1, startPos: 0, config: hooked(), stateObj: idle() })).toBeNull();
+    expect(onRelease({ frac: 0.9, startPos: 0, config: cfg(SAUNA), stateObj: idle() })).toBeNull();
+  });
+
+  it("restarts a running timer dragged into the full end and cancels it dragged into the start end", () => {
+    expect(onRelease({ frac: 0.95, startPos: 0.4, config: hooked(), stateObj: active(1000) }).action).toEqual(START);
+    expect(onRelease({ frac: 0.05, startPos: 0.4, config: hooked(), stateObj: active(1000) }).action).toEqual(CANCEL);
+    expect(onRelease({ frac: 0.95, startPos: 0.4, config: hooked(), stateObj: paused("0:01:00") }).action).toEqual(START);
+    expect(onRelease({ frac: 0.05, startPos: 0.4, config: hooked(), stateObj: paused("0:01:00") }).action).toEqual(CANCEL);
+  });
+
+  it("springs back a running timer that is dragged only part of the way or released where it started", () => {
+    expect(onRelease({ frac: 0.6, startPos: 0.4, config: hooked(), stateObj: active(1000) })).toBeNull();
+    expect(onRelease({ frac: 0.95, startPos: 0.95, config: hooked(), stateObj: active(1000) })).toBeNull();
+    expect(onRelease({ frac: 0.05, startPos: 0.05, config: hooked(), stateObj: active(1000) })).toBeNull();
+  });
+
+  it("shows a timer that is off with the handle at the start and an empty bar, only with both actions", () => {
+    const off = view(hooked(), idle(), undefined, ctx());
+    expect([off.pos, off.fillPos]).toEqual([0, 0]);
+    expect(view(cfg(SAUNA), idle(), undefined, ctx()).fillPos).toBe(1);
+    expect(view(hooked(), active(600000), undefined, ctx()).fillPos).toBeGreaterThan(0);
   });
 });
 

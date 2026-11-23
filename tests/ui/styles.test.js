@@ -372,12 +372,27 @@ describe("buildVars", () => {
 });
 
 const TEXT_VAR_NAMES = [
-  "--slabton-header-size", "--slabton-header-color", "--slabton-header-icon-color",
+  "--slabton-header-size", "--slabton-header-color", "--slabton-header-weight", "--slabton-header-icon-color",
   "--slabton-bar-text-size", "--slabton-bar-text-color",
   "--slabton-info-size", "--slabton-info-color",
   "--slabton-button-size", "--slabton-button-color",
   "--slabton-scale-label-size", "--slabton-scale-label-color",
 ];
+
+describe("header css", () => {
+  it("reads weight, opacity and icon size from variables with the old values as defaults", () => {
+    const css = buildCss();
+    expect(css).toContain("font-weight: var(--slabton-header-weight, 500)");
+    expect(css).toContain("opacity: var(--slabton-header-opacity, 1)");
+    expect(css).toContain("--mdc-icon-size: var(--slabton-header-icon-size, 20px)");
+  });
+
+  it("takes opacity and icon size from styles: like any other variable", () => {
+    const v = buildVars(cfg({ styles: { "header-opacity": "0.7", "header-icon-size": "28px" } }));
+    expect(v["--slabton-header-opacity"]).toBe("0.7");
+    expect(v["--slabton-header-icon-size"]).toBe("28px");
+  });
+});
 
 describe("buildVars text block", () => {
   it("sets none of the text variables without text:", () => {
@@ -388,7 +403,7 @@ describe("buildVars text block", () => {
   it("maps every configured option to its variable, sizes in px", () => {
     const v = buildVars(cfg({
       text: {
-        header: { font_size: 16, color: "#ff9800", icon_color: "#2196f3" },
+        header: { font_size: 16, color: "#ff9800", font_weight: "700", icon_color: "#2196f3" },
         bar: { font_size: 12, color: "var(--secondary-text-color)" },
         info: { font_size: 11, color: "grey" },
         button: { font_size: 18, color: "white" },
@@ -400,6 +415,7 @@ describe("buildVars text block", () => {
       "--slabton-scale-label-color": "#888",
       "--slabton-header-size": "16px",
       "--slabton-header-color": "#ff9800",
+      "--slabton-header-weight": "700",
       "--slabton-header-icon-color": "#2196f3",
       "--slabton-bar-text-size": "12px",
       "--slabton-bar-text-color": "var(--secondary-text-color)",
