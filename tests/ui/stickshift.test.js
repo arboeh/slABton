@@ -160,20 +160,29 @@ describe("stickshift styles", () => {
     }
   });
 
-  it("keeps inactive points readable: opacity 0.55 on the frame, icon and text pulled toward the text color", () => {
+  it("draws inactive points as a tonal surface with an outline-variant frame, icon and text pulled toward the text color", () => {
     const css = buildCss();
+    // point_opacity scales the strength of the tone (text color over the card color), it no longer dims the frame.
     expect(css).toContain("--slabton-sx-o: var(--slabton-sx-opacity, 0.55);");
-    // The opacity dims ring and background, not the whole button (icon and text stay near full strength).
     expect(css).not.toMatch(/\.sx-pt \{[^}]*[^-]opacity: var\(--slabton-sx-opacity/);
-    expect(css).toMatch(/\.sx-pt \{[^}]*border: 1px solid color-mix\(in srgb, [^;]*calc\(var\(--slabton-sx-o\) \* 80%\), transparent\)/);
-    expect(css).toMatch(/\.sx-pt ha-icon, \.sx-pt \.sx-text \{ color: color-mix\(in srgb, var\(--slabton-sx-c, [^;]*\) 60%, [^;]*\); opacity: min\(1, calc\(var\(--slabton-sx-o\) \+ 0\.45\)\); \}/);
+    expect(css).toMatch(/\.sx-pt \{[^}]*border: 1px solid color-mix\(in srgb, [^;]* 18%, transparent\)/);
+    expect(css).toMatch(/\.sx-pt \{[^}]*background: color-mix\(in srgb, [^;]* calc\(var\(--slabton-sx-o\) \* 14%\), var\(--card-background-color, #fff\)\)/);
+    expect(css).toMatch(/\.sx-pt ha-icon, \.sx-pt \.sx-text \{ color: color-mix\(in srgb, var\(--slabton-sx-c, [^;]*\) 60%, [^;]*\); \}/);
+    expect(css).not.toContain("calc(var(--slabton-sx-o) + 0.45)");
   });
 
-  it("makes the gate clearly visible (50 % of the text color) and lets hover and focus win over rest", () => {
+  it("makes the gate clearly visible (50 % of the text color)", () => {
+    expect(buildCss()).toMatch(/\.sx-seg \{[^}]*color-mix\(in srgb, [^;]* 50%, transparent\)/);
+  });
+
+  it("uses state layers: 8 % on hover, 10 % on focus and press, in the content color", () => {
     const css = buildCss();
-    expect(css).toMatch(/\.sx-seg \{[^}]*color-mix\(in srgb, [^;]* 50%, transparent\)/);
-    expect(css).toMatch(/\.sx-pt:hover \{ --slabton-sx-o: min\(1, calc\(var\(--slabton-sx-opacity, 0\.55\) \+ 0\.35\)\); \}/);
-    expect(css).toMatch(/\.sx-pt:focus-visible \{ --slabton-sx-o: 1;/);
+    expect(css).toMatch(/\.sx-pt::before, \.root\.sx-on \.handle::before \{[^}]*content: ""[^}]*background: currentColor[^}]*opacity: 0[^}]*pointer-events: none/);
+    expect(css).toMatch(/\.sx-pt:hover::before, \.root\.sx-on \.handle:hover::before \{ opacity: 0\.08; \}/);
+    expect(css).toMatch(/\.sx-pt:focus-visible::before, \.sx-pt:active::before, \.root\.sx-on \.handle:focus-visible::before, \.root\.sx-on \.handle:active::before \{ opacity: 0\.1; \}/);
+    // The hover no longer changes the frame, the focus keeps its visible ring.
+    expect(css).not.toMatch(/\.sx-pt:hover \{ --slabton-sx-o/);
+    expect(css).toMatch(/\.sx-pt:focus-visible \{[^}]*outline: 2px solid var\(--primary-color, #03a9f4\)/);
   });
 
   it("cuts the gate along the outline of round and oval points and straight at square points", () => {
@@ -186,8 +195,36 @@ describe("stickshift styles", () => {
     expect(css).not.toMatch(/\.sx-seg \{[^}]*border-radius/);
   });
 
-  it("rings the active handle in the icon color (pulled toward the text color)", () => {
-    expect(buildCss()).toMatch(/\.root\.sx-on \.handle \{ border: 2px solid color-mix\(in srgb, var\(--slabton-sx-ring, transparent\) 60%, /);
+  it("fills the active handle with the state color and takes the icon color from the fill", () => {
+    const css = buildCss();
+    // handle_color wins, then the state color (set by render.js), then the primary color.
+    expect(css).toMatch(/\.root\.sx-on \.handle \{[^}]*--slabton-sx-surface: var\(--slabton-handle-color, var\(--slabton-sx-fill, var\(--primary-color, #03a9f4\)\)\);[^}]*background: var\(--slabton-sx-surface\);[^}]*color: var\(--slabton-button-color, var\(--text-primary-color, #fff\)\);/);
+    // The ring is gone.
+    expect(css).not.toContain("--slabton-sx-ring");
+    expect(css).not.toMatch(/\.root\.sx-on \.handle \{[^}]*border: 2px/);
+  });
+
+  it("picks a light or dark icon from the lightness of the fill, only where relative colors exist", () => {
+    const css = buildCss();
+    // Switch at OKLCH lightness 0.65 (about HCT tone 60): light (white) below, a dark tint of the fill's hue above.
+    expect(css).toMatch(/@supports \(color: oklch\(from red l c h\)\) \{\s*\.root\.sx-on \.handle \{ color: var\(--slabton-button-color, oklch\(from var\(--slabton-sx-surface\) clamp\(0\.22, calc\(\(0\.65 - l\) \* 1000\), 1\) calc\(c \* clamp\(0, calc\(\(l - 0\.65\) \* 1000\), 0\.4\)\) h\)\); \}/);
+  });
+
+  it("leaves the unavailable handle on the card color, so the warning icon stays readable", () => {
+    // The warning icon keeps its own color (orange); on the primary fill it would lose contrast.
+    expect(buildCss()).toMatch(/\.root\.sx-on\.unavailable \.handle \{ --slabton-sx-surface: var\(--slabton-handle-color, var\(--card-background-color, #fff\)\); \}/);
+  });
+
+  it("does not use text_color for the filled handle: only button_color overrides the picked icon color", () => {
+    const css = buildCss();
+    const rule = css.match(/\.root\.sx-on \.handle \{[^}]*\}/)[0];
+    expect(rule).not.toContain("--slabton-text-color");
+    expect(buildVars(withSx({ text_color: "red" }))["--slabton-text-color"]).toBe("red");
+    expect(css).toContain("--slabton-button-color");
+  });
+
+  it("gives every handle the elevation level 1 shadow", () => {
+    expect(buildCss()).toMatch(/\.handle \{[^}]*box-shadow: 0 1px 2px rgba\(0, 0, 0, 0\.3\), 0 1px 3px 1px rgba\(0, 0, 0, 0\.15\);/);
   });
 });
 
@@ -311,23 +348,32 @@ describe("stickshift card", () => {
     expect(buttons.map((b) => b.getAttribute("aria-label"))).toEqual(["off", "Auto", "on", "idle"]);
   });
 
-  it("colors the handle icon with active_color, else with the state color", () => {
+  it("fills the handle with active_color, else with the state color; the icon color comes from the CSS", () => {
     const states = [{ value: "off", icon: "mdi:power" }, { value: "auto", icon: "mdi:auto-fix", color: "green" }, "on", "idle"];
     const own = create({ states, stickshift: { active_color: "red" } }).el;
-    expect(q(own, ".h-icon").style.color).toBe("red");
+    expect(q(own, ".handle").style.getPropertyValue("--slabton-sx-fill")).toBe("red");
+    expect(q(own, ".h-icon").style.color).toBe("");
     const fallback = create({ states }).el;
-    expect(q(fallback, ".h-icon").style.color).toBe("green");
+    expect(q(fallback, ".handle").style.getPropertyValue("--slabton-sx-fill")).toBe("green");
+    expect(q(fallback, ".h-icon").style.color).toBe("");
   });
 
-  it("rings the active handle in the icon color and drops the ring without a color or without stickshift", () => {
-    const ring = (el) => q(el, ".handle").style.getPropertyValue("--slabton-sx-ring");
+  it("keeps the old look with handle_color: the fill stays the handle color, the icon gets the state color", () => {
     const states = [{ value: "off", icon: "mdi:power" }, { value: "auto", icon: "mdi:auto-fix", color: "green" }, "on", "idle"];
-    expect(ring(create({ states }).el)).toBe("green");
-    expect(ring(create({ states, stickshift: { active_color: "red" } }).el)).toBe("red");
-    // Active point without a color: no ring variable (the CSS keeps a faint ring in the text color).
-    expect(ring(create({ states }, selectState("off")).el)).toBe("");
-    // Not a stickshift card: nothing is set, even though the entity has a state color.
-    expect(ring(create({ stickshift: undefined, states }).el)).toBe("");
+    const el = create({ states, handle_color: "white" }).el;
+    expect(q(el, ".handle").style.getPropertyValue("--slabton-sx-fill")).toBe("");
+    expect(q(el, ".h-icon").style.color).toBe("green");
+  });
+
+  it("sets no fill variable without a color or without stickshift", () => {
+    const fill = (el) => q(el, ".handle").style.getPropertyValue("--slabton-sx-fill");
+    const states = [{ value: "off", icon: "mdi:power" }, { value: "auto", icon: "mdi:auto-fix", color: "green" }, "on", "idle"];
+    // Active point without a color: no variable (the CSS fills with the primary color).
+    expect(fill(create({ states }, selectState("off")).el)).toBe("");
+    // Not a stickshift card: nothing is set (the icon color exists only with a stickshift).
+    const plain = create({ stickshift: undefined, states }).el;
+    expect(fill(plain)).toBe("");
+    expect(q(plain, ".h-icon").style.color).toBe("");
   });
 
   it("rebuilds the points when the entity's options change", () => {

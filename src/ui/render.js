@@ -405,11 +405,13 @@ function setContent(refs, config, view) {
   const label = warning || refs.dial ? "" : kind === "position" ? view.positionText : kind === "text" ? view.text : "";
   icon.hidden = !showIcon;
   if (showIcon) icon.setAttribute("icon", warning ? UNAVAILABLE_ICON : view.icon);
-  if (showIcon && !warning && view.iconColor) icon.style.setProperty("color", view.iconColor);
+  // Stickshift: the handle is filled with the icon color (--slabton-sx-fill) and the CSS picks a light or dark icon for
+  // it. With `handle_color` the fill is that color, so the icon keeps the state color on it, as before.
+  const filled = Boolean(config.stickshift) && !config.handle_color;
+  if (showIcon && !warning && view.iconColor && !filled) icon.style.setProperty("color", view.iconColor);
   else icon.style.removeProperty("color");
-  // Stickshift: the handle gets a ring in the icon color, so it stands out from the card in a dark theme.
-  if (config.stickshift && !warning && view.iconColor) handle.style.setProperty("--slabton-sx-ring", view.iconColor);
-  else handle.style.removeProperty("--slabton-sx-ring");
+  if (filled && !warning && view.iconColor) handle.style.setProperty("--slabton-sx-fill", view.iconColor);
+  else handle.style.removeProperty("--slabton-sx-fill");
   text.hidden = label === "" || label == null;
   text.textContent = label ?? "";
 }

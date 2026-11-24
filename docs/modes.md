@@ -81,8 +81,8 @@ the actions per state stay YAML-only.
 | --- | --- | --- |
 | `shape` | `round` | Shape of the points: `round`, `oval`, `square` |
 | `point_size` | 80 % of `handle_size` | Point size in px (8 up to `handle_size`, never larger than the handle) |
-| `point_opacity` | `0.55` | Opacity of the point frame, ring and background (0 to 1); icon and text stay near full strength, so the points stay readable on dark cards. Hover and focus raise it. Before 1.3.0 the default was `0.35` and dimmed everything |
-| `active_color` | state `color` | Icon color of the handle on the active point (CSS color) |
+| `point_opacity` | `0.55` | Strength of the tone of an inactive point (0 to 1): text color over the card color, with a soft outline. Icon and text stay fully visible. Hover and focus add a light overlay instead. Before 1.3.0 it dimmed the frame and the background |
+| `active_color` | state `color` | Fill of the handle on the active point (CSS color); its icon and text turn light or dark to match. Without a color the handle is filled with the primary color. With `handle_color` set, that color wins and the icon keeps the state color |
 | `gate` | thin line | Drawn only between the points, from one point edge to the next. `false` hides it, or a map: `visible` (`true`), `size` in px (`4`, 1 to 40), `color`. Fixed style: no state color, no progress fill |
 
 Inactive points show what the handle shows at that state: the `icon`, else `text`, `label` or the `value`,

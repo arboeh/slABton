@@ -261,5 +261,11 @@ states:
 ```
 
 Die Kulisse läuft nur zwischen den Punkten (von Rand zu Rand, nicht dahinter) und hat einen festen Stil: keine Zustandsfarbe und keine Fortschrittsfüllung (`bar_state_color` färbt die Bar,
-nicht die Kulisse). Das Griff-Icon nimmt `active_color`, sonst die `color` des Zustands. Bei `prefers-reduced-motion`
-animieren die Punkte nicht.
+nicht die Kulisse). Der Griff am aktiven Punkt ist mit `active_color` gefüllt, sonst mit der `color` des Zustands, sonst
+mit der Primärfarbe; Icon und Text werden nach der Helligkeit der Füllung weiß oder ein dunkler Ton der Füllfarbe (Umschaltung etwa bei
+Tone 60 von Material 3; `button_color` überschreibt das, `text_color` erreicht den gefüllten Griff nicht; Browser ohne relative Farben
+(vor Chrome 119, Safari 16.4, Firefox 128) nehmen immer die Theme-Textfarbe auf Primär, was auf heller Füllung schlecht
+lesbar sein kann, dort `button_color` setzen). Ein `--slabton-handle-color` aus `styles:` füllt den Griff wie
+`handle_color`, die Icon-Farbe bleibt aber nur bei `handle_color` erhalten. Ist die
+Entity nicht verfügbar, bleibt der Griff in der Kartenfarbe, damit das Warn-Icon lesbar bleibt. Inaktive Punkte sind eine getönte Fläche mit weichem Rand, Hover ist eine 8-%-, Fokus und Drücken eine
+10-%-Überlagerung (Material-3-State-Layer). Bei `prefers-reduced-motion` animieren die Punkte nicht.

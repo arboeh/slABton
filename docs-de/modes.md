@@ -82,8 +82,8 @@ Optionen unten; die Aktionen je Zustand bleiben YAML-only.
 | --- | --- | --- |
 | `shape` | `round` | Form der Punkte: `round`, `oval`, `square` |
 | `point_size` | 80 % von `handle_size` | Punktgröße in px (8 bis `handle_size`, nie größer als der Griff) |
-| `point_opacity` | `0.55` | Deckkraft von Rahmen, Ring und Hintergrund der Punkte (0 bis 1); Icon und Text bleiben fast voll sichtbar, die Punkte sind so auch auf dunklen Karten lesbar. Hover und Fokus erhöhen sie. Vor 1.3.0 war der Standard `0.35` und dämpfte alles |
-| `active_color` | `color` des Zustands | Icon-Farbe des Griffs am aktiven Punkt (CSS-Farbe) |
+| `point_opacity` | `0.55` | Stärke des Farbtons eines inaktiven Punkts (0 bis 1): Textfarbe über der Kartenfarbe, mit weichem Rand. Icon und Text bleiben voll sichtbar. Hover und Fokus legen stattdessen eine helle Überlagerung auf. Vor 1.3.0 dämpfte sie Rahmen und Hintergrund |
+| `active_color` | `color` des Zustands | Füllung des Griffs am aktiven Punkt (CSS-Farbe); Icon und Text werden passend hell oder dunkel. Ohne Farbe ist der Griff in der Primärfarbe gefüllt. Mit gesetzter `handle_color` gewinnt diese, das Icon behält die Zustandsfarbe |
 | `gate` | dünne Linie | Nur zwischen den Punkten, von Punktrand zu Punktrand. `false` blendet sie aus, oder eine Map: `visible` (`true`), `size` in px (`4`, 1 bis 40), `color`. Fester Stil: keine Zustandsfarbe, keine Fortschrittsfüllung |
 
 Inaktive Punkte zeigen, was der Griff in diesem Zustand zeigt: das `icon`, sonst `text`, `label` oder den `value`,

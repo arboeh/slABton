@@ -260,4 +260,12 @@ states:
 ```
 
 The gate runs only between the points (from edge to edge, not behind them) and has a fixed style: no state color and no progress fill (`bar_state_color` colors the bar, not the gate). The
-handle icon takes `active_color`, else the `color` of the state. With `prefers-reduced-motion` the points do not animate.
+handle on the active point is filled with `active_color`, else the `color` of the state, else the primary color; its icon
+and text turn white or a dark tint of the fill's hue by its lightness (the switch is at about Material 3's tone 60;
+`button_color` overrides this, `text_color` does not reach the filled handle; browsers without relative colors
+(before Chrome 119, Safari 16.4, Firefox 128) always use the theme's text color on primary, which can be hard to read on
+a light fill, so set `button_color` there). A `--slabton-handle-color` set through `styles:` fills the handle like
+`handle_color`, but the icon then keeps its own color only with `handle_color`. While the entity is unavailable the
+handle stays on the card color, so the warning icon keeps its contrast. Inactive points are a tonal
+surface with a soft outline, hover is an 8 % and focus and press a 10 % overlay (Material 3 state layers). With
+`prefers-reduced-motion` the points do not animate.

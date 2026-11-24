@@ -21,14 +21,20 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ### Changed
 
-- Stickshift: inactive points are readable on dark cards (and stronger on light ones). `point_opacity` now defaults
-  to `0.55` (was `0.35`) and dims only the ring and background of a point; icon and text stay near full strength and
+- Stickshift, Material 3 look: inactive points are a tonal surface (text color over the card color) with a soft
+  outline instead of a see-through frame; hover is an 8 % and focus and press a 10 % state layer. `point_opacity` now
+  sets the strength of that tone (default `0.55`; `1` is the strongest). Icon and text stay near full strength and
   their state `color` is pulled 40 % toward the text color, so dark colors (`blue`, `green`) no longer vanish. The gate
   line is drawn at 50 % of the text color (was 25 %). Cards without own values look different: `point_opacity: 0.35`
-  restores the old strength of the frame, `gate.color` the old gate.
-- Stickshift: the active handle gets a ring in the icon color, so it stands out on a dark card. The gate runs under the
-  points and follows their outline (round and oval points), or stops straight at the edge (square points). The track of
-  an `oval` row is set in by the oval's excess, so the end points are no longer cut off at the card edge.
+  restores the old tone, `gate.color` the old gate. The active handle is inverted: it is filled
+  with `active_color`, else the state color (primary color without one), and its icon and text turn white or a dark tint
+  of the fill's hue by its lightness (switch at about Material 3's tone 60; browsers without relative colors use the
+  theme's text color on primary). Only `button_color` overrides that pick, `text_color` no longer reaches the handle;
+  an unavailable entity keeps the handle on the card color so the warning icon stays readable. `active_color`
+  therefore colors the handle, no longer the icon; with `handle_color` set, the handle keeps that color and the icon
+  keeps the state color. The ring is gone. All handles use the Material 3 level 1 shadow.
+- Stickshift: the gate runs under the points and follows their outline (round and oval points), or stops straight at
+  the edge (square points). The track of an `oval` row is set in by the oval's excess, so the end points are no longer cut off at the card edge.
 
 ### Fixed
 
