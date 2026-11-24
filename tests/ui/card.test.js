@@ -1669,9 +1669,12 @@ describe("handle zones", () => {
     const { el, hass } = create({ handle_zones: zones }, modeStates("idle", "auto"));
     const icon = q(el, ".h-icon");
     expect(icon.getAttribute("icon")).toBe("mdi:robot");
-    expect(icon.style.color).toBe("green");
-    el.hass = withState(hass, MODE_SENSOR, "nap");
+    // The zone color fills the handle (the CSS picks the icon color on it); the icon itself carries no color.
+    const handle = q(el, ".handle");
+    expect(handle.style.getPropertyValue("--slabton-handle-fill")).toBe("green");
     expect(icon.style.color).toBe("");
+    el.hass = withState(hass, MODE_SENSOR, "nap");
+    expect(handle.style.getPropertyValue("--slabton-handle-fill")).toBe("");
     expect(icon.hidden).toBe(true);
   });
 

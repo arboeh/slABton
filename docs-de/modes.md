@@ -1,5 +1,10 @@
 # Modi
 
+In jedem Modus folgen Bar und Griff Material 3: tonaler Track, Füllung und Griff in der Zustandsfarbe (ohne Zustandsfarbe die
+Primärfarbe), Icon und Text in passend heller oder dunkler Farbe, Schatten der Stufe 1 und State Layer bei Hover, Fokus und Drücken.
+Ein langer Griff-Text (Wert, Timer, Uhr) schrumpft, bis er in den Griff passt. Gesetzte Farben gewinnen; die Einzelheiten und der
+Weg zur früheren Optik stehen unter [Darstellung](appearance.md#material-3-optik).
+
 ## Modus `state`
 
 ![Modus state](/assets/shots/state-light.png#only-light)

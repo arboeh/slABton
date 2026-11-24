@@ -405,15 +405,19 @@ function setContent(refs, config, view) {
   const label = warning || refs.dial ? "" : kind === "position" ? view.positionText : kind === "text" ? view.text : "";
   icon.hidden = !showIcon;
   if (showIcon) icon.setAttribute("icon", warning ? UNAVAILABLE_ICON : view.icon);
-  // Stickshift: the handle is filled with the icon color (--slabton-sx-fill) and the CSS picks a light or dark icon for
-  // it. With `handle_color` the fill is that color, so the icon keeps the state color on it, as before.
-  const filled = Boolean(config.stickshift) && !config.handle_color;
+  // The handle is filled with the state color (--slabton-handle-fill) and the CSS picks a light or dark icon for it.
+  // With `handle_color` the fill is that color, so the icon keeps the state color on it.
+  const filled = !config.handle_color;
   if (showIcon && !warning && view.iconColor && !filled) icon.style.setProperty("color", view.iconColor);
   else icon.style.removeProperty("color");
-  if (filled && !warning && view.iconColor) handle.style.setProperty("--slabton-sx-fill", view.iconColor);
-  else handle.style.removeProperty("--slabton-sx-fill");
+  // Without an icon color of its own (no stickshift, no zone) the handle takes the color of the state, like the fill.
+  const fillColor = view.iconColor ?? view.color;
+  if (filled && !warning && fillColor) handle.style.setProperty("--slabton-handle-fill", fillColor);
+  else handle.style.removeProperty("--slabton-handle-fill");
   text.hidden = label === "" || label == null;
   text.textContent = label ?? "";
+  // Length of the text in characters: the CSS shrinks the handle font size until it fits.
+  handle.style.setProperty("--slabton-chars", String(Math.max(1, [...(label ?? "")].length)));
 }
 
 /** Scale labels that show the range of the bar entity: text only, written when it changed. */

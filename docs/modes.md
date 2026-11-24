@@ -1,5 +1,10 @@
 # Modes
 
+In every mode the bar and the handle follow Material 3: tonal track, fill and handle in the state color (primary color without
+one), icon and text in a matching light or dark color, level 1 shadow and state layers on hover, focus and press. A long
+handle text (value, timer, clock) shrinks to fit the handle. Colors you set win; the details and the way back to the
+former look are in [Appearance](appearance.md#material-3-look).
+
 ## Mode `state`
 
 ![state mode](assets/shots/state-light.png#only-light)

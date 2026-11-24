@@ -219,6 +219,14 @@ export const STICKSHIFT_MAX_GATE_SIZE = 40;
 export const MIN_THICKNESS = 12;
 export const MAX_THICKNESS = 200;
 
+/**
+ * Handle text fit: mean glyph width in em and the width kept free for the padding, in px. The font size of a handle text
+ * shrinks until `characters * HANDLE_CHAR_WIDTH_EM` em fit into the handle width minus `HANDLE_TEXT_SPACE_PX` (never
+ * below `MIN_FONT_SIZE`; a longer text is cut with an ellipsis). The width is an estimate, not measured.
+ */
+export const HANDLE_CHAR_WIDTH_EM = 0.7;
+export const HANDLE_TEXT_SPACE_PX = 8;
+
 /** Handle and bar geometry. */
 export const OVAL_RATIO = 1.6;
 export const DEFAULT_VERTICAL_LENGTH = 160;

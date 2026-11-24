@@ -574,9 +574,32 @@ describe("buildCss", () => {
 
   it("contains theme fallbacks and motion handling", () => {
     const css = buildCss();
-    expect(css).toContain("var(--slabton-bar-color, var(--secondary-background-color");
+    expect(css).toContain("var(--slabton-bar-color, color-mix(in srgb, var(--slabton-text-color, var(--primary-text-color, #212121)) 12%, var(--card-background-color, #fff)))");
     expect(css).toContain("prefers-reduced-motion");
     expect(css).toContain(".o-v .carrier");
+  });
+
+  it("draws the track as a tonal surface (text color over the card color) behind @supports, with the theme background as fallback", () => {
+    const css = buildCss();
+    const tone = "color-mix(in srgb, var(--slabton-text-color, var(--primary-text-color, #212121)) 12%, var(--card-background-color, #fff))";
+    const plain = "var(--secondary-background-color, #e0e0e0)";
+    expect(css).toContain(`.bar {\n      position: relative; box-sizing: border-box; flex: none;\n      background: var(--slabton-bar-color, ${plain});`);
+    expect(css).toContain(`.bar-state .bar { background: var(--slabton-active-color, var(--slabton-bar-color, ${plain})); }`);
+    expect(css).toMatch(/@supports \(background: color-mix\(in srgb, red, blue\)\) \{\s*\.bar \{ background: var\(--slabton-bar-color, color-mix\(/);
+    expect(css).toContain(`.bar-state .bar { background: var(--slabton-active-color, var(--slabton-bar-color, ${tone})); }`);
+  });
+
+  it("fills with the full state color and keeps the opacity adjustable through --slabton-fill-opacity", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.fill \{[^}]*opacity: var\(--slabton-fill-opacity, 1\);/);
+    expect(css).not.toMatch(/\.fill \{[^}]*opacity: 0\.85/);
+  });
+
+  it("gives the switches state layers like the handle", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.sx-pt::before, \.handle::before, \.sw::before \{[^}]*background: currentColor/);
+    expect(css).toContain(".sw:hover::before");
+    expect(css).toMatch(/\.sw:focus-visible::before, \.sw:active::before \{ opacity: 0\.1; \}/);
   });
 
   it("styles bar text and info without letting them capture the pointer", () => {
@@ -605,11 +628,17 @@ describe("buildCss", () => {
   it("shrinks the handle text and its padding with the handle width so thin bars do not cut the value", () => {
     const css = buildCss();
     // 45 % of the width: the default handle (40 px) keeps the 14 px text, a 20 px handle gets 9 px.
-    expect(css).toMatch(/\.handle \{[^}]*font-size: min\(var\(--slabton-button-size, 14px\), calc\(var\(--slabton-hw\) \* 0\.45\)\)/);
+    expect(css).toMatch(/\.handle \{[^}]*font-size: min\(var\(--slabton-button-size, 14px\), calc\(var\(--slabton-hw\) \* 0\.45\),/);
     expect(css).toMatch(/\.h-text \{[^}]*padding: 0 min\(4px, calc\(var\(--slabton-hw\) \/ 10\)\)/);
     // The on-screen width is the length horizontally and the cross size vertically.
     expect(css).toContain(".o-h .handle { --slabton-hw: var(--slabton-hl); }");
     expect(css).toContain(".o-v .handle { --slabton-hw: var(--slabton-hc); }");
+  });
+
+  it("shrinks a long handle text further, by its character count, down to the smallest font size", () => {
+    const css = buildCss();
+    // (width - 8 px) / (characters * 0.7 em), never below 8 px; the other two limits stay in force.
+    expect(css).toMatch(/\.handle \{[^}]*max\(8px, calc\(\(var\(--slabton-hw\) - 8px\) \/ \(var\(--slabton-chars, 1\) \* 0\.7\)\)\)\);/);
   });
 
   it("falls back to the common text color for every area", () => {
@@ -617,7 +646,39 @@ describe("buildCss", () => {
     const fallback = "var(--slabton-text-color, var(--primary-text-color, #212121))";
     expect(css).toMatch(new RegExp(`\\.bar-text \\{[^}]*color: var\\(--slabton-bar-text-color, ${escapeRe(fallback)}\\)`));
     expect(css).toMatch(new RegExp(`\\.info \\{[^}]*color: var\\(--slabton-info-color, ${escapeRe(fallback)}\\)`));
-    expect(css).toMatch(new RegExp(`\\.handle \\{[^}]*color: var\\(--slabton-button-color, ${escapeRe(fallback)}\\)`));
+  });
+
+  it("fills the handle with the state color, the theme's text color on primary as fallback; button_color wins", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.handle \{\s*--slabton-handle-surface: var\(--slabton-handle-color, var\(--slabton-handle-fill, var\(--primary-color, #03a9f4\)\)\);[^}]*color: var\(--slabton-button-color, var\(--slabton-handle-ink, var\(--text-primary-color, #fff\)\)\);/);
+    expect(css).not.toMatch(/\.handle \{[^}]*color: var\(--slabton-button-color, var\(--slabton-text-color/);
+  });
+
+  it("shapes the switches like the handle: oval along the bar, square with rounded corners, round by default", () => {
+    const css = buildCss();
+    expect(css).toContain(".shape-square .sw { border-radius: calc(var(--slabton-sw-d) * 0.2); }");
+    expect(css).toContain(".o-h.shape-oval .sw { width: min(calc(var(--slabton-sw-d) * 1.6), max(var(--slabton-sw-d), var(--slabton-hl))); }");
+    expect(css).toContain(".o-v.shape-oval .sw { height: min(calc(var(--slabton-sw-d) * 1.6), max(var(--slabton-sw-d), var(--slabton-hl))); }");
+    expect(css).toMatch(/\.sw \{[^}]*border-radius: 999px/);
+  });
+
+  it("colors bar_text and info with the on-color of the fill where they sit on it, the theme's text color otherwise", () => {
+    const css = buildCss();
+    expect(css).toContain("--slabton-fill-surface: var(--slabton-active-color, var(--slabton-fill-color, var(--primary-color, #03a9f4)));");
+    expect(css).toMatch(/--slabton-over-bar: clamp\(0, calc\(\(var\(--slabton-p, 0\) - 0\.5\) \* 1000\), 1\);/);
+    expect(css).toMatch(/\.bar-state \{ --slabton-over-bar: 1; --slabton-over-far: 1; \}/);
+    expect(css).toMatch(/\.root\.sx-on \{ --slabton-over-bar: 0; --slabton-over-far: 0; \}/);
+    expect(css).toMatch(/@supports \(color: oklch\(from red l c h\)\) \{\s*\.bar-text \{ color: var\(--slabton-bar-text-color, var\(--slabton-text-color, color-mix\(in srgb, oklch\(from var\(--slabton-fill-surface\) /);
+    expect(css).toMatch(/\.o-h \.info:not\(\.info-right\) \{ --slabton-over-info: 1; \}/);
+    // The plain theme text color stays the base rule (browsers without relative colors) and explicit colors win.
+    expect(css).toMatch(/\.bar-text \{[^}]*color: var\(--slabton-bar-text-color, var\(--slabton-text-color, var\(--primary-text-color, #212121\)\)\);/);
+    expect(css).toMatch(/\.info \{[^}]*color: var\(--slabton-info-color, var\(--slabton-text-color, var\(--primary-text-color, #212121\)\)\);/);
+  });
+
+  it("lets text_color reach the handle only together with handle_color", () => {
+    expect(buildVars(cfg({ handle_color: "white", text_color: "black" }))["--slabton-handle-ink"]).toBe("black");
+    expect(buildVars(cfg({ text_color: "black" }))["--slabton-handle-ink"]).toBeUndefined();
+    expect(buildVars(cfg({ handle_color: "white" }))["--slabton-handle-ink"]).toBeUndefined();
   });
 
   it("draws the scale behind the handle without capturing the pointer", () => {
@@ -698,7 +759,7 @@ describe("buildCss", () => {
     expect(css).toMatch(/\.dial-num \{[^}]*fill: var\(--slabton-dial-color, currentColor\)/);
     expect(css).toMatch(/\.hand line \{[^}]*stroke: var\(--slabton-hands-color, currentColor\)/);
     expect(css).toMatch(/\.dial-hub \{[^}]*fill: var\(--slabton-hands-color, currentColor\)/);
-    expect(css).toMatch(/\.hand-second line \{[^}]*stroke: var\(--slabton-second-hand-color, var\(--primary-color, #03a9f4\)\)/);
+    expect(css).toMatch(/\.hand-second line \{[^}]*stroke: var\(--slabton-second-hand-color, var\(--error-color, #db4437\)\)/);
   });
 
   it("turns the hands through the transform attribute without a transition or layout animation", () => {

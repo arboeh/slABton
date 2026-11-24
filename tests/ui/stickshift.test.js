@@ -177,9 +177,9 @@ describe("stickshift styles", () => {
 
   it("uses state layers: 8 % on hover, 10 % on focus and press, in the content color", () => {
     const css = buildCss();
-    expect(css).toMatch(/\.sx-pt::before, \.root\.sx-on \.handle::before \{[^}]*content: ""[^}]*background: currentColor[^}]*opacity: 0[^}]*pointer-events: none/);
-    expect(css).toMatch(/\.sx-pt:hover::before, \.root\.sx-on \.handle:hover::before \{ opacity: 0\.08; \}/);
-    expect(css).toMatch(/\.sx-pt:focus-visible::before, \.sx-pt:active::before, \.root\.sx-on \.handle:focus-visible::before, \.root\.sx-on \.handle:active::before \{ opacity: 0\.1; \}/);
+    expect(css).toMatch(/\.sx-pt::before, \.handle::before, \.sw::before \{[^}]*content: ""[^}]*background: currentColor[^}]*opacity: 0[^}]*pointer-events: none/);
+    expect(css).toMatch(/@media \(hover: hover\) \{\s*\.sx-pt:hover::before, \.handle:hover::before, \.sw:hover::before \{ opacity: 0\.08; \}\s*\}/);
+    expect(css).toMatch(/\.sx-pt:focus-visible::before, \.sx-pt:active::before, \.handle:focus-visible::before, \.handle:active::before, \.sw:focus-visible::before, \.sw:active::before \{ opacity: 0\.1; \}/);
     // The hover no longer changes the frame, the focus keeps its visible ring.
     expect(css).not.toMatch(/\.sx-pt:hover \{ --slabton-sx-o/);
     expect(css).toMatch(/\.sx-pt:focus-visible \{[^}]*outline: 2px solid var\(--primary-color, #03a9f4\)/);
@@ -195,29 +195,31 @@ describe("stickshift styles", () => {
     expect(css).not.toMatch(/\.sx-seg \{[^}]*border-radius/);
   });
 
-  it("fills the active handle with the state color and takes the icon color from the fill", () => {
+  it("fills the handle of every mode with the state color and takes the icon color from the fill", () => {
     const css = buildCss();
     // handle_color wins, then the state color (set by render.js), then the primary color.
-    expect(css).toMatch(/\.root\.sx-on \.handle \{[^}]*--slabton-sx-surface: var\(--slabton-handle-color, var\(--slabton-sx-fill, var\(--primary-color, #03a9f4\)\)\);[^}]*background: var\(--slabton-sx-surface\);[^}]*color: var\(--slabton-button-color, var\(--text-primary-color, #fff\)\);/);
-    // The ring is gone.
+    expect(css).toMatch(/\n {4}\.handle \{\s*--slabton-handle-surface: var\(--slabton-handle-color, var\(--slabton-handle-fill, var\(--primary-color, #03a9f4\)\)\);[^}]*background: var\(--slabton-handle-surface\);[^}]*color: var\(--slabton-button-color, var\(--slabton-handle-ink, var\(--text-primary-color, #fff\)\)\);/);
+    // The old stickshift names and the ring (frame) are gone.
+    expect(css).not.toContain("--slabton-sx-fill");
+    expect(css).not.toContain("--slabton-sx-surface");
     expect(css).not.toContain("--slabton-sx-ring");
-    expect(css).not.toMatch(/\.root\.sx-on \.handle \{[^}]*border: 2px/);
+    expect(css).not.toMatch(/\.handle \{[^}]*border: 2px/);
   });
 
   it("picks a light or dark icon from the lightness of the fill, only where relative colors exist", () => {
     const css = buildCss();
     // Switch at OKLCH lightness 0.65 (about HCT tone 60): light (white) below, a dark tint of the fill's hue above.
-    expect(css).toMatch(/@supports \(color: oklch\(from red l c h\)\) \{\s*\.root\.sx-on \.handle \{ color: var\(--slabton-button-color, oklch\(from var\(--slabton-sx-surface\) clamp\(0\.22, calc\(\(0\.65 - l\) \* 1000\), 1\) calc\(c \* clamp\(0, calc\(\(l - 0\.65\) \* 1000\), 0\.4\)\) h\)\); \}/);
+    expect(css).toMatch(/@supports \(color: oklch\(from red l c h\)\) \{\s*\.handle \{ color: var\(--slabton-button-color, var\(--slabton-handle-ink, oklch\(from var\(--slabton-handle-surface\) clamp\(0\.22, calc\(\(0\.65 - l\) \* 1000\), 1\) calc\(c \* clamp\(0, calc\(\(l - 0\.65\) \* 1000\), 0\.4\)\) h\)\)\); \}/);
   });
 
   it("leaves the unavailable handle on the card color, so the warning icon stays readable", () => {
     // The warning icon keeps its own color (orange); on the primary fill it would lose contrast.
-    expect(buildCss()).toMatch(/\.root\.sx-on\.unavailable \.handle \{ --slabton-sx-surface: var\(--slabton-handle-color, var\(--card-background-color, #fff\)\); \}/);
+    expect(buildCss()).toMatch(/\.root\.unavailable \.handle \{ --slabton-handle-surface: var\(--slabton-handle-color, var\(--card-background-color, #fff\)\); \}/);
   });
 
   it("does not use text_color for the filled handle: only button_color overrides the picked icon color", () => {
     const css = buildCss();
-    const rule = css.match(/\.root\.sx-on \.handle \{[^}]*\}/)[0];
+    const rule = css.match(/\n {4}\.handle \{\s*--slabton-handle-surface[^}]*\}/)[0];
     expect(rule).not.toContain("--slabton-text-color");
     expect(buildVars(withSx({ text_color: "red" }))["--slabton-text-color"]).toBe("red");
     expect(css).toContain("--slabton-button-color");
@@ -225,6 +227,13 @@ describe("stickshift styles", () => {
 
   it("gives every handle the elevation level 1 shadow", () => {
     expect(buildCss()).toMatch(/\.handle \{[^}]*box-shadow: 0 1px 2px rgba\(0, 0, 0, 0\.3\), 0 1px 3px 1px rgba\(0, 0, 0, 0\.15\);/);
+  });
+
+  it("keeps a handle outside a stickshift apart from a fill of its color with a 2 px ring in the card color", () => {
+    const css = buildCss();
+    expect(css).toContain(".root:not(.sx-on) .handle { box-shadow: 0 0 0 2px var(--card-background-color, #fff), 0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15); }");
+    // The stickshift has no fill next to its handle: no ring there.
+    expect(css).not.toMatch(/\.root\.sx-on \.handle \{[^}]*0 0 0 2px/);
   });
 });
 
@@ -351,29 +360,33 @@ describe("stickshift card", () => {
   it("fills the handle with active_color, else with the state color; the icon color comes from the CSS", () => {
     const states = [{ value: "off", icon: "mdi:power" }, { value: "auto", icon: "mdi:auto-fix", color: "green" }, "on", "idle"];
     const own = create({ states, stickshift: { active_color: "red" } }).el;
-    expect(q(own, ".handle").style.getPropertyValue("--slabton-sx-fill")).toBe("red");
+    expect(q(own, ".handle").style.getPropertyValue("--slabton-handle-fill")).toBe("red");
     expect(q(own, ".h-icon").style.color).toBe("");
     const fallback = create({ states }).el;
-    expect(q(fallback, ".handle").style.getPropertyValue("--slabton-sx-fill")).toBe("green");
+    expect(q(fallback, ".handle").style.getPropertyValue("--slabton-handle-fill")).toBe("green");
     expect(q(fallback, ".h-icon").style.color).toBe("");
   });
 
   it("keeps the old look with handle_color: the fill stays the handle color, the icon gets the state color", () => {
     const states = [{ value: "off", icon: "mdi:power" }, { value: "auto", icon: "mdi:auto-fix", color: "green" }, "on", "idle"];
     const el = create({ states, handle_color: "white" }).el;
-    expect(q(el, ".handle").style.getPropertyValue("--slabton-sx-fill")).toBe("");
+    expect(q(el, ".handle").style.getPropertyValue("--slabton-handle-fill")).toBe("");
     expect(q(el, ".h-icon").style.color).toBe("green");
   });
 
-  it("sets no fill variable without a color or without stickshift", () => {
-    const fill = (el) => q(el, ".handle").style.getPropertyValue("--slabton-sx-fill");
+  it("sets no fill variable without a color; a card without stickshift fills its handle the same way", () => {
+    const fill = (el) => q(el, ".handle").style.getPropertyValue("--slabton-handle-fill");
     const states = [{ value: "off", icon: "mdi:power" }, { value: "auto", icon: "mdi:auto-fix", color: "green" }, "on", "idle"];
     // Active point without a color: no variable (the CSS fills with the primary color).
     expect(fill(create({ states }, selectState("off")).el)).toBe("");
-    // Not a stickshift card: nothing is set (the icon color exists only with a stickshift).
-    const plain = create({ stickshift: undefined, states }).el;
-    expect(fill(plain)).toBe("");
+    // Not a stickshift card: the handle is filled with the state color as well, the icon color comes from the CSS.
+    const plain = create({ stickshift: undefined, mode: "state", states }).el;
+    expect(fill(plain)).toBe("green");
     expect(q(plain, ".h-icon").style.color).toBe("");
+    // handle_color keeps the old look without a stickshift too: the fill stays the handle color, the icon keeps the theme color (no icon color without a stickshift).
+    const own = create({ stickshift: undefined, mode: "state", states, handle_color: "white" }).el;
+    expect(fill(own)).toBe("");
+    expect(q(own, ".h-icon").style.color).toBe("");
   });
 
   it("rebuilds the points when the entity's options change", () => {

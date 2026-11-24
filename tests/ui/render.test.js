@@ -622,6 +622,29 @@ describe("updateView", () => {
     expect(none.refs.icon.hidden).toBe(true);
   });
 
+  it("fills the handle with the state color in every mode, the icon color comes from the CSS", () => {
+    const { config, refs } = setup({ icon: "mdi:fan", states: [{ value: "on", color: "orange" }, "off", "auto"] });
+    updateView(refs, config, { ...stateMode.view(config, modeState), iconColor: "orange" });
+    expect(refs.handle.style.getPropertyValue("--slabton-handle-fill")).toBe("orange");
+    expect(refs.icon.style.color).toBe("");
+    // handle_color keeps the old look: no fill variable, the icon takes the state color.
+    const own = setup({ icon: "mdi:fan", handle_color: "white" });
+    updateView(own.refs, own.config, { ...stateMode.view(own.config, modeState), iconColor: "orange" });
+    expect(own.refs.handle.style.getPropertyValue("--slabton-handle-fill")).toBe("");
+    expect(own.refs.icon.style.color).toBe("orange");
+  });
+
+  it("writes the length of the handle text as --slabton-chars (at least 1) for the font size to fit", () => {
+    const text = setup({ handle_content: "text" });
+    updateView(text.refs, text.config, { ...stateMode.view(text.config, modeState), text: "23.5 °C" });
+    expect(text.refs.handle.style.getPropertyValue("--slabton-chars")).toBe("7");
+    updateView(text.refs, text.config, { ...stateMode.view(text.config, modeState), text: "" });
+    expect(text.refs.handle.style.getPropertyValue("--slabton-chars")).toBe("1");
+    const icon = setup({ icon: "mdi:fan" });
+    updateView(icon.refs, icon.config, stateMode.view(icon.config, modeState));
+    expect(icon.refs.handle.style.getPropertyValue("--slabton-chars")).toBe("1");
+  });
+
   it("sets slider semantics", () => {
     const { config, refs } = setup();
     updateView(refs, config, stateMode.view(config, modeState));

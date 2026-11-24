@@ -234,7 +234,33 @@ Nur Header, nur als `styles:`-Variablen (keine `text:`-Option): `--slabton-heade
 Skala: `--slabton-scale-size` und `--slabton-scale-color` setzen `scale.size` und `scale.color`; `styles:` kann sie überschreiben.
 Skala-Beschriftung: `--slabton-scale-label-size` und `--slabton-scale-label-color` (gesetzt durch `text.scale`).
 Analoguhr: `--slabton-dial-color` (Striche und Ziffern), `--slabton-hands-color` (Stunden- und Minutenzeiger, Nabe)
-und `--slabton-second-hand-color` (Standard: Primärfarbe).
+und `--slabton-second-hand-color` (Standard: Fehlerfarbe).
+
+### Material-3-Optik
+
+Bar und Griff folgen in jedem Modus Material 3; gesetzte Farben gewinnen gegen diese Standards:
+
+- **Track:** tonale Fläche (Textfarbe mit 12 % über der Kartenfarbe). `bar_color` ersetzt sie.
+- **Füllung:** Zustandsfarbe (ohne Zustandsfarbe die Primärfarbe) in voller Stärke. `fill_color` ersetzt die Farbe; die
+  Variable `--slabton-fill-opacity` (Standard `1`) setzt die Stärke, `0.85` ist die frühere Optik und hält `bar_text` auf dunkler Füllung lesbar.
+- **Griff:** in der Zustandsfarbe gefüllt (ohne Zustandsfarbe die Primärfarbe); Icon und Text werden je nach Helligkeit der Füllung weiß
+  oder ein dunkler Ton der Füllfarbe (Umschaltpunkt etwa bei Ton 60 von Material 3). `button_color` überschreibt diese Wahl; `text_color` erreicht den gefüllten Griff nicht, außer `handle_color` ist gesetzt (dann färbt es Text und Zifferblatt des Griffs, nicht das Icon).
+  Neben einer Füllung in gleicher Farbe halten ein 2 px Ring in der Kartenfarbe (nicht beim Stickshift) und der Schatten der Stufe 1 den Griff getrennt.
+  Solange die Entität nicht verfügbar ist, bleibt der Griff in der Kartenfarbe, damit das Warn-Icon Kontrast behält.
+  `handle_color` füllt den Griff mit dieser Farbe, das Icon behält die Zustandsfarbe, z. B. `handle_color: white` mit einer `button_color` für die frühere Optik.
+- **State Layer:** Griff, Schalter und Stickshift-Punkte zeigen Hover als 8 %, Fokus und Drücken als 10 % Überlagerung in der Inhaltsfarbe.
+  Hover zeigt sich nur auf Geräten mit Hover, ein Tipp am Handy hinterlässt keine Tönung.
+  Der Tastaturfokus behält seinen Rahmen. Mit `prefers-reduced-motion` werden die Überlagerungen nicht animiert.
+- **Griff-Text:** Ein langer Wert oder eine lange Zeit schrumpft mit der Länge, bis er in den Griff passt (bis 8 px herunter,
+  geschätzt mit 0,7 em je Zeichen), danach wird er mit Auslassungspunkten gekürzt. `text.button.font_size` bleibt die Obergrenze.
+- **Balkentext und Timer-Info:** Wo `bar_text` oder die Timer-`info` auf der Füllung liegen, nehmen sie deren Kontrastfarbe (weiß oder ein dunkler Ton,
+  gewählt wie beim Griff); auf dem Track bleiben sie in der Textfarbe des Themes. Mit `bar_state_color` gilt der ganze Balken als Füllung.
+  `text_color`, `bar_text_color` und `info_color` überschreiben das. Eine vertikale `info` steht außerhalb des Balkens und bleibt unverändert.
+- **Schalter:** Sie übernehmen die Form von `handle_shape` (`round`, `oval`, `square`). Ein ovaler Schalter ist nie länger als der Griff.
+
+Browser ohne Relative Colors (vor Chrome 119, Safari 16.4, Firefox 128) nehmen für das Griff-Icon immer die Textfarbe des Themes auf Primär,
+die auf heller Füllung schlecht lesbar sein kann; dort `button_color` setzen. `bar_text` und `info` behalten die Textfarbe des Themes.
+Ohne `color-mix` (vor Chrome 111, Safari 16.2, Firefox 113) behält der Track den sekundären Hintergrund des Themes.
 
 ## Stickshift
 
@@ -263,7 +289,7 @@ states:
 Die Kulisse läuft nur zwischen den Punkten (von Rand zu Rand, nicht dahinter) und hat einen festen Stil: keine Zustandsfarbe und keine Fortschrittsfüllung (`bar_state_color` färbt die Bar,
 nicht die Kulisse). Der Griff am aktiven Punkt ist mit `active_color` gefüllt, sonst mit der `color` des Zustands, sonst
 mit der Primärfarbe; Icon und Text werden nach der Helligkeit der Füllung weiß oder ein dunkler Ton der Füllfarbe (Umschaltung etwa bei
-Tone 60 von Material 3; `button_color` überschreibt das, `text_color` erreicht den gefüllten Griff nicht; Browser ohne relative Farben
+Tone 60 von Material 3; `button_color` überschreibt das, `text_color` erreicht den gefüllten Griff nicht, außer `handle_color` ist gesetzt; Browser ohne relative Farben
 (vor Chrome 119, Safari 16.4, Firefox 128) nehmen immer die Theme-Textfarbe auf Primär, was auf heller Füllung schlecht
 lesbar sein kann, dort `button_color` setzen). Ein `--slabton-handle-color` aus `styles:` füllt den Griff wie
 `handle_color`, die Icon-Farbe bleibt aber nur bei `handle_color` erhalten. Ist die

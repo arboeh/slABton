@@ -233,7 +233,33 @@ Header only as `styles:` variables (no `text:` option): `--slabton-header-opacit
 Scale: `--slabton-scale-size` and `--slabton-scale-color` are set by `scale.size` and `scale.color`; `styles:` can override them.
 Scale labels: `--slabton-scale-label-size` and `--slabton-scale-label-color` (set by `text.scale`).
 Analog dial: `--slabton-dial-color` (ticks and numbers), `--slabton-hands-color` (hour and minute hand, hub) and
-`--slabton-second-hand-color` (default: primary color).
+`--slabton-second-hand-color` (default: error color).
+
+### Material 3 look
+
+Bar and handle follow Material 3 in every mode; set colors win over these defaults:
+
+- **Track:** a tonal surface (text color at 12 % over the card color). `bar_color` replaces it.
+- **Fill:** the state color (primary color without one) at full strength. `fill_color` replaces the color; the
+  variable `--slabton-fill-opacity` (default `1`) sets the strength, `0.85` is the former look and keeps `bar_text` readable on a dark fill.
+- **Handle:** filled with the state color (primary color without one); icon and text turn white or a dark tint of the fill's hue by its
+  lightness (the switch is at about Material 3's tone 60). `button_color` overrides that pick; `text_color` does not reach the filled handle unless `handle_color` is set (then it colors the handle's text and the clock dial, not the icon).
+  Next to a fill of the same color a 2 px ring in the card color (not with a stickshift) and the level 1 shadow keep the handle apart.
+  While the entity is unavailable the handle stays on the card color, so the warning icon keeps its contrast.
+  `handle_color` fills the handle with that color and the icon keeps the state color, e.g. `handle_color: white` with a `button_color` for the former look.
+- **State layers:** handle, switches and stickshift points show hover as an 8 % and focus and press as a 10 % overlay in the content color.
+  Hover shows only on devices that can hover, so a tap on a phone leaves no shade.
+  The keyboard focus keeps its outline. With `prefers-reduced-motion` the overlays do not animate.
+- **Handle text:** a long value or time shrinks with its length to fit the handle (down to 8 px, estimated at 0.7 em per
+  character), then it is cut with an ellipsis. `text.button.font_size` stays the upper limit.
+- **Bar text and timer info:** where `bar_text` or the timer `info` lie on the fill, they take the fill's on-color (white or a dark tint,
+  chosen like the handle's); on the track they keep the theme's text color. With `bar_state_color` the whole bar counts as fill.
+  `text_color`, `bar_text_color` and `info_color` override this. A vertical `info` stands outside the bar and is not changed.
+- **Switches:** they take the shape of `handle_shape` (`round`, `oval`, `square`). An oval switch is never longer than the handle.
+
+Browsers without relative colors (before Chrome 119, Safari 16.4, Firefox 128) always use the theme's text color on
+primary for the handle icon, which can be hard to read on a light fill, so set `button_color` there; `bar_text` and `info` keep
+the theme's text color. Without `color-mix` (before Chrome 111, Safari 16.2, Firefox 113) the track keeps the theme's secondary background.
 
 ## Stickshift
 
@@ -262,7 +288,7 @@ states:
 The gate runs only between the points (from edge to edge, not behind them) and has a fixed style: no state color and no progress fill (`bar_state_color` colors the bar, not the gate). The
 handle on the active point is filled with `active_color`, else the `color` of the state, else the primary color; its icon
 and text turn white or a dark tint of the fill's hue by its lightness (the switch is at about Material 3's tone 60;
-`button_color` overrides this, `text_color` does not reach the filled handle; browsers without relative colors
+`button_color` overrides this, `text_color` does not reach the filled handle unless `handle_color` is set; browsers without relative colors
 (before Chrome 119, Safari 16.4, Firefox 128) always use the theme's text color on primary, which can be hard to read on
 a light fill, so set `button_color` there). A `--slabton-handle-color` set through `styles:` fills the handle like
 `handle_color`, but the icon then keeps its own color only with `handle_color`. While the entity is unavailable the

@@ -7,8 +7,8 @@
 import { animationCss } from "./animations.js";
 import {
   CARD_CHROME_PX, CARD_SIDE_CHROME_PX, DEFAULT_SCALE_LABEL_SIZE, DEFAULT_SCALE_SIZE, DEFAULT_VERTICAL_LENGTH, GRID, GRID_COLUMN_GAP_PX,
-  GRID_COLUMN_PX, GRID_MAX_COLUMNS, HANDLE_EDGE_GAP_PX, OVAL_RATIO, PILL_RADIUS, SCALE_LABEL_GAP_PX,
-  SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO, STICKSHIFT_DEFAULT_OPACITY, TEXT_OPTIONS,
+  GRID_COLUMN_PX, GRID_MAX_COLUMNS, HANDLE_CHAR_WIDTH_EM, HANDLE_EDGE_GAP_PX, HANDLE_TEXT_SPACE_PX, MIN_FONT_SIZE, OVAL_RATIO, PILL_RADIUS,
+  SCALE_LABEL_GAP_PX, SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO, STICKSHIFT_DEFAULT_OPACITY, TEXT_OPTIONS,
 } from "../core/constants.js";
 
 /** Material 3 state layer: opacity of the overlay in the content color on hover, and on focus and press. */
@@ -19,8 +19,13 @@ const POINT_TONE_PERCENT = 14;
 const POINT_OUTLINE_PERCENT = 18;
 /** Material 3 elevation level 1: two shadow layers. */
 const ELEVATION_1 = "0 1px 2px rgba(0, 0, 0, 0.3), 0 1px 3px 1px rgba(0, 0, 0, 0.15)";
+/** Ring in the card color around a filled handle (outside a stickshift), in px: keeps it apart from a fill of the same color. */
+const HANDLE_RING_PX = 2;
+/** Material 3 tonal track: strength of the text color over the card color (surface container highest), in %. */
+const TRACK_TONE_PERCENT = 12;
+const TRACK_TONE = `color-mix(in srgb, var(--slabton-text-color, var(--primary-text-color, #212121)) ${TRACK_TONE_PERCENT}%, var(--card-background-color, #fff))`;
 /**
- * OKLCH lightness above which the icon on the filled stickshift handle turns dark (below it stays white), about HCT tone
+ * OKLCH lightness above which the icon on the filled handle turns dark (below it stays white), about HCT tone
  * 60, the middle where Material 3 switches between a light and a dark on-color. The dark on-color is a dark tint of the
  * fill's own hue (lightness `HANDLE_CONTRAST_DARK_L`, chroma scaled by `HANDLE_CONTRAST_DARK_CHROMA`), not neutral black.
  */
@@ -188,6 +193,8 @@ export function buildVars(config) {
   if (config.fill_color) vars["--slabton-fill-color"] = config.fill_color;
   if (config.handle_color) vars["--slabton-handle-color"] = config.handle_color;
   if (config.text_color) vars["--slabton-text-color"] = config.text_color;
+  // An own handle color has no known tone: the text color then also reaches the handle (the contrast pick needs a derived fill).
+  if (config.handle_color && config.text_color) vars["--slabton-handle-ink"] = config.text_color;
   if (config.border_color) vars["--slabton-border-color"] = config.border_color;
   Object.assign(vars, stickshiftVars(config.stickshift));
   if (config.scale?.size != null) vars["--slabton-scale-size"] = `${config.scale.size}px`;
@@ -313,7 +320,7 @@ function dialCss() {
     .hand line { stroke: var(--slabton-hands-color, currentColor); stroke-linecap: round; }
     .hand-hour line { stroke-width: 3.4; }
     .hand-minute line { stroke-width: 2.4; }
-    .hand-second line { stroke: var(--slabton-second-hand-color, var(--primary-color, #03a9f4)); stroke-width: 1.2; }
+    .hand-second line { stroke: var(--slabton-second-hand-color, var(--error-color, #db4437)); stroke-width: 1.2; }
     .dial-hub { fill: var(--slabton-hands-color, currentColor); }`;
 }
 
@@ -343,26 +350,57 @@ function stickshiftGateCss(d, gate, ink) {
     .o-v .sxs-square .sx-seg { top: calc(var(--slabton-sx-a, 0) * 100% + var(--slabton-sx-pl) / 2); height: max(0px, calc((var(--slabton-sx-b, 1) - var(--slabton-sx-a, 0)) * 100% - var(--slabton-sx-pl))); }`;
 }
 
-/**
- * Active handle of the stickshift (Material 3 filled container): the fill is the handle color, else the state color
- * (`--slabton-sx-fill`, set by render.js), else the primary color. The icon and text take a light or dark color from the
- * lightness of the fill (relative color syntax); without it, and where `button_color` is not set, the theme's text color on primary.
- * Only `button_color` overrides that pick; `text_color` does not reach the filled handle. An unavailable entity keeps the
- * handle on the card color, because its warning icon has an own color (orange) that would not read on the fill.
- */
-function stickshiftHandleCss() {
+/** Light or dark tint of the hue of `surface` (relative color syntax), by its lightness: the on-color of a filled container. */
+function contrastOn(surface) {
   const light = `clamp(${HANDLE_CONTRAST_DARK_L}, calc((${HANDLE_CONTRAST_SWITCH_L} - l) * 1000), 1)`;
   const chroma = `calc(c * clamp(0, calc((l - ${HANDLE_CONTRAST_SWITCH_L}) * 1000), ${HANDLE_CONTRAST_DARK_CHROMA}))`;
-  const contrast = `oklch(from var(--slabton-sx-surface) ${light} ${chroma} h)`;
+  return `oklch(from ${surface} ${light} ${chroma} h)`;
+}
+
+/**
+ * Text in the bar (`bar_text`, the timer's `info`): where it sits on the fill it takes the on-color of the fill, like the handle,
+ * otherwise (on the track) the theme's text color. `--slabton-over-bar` (1 on the fill, 0 off it) decides: the centered bar text is on
+ * the fill from half progress on, the horizontal info sits on the fill when it is not moved to the far end, `bar_state_color` colors the
+ * whole bar, a stickshift has no fill. Explicit `text_color`, `bar_text_color` and `info_color` win. Without relative colors: theme text.
+ */
+function barTextCss() {
+  const theme = "var(--primary-text-color, #212121)";
+  const mix = (over) => `color-mix(in srgb, ${contrastOn("var(--slabton-fill-surface)")} calc(${over} * 100%), ${theme})`;
   return `
-    .root.sx-on .handle {
-      --slabton-sx-surface: var(--slabton-handle-color, var(--slabton-sx-fill, var(--primary-color, #03a9f4)));
-      background: var(--slabton-sx-surface);
-      color: var(--slabton-button-color, var(--text-primary-color, #fff));
+    .root {
+      --slabton-fill-surface: var(--slabton-active-color, var(--slabton-fill-color, var(--primary-color, #03a9f4)));
+      --slabton-over-bar: clamp(0, calc((var(--slabton-p, 0) - 0.5) * 1000), 1);
     }
-    .root.sx-on.unavailable .handle { --slabton-sx-surface: var(--slabton-handle-color, var(--card-background-color, #fff)); }
+    .bar-state { --slabton-over-bar: 1; --slabton-over-far: 1; }
+    .root.sx-on { --slabton-over-bar: 0; --slabton-over-far: 0; }
     @supports (color: oklch(from red l c h)) {
-      .root.sx-on .handle { color: var(--slabton-button-color, ${contrast}); }
+      .bar-text { color: var(--slabton-bar-text-color, var(--slabton-text-color, ${mix("var(--slabton-over-bar)")})); }
+      .o-h .info { color: var(--slabton-info-color, var(--slabton-text-color, ${mix("var(--slabton-over-info)")})); }
+      .o-h .info:not(.info-right) { --slabton-over-info: 1; }
+      .o-h .info.info-right { --slabton-over-info: var(--slabton-over-far, 0); }
+    }`;
+}
+
+/**
+ * Handle of every mode (Material 3 filled container): the fill is the handle color, else the state color
+ * (`--slabton-handle-fill`, set by render.js), else the primary color. The icon and text take a light or dark color from the
+ * lightness of the fill (relative color syntax); without it, and where `button_color` is not set, the theme's text color on primary.
+ * `button_color` overrides that pick; `text_color` reaches the handle only together with `handle_color`. An unavailable entity keeps the
+ * handle on the card color, because its warning icon has an own color (orange) that would not read on the fill.
+ * Outside a stickshift the handle sits on a fill of the same color: a ring in the card color (second shadow) keeps them apart.
+ */
+function handleFillCss() {
+  const contrast = contrastOn("var(--slabton-handle-surface)");
+  return `
+    .handle {
+      --slabton-handle-surface: var(--slabton-handle-color, var(--slabton-handle-fill, var(--primary-color, #03a9f4)));
+      background: var(--slabton-handle-surface);
+      color: var(--slabton-button-color, var(--slabton-handle-ink, var(--text-primary-color, #fff)));
+    }
+    .root:not(.sx-on) .handle { box-shadow: 0 0 0 ${HANDLE_RING_PX}px var(--card-background-color, #fff), ${ELEVATION_1}; }
+    .root.unavailable .handle { --slabton-handle-surface: var(--slabton-handle-color, var(--card-background-color, #fff)); }
+    @supports (color: oklch(from red l c h)) {
+      .handle { color: var(--slabton-button-color, var(--slabton-handle-ink, ${contrast})); }
     }`;
 }
 
@@ -393,13 +431,15 @@ function stickshiftCss() {
       cursor: pointer; transform: translate(-50%, -50%);
       transition: transform 150ms ease;
     }
-    /* State layer: an overlay in the content color (the point's text color, the active handle's icon color). */
-    .sx-pt::before, .root.sx-on .handle::before {
+    /* State layer: an overlay in the content color (the point's text color, the handle's icon color, the switch's color). */
+    .sx-pt::before, .handle::before, .sw::before {
       content: ""; position: absolute; inset: 0; border-radius: inherit; background: currentColor; opacity: 0;
       pointer-events: none; transition: opacity 150ms ease;
     }
-    .sx-pt:hover::before, .root.sx-on .handle:hover::before { opacity: ${STATE_LAYER_HOVER}; }
-    .sx-pt:focus-visible::before, .sx-pt:active::before, .root.sx-on .handle:focus-visible::before, .root.sx-on .handle:active::before { opacity: ${STATE_LAYER_ACTIVE}; }
+    @media (hover: hover) {
+      .sx-pt:hover::before, .handle:hover::before, .sw:hover::before { opacity: ${STATE_LAYER_HOVER}; }
+    }
+    .sx-pt:focus-visible::before, .sx-pt:active::before, .handle:focus-visible::before, .handle:active::before, .sw:focus-visible::before, .sw:active::before { opacity: ${STATE_LAYER_ACTIVE}; }
     .o-h .sx-pt { top: 50%; left: calc(var(--slabton-sx-e, 0) * 100%); }
     .o-v .sx-pt { left: 50%; top: calc(var(--slabton-sx-e, 0) * 100%); }
     .sxs-square .sx-pt { border-radius: calc(${d} * ${SQUARE_HANDLE_RADIUS_RATIO}); }
@@ -411,10 +451,9 @@ function stickshiftCss() {
     .sx-pt ha-icon, .sx-pt .sx-text { color: color-mix(in srgb, var(--slabton-sx-c, ${ink}) 60%, ${ink}); }
     .sx-pt:active { transform: translate(-50%, -50%) scale(0.94); }
     .sx-pt:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
-    ${stickshiftHandleCss()}
     @media (prefers-reduced-motion: reduce) {
       .sx-pt { transition: none; }
-      .sx-pt::before, .root.sx-on .handle::before { transition: none; }
+      .sx-pt::before, .handle::before, .sw::before { transition: none; }
       .sx-pt:active { transform: translate(-50%, -50%); }
     }`;
 }
@@ -455,6 +494,11 @@ export function buildCss() {
     }
     /* bar_state_color: the whole bar in the color of the current state (none: bar_color or the default). */
     .bar-state .bar { background: var(--slabton-active-color, var(--slabton-bar-color, var(--secondary-background-color, #e0e0e0))); }
+    /* The tonal track needs color-mix(); a var() with it would not fall back, so it sits behind @supports. */
+    @supports (background: color-mix(in srgb, red, blue)) {
+      .bar { background: var(--slabton-bar-color, ${TRACK_TONE}); }
+      .bar-state .bar { background: var(--slabton-active-color, var(--slabton-bar-color, ${TRACK_TONE})); }
+    }
     /* Stickshift: the bar itself is gone (no background, border or fill); the points, the gate and the handle stay on its track. */
     .root.sx-on .bar { background: none; border-color: transparent; }
     .root.sx-on .fill-clip { display: none; }
@@ -464,7 +508,7 @@ export function buildCss() {
     .fill {
       position: absolute; inset: 0;
       background: var(--slabton-active-color, var(--slabton-fill-color, var(--primary-color, #03a9f4)));
-      opacity: 0.85;
+      opacity: var(--slabton-fill-opacity, 1);
     }
     .o-h:not(.rev) .fill { clip-path: inset(0 calc(100% - var(--slabton-ext)) 0 0); }
     .o-h.rev .fill { clip-path: inset(0 0 0 calc(100% - var(--slabton-ext))); }
@@ -486,6 +530,7 @@ export function buildCss() {
       color: var(--slabton-info-color, var(--slabton-text-color, var(--primary-text-color, #212121)));
     }
     .bar-text[hidden], .info[hidden] { display: none; }
+    ${barTextCss()}
     .o-h .bar-text { inset: 0; padding: 0 calc(var(--slabton-hl) + 12px); }
     .o-v .bar-text { inset: 0; padding: calc(var(--slabton-hl) + 12px) 0; writing-mode: vertical-rl; }
     .o-h .info { top: 0; bottom: 0; left: 0; max-width: 40%; padding: 0 12px; }
@@ -518,14 +563,15 @@ export function buildCss() {
     .handle {
       position: absolute; pointer-events: auto; box-sizing: border-box;
       display: flex; align-items: center; justify-content: center; overflow: hidden;
-      background: var(--slabton-handle-color, var(--card-background-color, #fff));
-      color: var(--slabton-button-color, var(--slabton-text-color, var(--primary-text-color, #212121)));
       border-radius: var(--slabton-handle-radius);
       box-shadow: ${ELEVATION_1};
       cursor: grab; user-select: none; -webkit-user-select: none; font-weight: 600;
-      /* Text width of the handle is its width on screen (--slabton-hw); a small handle gets a smaller text (45 %: the 40 px default keeps 14 px). */
-      font-size: min(var(--slabton-button-size, 14px), calc(var(--slabton-hw) * 0.45));
+      /* Text width of the handle is its width on screen (--slabton-hw); a small handle gets a smaller text (45 %: the 40 px default keeps 14 px).
+         A long text (--slabton-chars, set by render.js) shrinks it further to fit, down to the smallest font size, then it is cut. */
+      font-size: min(var(--slabton-button-size, 14px), calc(var(--slabton-hw) * 0.45),
+        max(${MIN_FONT_SIZE}px, calc((var(--slabton-hw) - ${HANDLE_TEXT_SPACE_PX}px) / (var(--slabton-chars, 1) * ${HANDLE_CHAR_WIDTH_EM}))));
     }
+    ${handleFillCss()}
     .o-h .handle { --slabton-hw: var(--slabton-hl); }
     .o-v .handle { --slabton-hw: var(--slabton-hc); }
     .o-h .handle { left: 0; top: 50%; margin-top: calc(var(--slabton-hc) / -2); width: var(--slabton-hl); height: var(--slabton-hc); touch-action: pan-y; }
@@ -549,11 +595,14 @@ export function buildCss() {
       background: var(--card-background-color, #fff); color: var(--secondary-text-color, #727272);
       cursor: pointer; transform: translate(-50%, -50%);
     }
+    /* The switches follow handle_shape: round (default), oval (longer along the bar, never longer than the handle that covers it) or square (rounded corners). */
+    .shape-square .sw { border-radius: calc(var(--slabton-sw-d) * ${SQUARE_HANDLE_RADIUS_RATIO}); }
+    .o-h.shape-oval .sw { width: min(calc(var(--slabton-sw-d) * ${OVAL_RATIO}), max(var(--slabton-sw-d), var(--slabton-hl))); }
+    .o-v.shape-oval .sw { height: min(calc(var(--slabton-sw-d) * ${OVAL_RATIO}), max(var(--slabton-sw-d), var(--slabton-hl))); }
     .o-h .sw { top: 50%; left: calc(var(--slabton-sw-e) * 100%); }
     .o-v .sw { left: 50%; top: calc(var(--slabton-sw-e) * 100%); }
     .sw ha-icon { --mdc-icon-size: min(16px, calc(var(--slabton-sw-d) * 0.6)); }
     .sw.active { color: var(--primary-color, #03a9f4); border-color: var(--primary-color, #03a9f4); }
-
     ${stickshiftCss()}
 
     .unavailable .bar { opacity: 0.5; }

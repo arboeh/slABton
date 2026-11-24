@@ -29,10 +29,31 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   restores the old tone, `gate.color` the old gate. The active handle is inverted: it is filled
   with `active_color`, else the state color (primary color without one), and its icon and text turn white or a dark tint
   of the fill's hue by its lightness (switch at about Material 3's tone 60; browsers without relative colors use the
-  theme's text color on primary). Only `button_color` overrides that pick, `text_color` no longer reaches the handle;
+  theme's text color on primary). Only `button_color` overrides that pick, `text_color` no longer reaches the handle (see below for `handle_color`);
   an unavailable entity keeps the handle on the card color so the warning icon stays readable. `active_color`
   therefore colors the handle, no longer the icon; with `handle_color` set, the handle keeps that color and the icon
-  keeps the state color. The ring is gone. All handles use the Material 3 level 1 shadow.
+  keeps the state color. The stickshift ring is gone. All handles use the Material 3 level 1 shadow.
+- Material 3 look for bar and handle in every mode. The track is a tonal surface (text color at 12 % over the card color) instead of the
+  theme's secondary background; the fill is drawn at full strength (was 85 % opacity: `--slabton-fill-opacity: 0.85` in
+  `styles:` restores it, which also keeps `bar_text` readable on a dark fill). The handle is filled with the state color
+  (primary color without one) and its icon and text turn white or a dark tint of the fill's hue by its lightness, as on
+  the stickshift; outside a stickshift a 2 px ring in the card color keeps it apart from the fill of the same color.
+  Handles and switches get hover (8 %) and focus and press (10 %) state layers. A long handle text (value, timer)
+  shrinks to fit the handle, down to 8 px, before it is cut. The analog clock's second hand is the error color (was the
+  primary color, which would vanish on the filled handle; `--slabton-second-hand-color` sets it). Cards without own
+  colors look different: `handle_color` (e.g. `white`) with `button_color` restores the white handle, `bar_color` the old
+  track. Browsers without relative colors (before Chrome 119, Safari 16.4, Firefox 128) use the theme's text color on primary for the handle icon (set `button_color` there);
+  without `color-mix` (before Chrome 111, Safari 16.2, Firefox 113) the track keeps the theme's secondary background.
+- With `handle_color` set, `text_color` colors the handle's text and the clock dial (not the icon, which keeps the
+  state color). Without `handle_color` it still does not reach the filled handle.
+- `bar_text` and the timer `info` take the on-color of the fill (white or a dark tint by its lightness) where they lie
+  on it, and stay in the theme's text color on the track; with `bar_state_color` the whole bar is the fill. Set
+  `text_color`, `bar_text_color` or `info_color` to override. A vertical `info` stands outside the bar and keeps the
+  theme's text color.
+- Hover overlays show only on devices that can hover (`@media (hover: hover)`), so a tap on a phone no longer leaves
+  the handle shaded.
+- Switches follow `handle_shape`: `round`, `oval` or `square`. An oval switch is at most as long as the handle, so the
+  handle covers it at the end. No new option.
 - Stickshift: the gate runs under the points and follows their outline (round and oval points), or stops straight at
   the edge (square points). The track of an `oval` row is set in by the oval's excess, so the end points are no longer cut off at the card edge.
 
