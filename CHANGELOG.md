@@ -19,6 +19,17 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
   full end starts it again, dragging back into the start end stops it (`drag: false` turns it off). Without the new
   options nothing changes.
 
+### Changed
+
+- Stickshift: inactive points are readable on dark cards (and stronger on light ones). `point_opacity` now defaults
+  to `0.55` (was `0.35`) and dims only the ring and background of a point; icon and text stay near full strength and
+  their state `color` is pulled 40 % toward the text color, so dark colors (`blue`, `green`) no longer vanish. The gate
+  line is drawn at 50 % of the text color (was 25 %). Cards without own values look different: `point_opacity: 0.35`
+  restores the old strength of the frame, `gate.color` the old gate.
+- Stickshift: the active handle gets a ring in the icon color, so it stands out on a dark card. The gate runs under the
+  points and follows their outline (round and oval points), or stops straight at the edge (square points). The track of
+  an `oval` row is set in by the oval's excess, so the end points are no longer cut off at the card edge.
+
 ### Fixed
 
 - Timer swipe (switch layout): after releasing the handle it no longer jumps back to its old position before Home

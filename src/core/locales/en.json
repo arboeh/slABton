@@ -104,7 +104,7 @@
   "editor.section.stickshift": "Stickshift",
   "editor.sx_shape": "Shape of the points",
   "editor.sx_point_size": "Point size in px (empty = 80 % of the handle)",
-  "editor.sx_point_opacity": "Opacity of the inactive points (0 to 1)",
+  "editor.sx_point_opacity": "Opacity of the frame of inactive points (0 to 1)",
   "editor.sx_active_color": "Handle icon color on the active point",
   "editor.section.sx_gate": "Gate (line between the points)",
   "editor.sx_gate_visible": "Show the gate",

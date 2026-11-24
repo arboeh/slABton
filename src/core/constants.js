@@ -210,7 +210,7 @@ export function scalePositionsFor(orientation) {
 export const STICKSHIFT_OPTIONS = Object.freeze(["enabled", "shape", "point_size", "point_opacity", "active_color", "gate"]);
 export const STICKSHIFT_POINT_RATIO = 0.8;
 export const STICKSHIFT_MIN_POINT_SIZE = 8;
-export const STICKSHIFT_DEFAULT_OPACITY = 0.35;
+export const STICKSHIFT_DEFAULT_OPACITY = 0.55;
 export const STICKSHIFT_DEFAULT_GATE_SIZE = 4;
 export const STICKSHIFT_MIN_GATE_SIZE = 1;
 export const STICKSHIFT_MAX_GATE_SIZE = 40;

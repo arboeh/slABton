@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import "../../src/ui/slabton-card.js";
 import { normalizeConfig } from "../../src/core/config.js";
 import { SlabtonCardEditor, buildSchema, validationHints } from "../../src/ui/editor.js";
-import { buildCss, buildVars } from "../../src/ui/styles.js";
+import { buildCss, buildVars, handleOverhang } from "../../src/ui/styles.js";
 import { createHass, makeState, mockRect, pointer, withState } from "../helpers/mock-hass.js";
 
 if (!customElements.get("slabton-card-editor")) customElements.define("slabton-card-editor", SlabtonCardEditor);
@@ -32,7 +32,7 @@ describe("stickshift config", () => {
     expect(withSx().stickshift).toEqual({
       shape: "round",
       point_size: 32,
-      point_opacity: 0.35,
+      point_opacity: 0.55,
       active_color: null,
       gate: { visible: true, size: 4, color: null },
     });
@@ -159,6 +159,48 @@ describe("stickshift styles", () => {
       expect(css).toContain(part);
     }
   });
+
+  it("keeps inactive points readable: opacity 0.55 on the frame, icon and text pulled toward the text color", () => {
+    const css = buildCss();
+    expect(css).toContain("--slabton-sx-o: var(--slabton-sx-opacity, 0.55);");
+    // The opacity dims ring and background, not the whole button (icon and text stay near full strength).
+    expect(css).not.toMatch(/\.sx-pt \{[^}]*[^-]opacity: var\(--slabton-sx-opacity/);
+    expect(css).toMatch(/\.sx-pt \{[^}]*border: 1px solid color-mix\(in srgb, [^;]*calc\(var\(--slabton-sx-o\) \* 80%\), transparent\)/);
+    expect(css).toMatch(/\.sx-pt ha-icon, \.sx-pt \.sx-text \{ color: color-mix\(in srgb, var\(--slabton-sx-c, [^;]*\) 60%, [^;]*\); opacity: min\(1, calc\(var\(--slabton-sx-o\) \+ 0\.45\)\); \}/);
+  });
+
+  it("makes the gate clearly visible (50 % of the text color) and lets hover and focus win over rest", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.sx-seg \{[^}]*color-mix\(in srgb, [^;]* 50%, transparent\)/);
+    expect(css).toMatch(/\.sx-pt:hover \{ --slabton-sx-o: min\(1, calc\(var\(--slabton-sx-opacity, 0\.55\) \+ 0\.35\)\); \}/);
+    expect(css).toMatch(/\.sx-pt:focus-visible \{ --slabton-sx-o: 1;/);
+  });
+
+  it("cuts the gate along the outline of round and oval points and straight at square points", () => {
+    const css = buildCss();
+    // Round and oval: the segment runs centre to centre and a mask (two ellipses, intersected) follows each point's outline.
+    expect(css).toMatch(/\.o-h \.sxs-round \.sx-seg, \.o-h \.sxs-oval \.sx-seg \{[^}]*radial-gradient\(ellipse[^}]*mask-composite: intersect/);
+    expect(css).toMatch(/\.o-v \.sxs-round \.sx-seg, \.o-v \.sxs-oval \.sx-seg \{[^}]*radial-gradient\(ellipse[^}]*mask-composite: intersect/);
+    // Square: no mask, the segment stops at the point's edge with a straight cut (no rounded ends).
+    expect(css).toMatch(/\.o-h \.sxs-square \.sx-seg \{ left: calc\([^;]*var\(--slabton-sx-pl\) \/ 2\)/);
+    expect(css).not.toMatch(/\.sx-seg \{[^}]*border-radius/);
+  });
+
+  it("rings the active handle in the icon color (pulled toward the text color)", () => {
+    expect(buildCss()).toMatch(/\.root\.sx-on \.handle \{ border: 2px solid color-mix\(in srgb, var\(--slabton-sx-ring, transparent\) 60%, /);
+  });
+});
+
+describe("stickshift oval overhang", () => {
+  it("keeps the track in by the excess of an oval point, and leaves round and square points alone", () => {
+    const oval = withSx({ stickshift: { shape: "oval", point_size: 32 } });
+    const round = withSx({ stickshift: { shape: "round", point_size: 32 } });
+    // (1.6 - 1) * 32 / 2 = 9.6 px; a vertical track sets in by the same amount along the bar.
+    expect(handleOverhang(oval)).toBeCloseTo(9.6, 5);
+    expect(handleOverhang(withSx({ orientation: "vertical", stickshift: { shape: "oval", point_size: 32 } }))).toBeCloseTo(9.6, 5);
+    expect(handleOverhang(withSx({ stickshift: { shape: "square", point_size: 32 } }))).toBe(handleOverhang(withSx({ stickshift: false }, false)));
+    expect(handleOverhang(round)).toBe(handleOverhang(withSx({ stickshift: false }, false)));
+  });
 });
 
 describe("stickshift card", () => {
@@ -261,7 +303,8 @@ describe("stickshift card", () => {
     expect(buttons[1].classList.contains("active")).toBe(true);
     expect(buttons[0].hasAttribute("aria-current")).toBe(false);
     expect(buttons[0].querySelector("ha-icon").getAttribute("icon")).toBe("mdi:power");
-    expect(buttons[0].querySelector("ha-icon").style.color).toBe("gray");
+    expect(buttons[0].querySelector("ha-icon").style.getPropertyValue("--slabton-sx-c")).toBe("gray");
+    expect(buttons[1].querySelector(".sx-text").style.getPropertyValue("--slabton-sx-c")).toBe("");
     expect(buttons[1].textContent.trim()).toBe("Auto");
     expect(buttons[2].textContent.trim()).toBe("ON");
     expect(buttons[3].textContent.trim()).toBe("idle");
@@ -274,6 +317,17 @@ describe("stickshift card", () => {
     expect(q(own, ".h-icon").style.color).toBe("red");
     const fallback = create({ states }).el;
     expect(q(fallback, ".h-icon").style.color).toBe("green");
+  });
+
+  it("rings the active handle in the icon color and drops the ring without a color or without stickshift", () => {
+    const ring = (el) => q(el, ".handle").style.getPropertyValue("--slabton-sx-ring");
+    const states = [{ value: "off", icon: "mdi:power" }, { value: "auto", icon: "mdi:auto-fix", color: "green" }, "on", "idle"];
+    expect(ring(create({ states }).el)).toBe("green");
+    expect(ring(create({ states, stickshift: { active_color: "red" } }).el)).toBe("red");
+    // Active point without a color: no ring variable (the CSS keeps a faint ring in the text color).
+    expect(ring(create({ states }, selectState("off")).el)).toBe("");
+    // Not a stickshift card: nothing is set, even though the entity has a state color.
+    expect(ring(create({ stickshift: undefined, states }).el)).toBe("");
   });
 
   it("rebuilds the points when the entity's options change", () => {
@@ -377,7 +431,7 @@ describe("stickshift card", () => {
     vi.advanceTimersByTime(0);
     const icon = () => points(el)[0].querySelector("ha-icon");
     expect(icon().getAttribute("icon")).toBe("mdi:flash");
-    expect(icon().style.color).toBe("orange");
+    expect(icon().style.getPropertyValue("--slabton-sx-c")).toBe("orange");
     el.hass = createHass({ [SELECT]: selectState("auto"), [FLAG]: makeState(FLAG, "off") });
     vi.advanceTimersByTime(0);
     expect(icon().getAttribute("icon")).toBe("mdi:flash-off");

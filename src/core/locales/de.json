@@ -104,7 +104,7 @@
   "editor.section.stickshift": "Stickshift",
   "editor.sx_shape": "Form der Schaltpunkte",
   "editor.sx_point_size": "Punktgröße in px (leer = 80 % des Griffs)",
-  "editor.sx_point_opacity": "Deckkraft der inaktiven Punkte (0 bis 1)",
+  "editor.sx_point_opacity": "Deckkraft des Rahmens der inaktiven Punkte (0 bis 1)",
   "editor.sx_active_color": "Icon-Farbe des Griffs am aktiven Punkt",
   "editor.section.sx_gate": "Kulisse (Linie zwischen den Punkten)",
   "editor.sx_gate_visible": "Kulisse anzeigen",

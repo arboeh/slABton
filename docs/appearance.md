@@ -242,9 +242,9 @@ Looks of the [stickshift](modes.md#stickshift) points and gate. The options set 
 | Variable | Set by | Default |
 | --- | --- | --- |
 | `--slabton-sx-d` | `point_size` | 80 % of `handle_size` |
-| `--slabton-sx-opacity` | `point_opacity` | `0.35` |
+| `--slabton-sx-opacity` | `point_opacity` | `0.55` |
 | `--slabton-sx-gate-size` | `gate.size` | `4px` |
-| `--slabton-sx-gate-color` | `gate.color` | text color at 25 % |
+| `--slabton-sx-gate-color` | `gate.color` | text color at 50 % |
 
 ```yaml
 type: custom:slabton-card

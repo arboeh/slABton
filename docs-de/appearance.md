@@ -243,9 +243,9 @@ Aussehen der Punkte, und der Kulisse des [Stickshift](modes.md#stickshift). Die 
 | Variable | Gesetzt durch | Standard |
 | --- | --- | --- |
 | `--slabton-sx-d` | `point_size` | 80 % von `handle_size` |
-| `--slabton-sx-opacity` | `point_opacity` | `0.35` |
+| `--slabton-sx-opacity` | `point_opacity` | `0.55` |
 | `--slabton-sx-gate-size` | `gate.size` | `4px` |
-| `--slabton-sx-gate-color` | `gate.color` | Textfarbe mit 25 % |
+| `--slabton-sx-gate-color` | `gate.color` | Textfarbe mit 50 % |
 
 ```yaml
 type: custom:slabton-card

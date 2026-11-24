@@ -8,7 +8,7 @@ import { animationCss } from "./animations.js";
 import {
   CARD_CHROME_PX, CARD_SIDE_CHROME_PX, DEFAULT_SCALE_LABEL_SIZE, DEFAULT_SCALE_SIZE, DEFAULT_VERTICAL_LENGTH, GRID, GRID_COLUMN_GAP_PX,
   GRID_COLUMN_PX, GRID_MAX_COLUMNS, HANDLE_EDGE_GAP_PX, OVAL_RATIO, PILL_RADIUS, SCALE_LABEL_GAP_PX,
-  SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO, TEXT_OPTIONS,
+  SQUARE_BAR_RADIUS_RATIO, SQUARE_HANDLE_RADIUS_RATIO, STICKSHIFT_DEFAULT_OPACITY, TEXT_OPTIONS,
 } from "../core/constants.js";
 
 /** Handle size across and along the bar axis, in px. */
@@ -33,7 +33,16 @@ export function handleExtra(config) {
  */
 export function handleOverhang(config) {
   const { along } = handleDimensions(config);
-  return Math.max(config.handle_overhang === true ? along / 2 : 0, handleExtra(config));
+  return Math.max(config.handle_overhang === true ? along / 2 : 0, handleExtra(config), stickshiftOvalExcess(config));
+}
+
+/**
+ * How far an oval stickshift point sticks out of the track beyond a round one (it is longer along the bar), in px; zero for
+ * round and square points, so those cards keep their width. Keeps the end points of an oval row inside the card.
+ */
+function stickshiftOvalExcess(config) {
+  const sx = config.stickshift;
+  return sx?.shape === "oval" ? (sx.point_size * (OVAL_RATIO - 1)) / 2 : 0;
 }
 
 /**
@@ -291,30 +300,57 @@ function dialCss() {
     .dial-hub { fill: var(--slabton-hands-color, currentColor); }`;
 }
 
+/** Gate of the stickshift layer: one segment per pair of neighbours, cut along the outline of the points (see below). */
+function stickshiftGateCss(d, gate, ink) {
+  return `
+    /* Gate: one segment per pair of neighbours (a and b are the track fractions of the two point centres, a < b). It runs
+       from centre to centre, under the points, and a mask cuts it along the outline of each point (a round or oval point
+       is cut by its ellipse), so it meets the points seamlessly. A square point has a straight edge: there the segment
+       stops at the edge (half a point length off each end) with a straight cut. */
+    .sx-seg { position: absolute; pointer-events: none; background: var(--slabton-sx-gate-color, color-mix(in srgb, ${ink} 50%, transparent)); }
+    .o-h .sx-seg { top: 50%; height: ${gate}; margin-top: calc(${gate} / -2); left: calc(var(--slabton-sx-a, 0) * 100%); width: calc((var(--slabton-sx-b, 1) - var(--slabton-sx-a, 0)) * 100%); }
+    .o-v .sx-seg { left: 50%; width: ${gate}; margin-left: calc(${gate} / -2); top: calc(var(--slabton-sx-a, 0) * 100%); height: calc((var(--slabton-sx-b, 1) - var(--slabton-sx-a, 0)) * 100%); }
+    .o-h .sxs-round .sx-seg, .o-h .sxs-oval .sx-seg {
+      -webkit-mask: radial-gradient(ellipse calc(var(--slabton-sx-pl) / 2) calc(${d} / 2) at 0 50%, transparent 99.5%, #000 100%), radial-gradient(ellipse calc(var(--slabton-sx-pl) / 2) calc(${d} / 2) at 100% 50%, transparent 99.5%, #000 100%);
+      -webkit-mask-composite: source-in;
+      mask: radial-gradient(ellipse calc(var(--slabton-sx-pl) / 2) calc(${d} / 2) at 0 50%, transparent 99.5%, #000 100%), radial-gradient(ellipse calc(var(--slabton-sx-pl) / 2) calc(${d} / 2) at 100% 50%, transparent 99.5%, #000 100%);
+      mask-composite: intersect;
+    }
+    .o-v .sxs-round .sx-seg, .o-v .sxs-oval .sx-seg {
+      -webkit-mask: radial-gradient(ellipse calc(${d} / 2) calc(var(--slabton-sx-pl) / 2) at 50% 0, transparent 99.5%, #000 100%), radial-gradient(ellipse calc(${d} / 2) calc(var(--slabton-sx-pl) / 2) at 50% 100%, transparent 99.5%, #000 100%);
+      -webkit-mask-composite: source-in;
+      mask: radial-gradient(ellipse calc(${d} / 2) calc(var(--slabton-sx-pl) / 2) at 50% 0, transparent 99.5%, #000 100%), radial-gradient(ellipse calc(${d} / 2) calc(var(--slabton-sx-pl) / 2) at 50% 100%, transparent 99.5%, #000 100%);
+      mask-composite: intersect;
+    }
+    .o-h .sxs-square .sx-seg { left: calc(var(--slabton-sx-a, 0) * 100% + var(--slabton-sx-pl) / 2); width: max(0px, calc((var(--slabton-sx-b, 1) - var(--slabton-sx-a, 0)) * 100% - var(--slabton-sx-pl))); }
+    .o-v .sxs-square .sx-seg { top: calc(var(--slabton-sx-a, 0) * 100% + var(--slabton-sx-pl) / 2); height: max(0px, calc((var(--slabton-sx-b, 1) - var(--slabton-sx-a, 0)) * 100% - var(--slabton-sx-pl))); }`;
+}
+
 /**
  * Stickshift layer (`.sx`, on the handle-centre track like the switches): the gate (thin line) and one button per state. The points stay below the handle (DOM order). Sizes, opacity and
  * colors come from `--slabton-sx-*`.
+ * Opacity: `--slabton-sx-o` (the configured `point_opacity`, raised on hover and focus) dims the frame of an inactive point
+ * (ring and background); icon and text stay near full strength and are pulled toward the text color, so a dark state color
+ * stays readable on a dark card. A state color arrives as `--slabton-sx-c` (set by render.js).
  */
 function stickshiftCss() {
   const d = "var(--slabton-sx-d, 32px)";
   const gate = "var(--slabton-sx-gate-size, 4px)";
   const ink = "var(--slabton-text-color, var(--primary-text-color, #212121))";
+  const opacity = `var(--slabton-sx-opacity, ${STICKSHIFT_DEFAULT_OPACITY})`;
   return `
     .sx { --slabton-sx-pl: ${d}; }
     .sxs-oval { --slabton-sx-pl: calc(${d} * ${OVAL_RATIO}); }
-    /* Gate: one segment per pair of neighbours, from the edge of one point to the edge of the next (a and b are the
-       track fractions of the two point centres, a < b; half a point length is taken off each end). */
-    .sx-seg { position: absolute; pointer-events: none; border-radius: 999px; background: var(--slabton-sx-gate-color, color-mix(in srgb, ${ink} 25%, transparent)); }
-    .o-h .sx-seg { top: 50%; height: ${gate}; margin-top: calc(${gate} / -2); left: calc(var(--slabton-sx-a, 0) * 100% + var(--slabton-sx-pl) / 2); width: max(0px, calc((var(--slabton-sx-b, 1) - var(--slabton-sx-a, 0)) * 100% - var(--slabton-sx-pl))); }
-    .o-v .sx-seg { left: 50%; width: ${gate}; margin-left: calc(${gate} / -2); top: calc(var(--slabton-sx-a, 0) * 100% + var(--slabton-sx-pl) / 2); height: max(0px, calc((var(--slabton-sx-b, 1) - var(--slabton-sx-a, 0)) * 100% - var(--slabton-sx-pl))); }
+    ${stickshiftGateCss(d, gate, ink)}
     .sx-pt {
       position: absolute; pointer-events: auto; box-sizing: border-box; padding: 0; margin: 0; overflow: hidden;
       width: ${d}; height: ${d}; display: flex; align-items: center; justify-content: center;
-      border: 1px solid var(--divider-color, rgba(0, 0, 0, 0.2)); border-radius: 999px;
-      background: var(--card-background-color, #fff); color: ${ink};
+      --slabton-sx-o: ${opacity};
+      border: 1px solid color-mix(in srgb, ${ink} calc(var(--slabton-sx-o) * 80%), transparent); border-radius: 999px;
+      background: color-mix(in srgb, var(--card-background-color, #fff) calc(var(--slabton-sx-o) * 100%), transparent); color: ${ink};
       font: inherit; font-weight: 600; font-size: min(var(--slabton-button-size, 14px), calc(${d} * 0.45));
-      opacity: var(--slabton-sx-opacity, 0.35); cursor: pointer; transform: translate(-50%, -50%);
-      transition: opacity 150ms ease, transform 150ms ease;
+      cursor: pointer; transform: translate(-50%, -50%);
+      transition: border-color 150ms ease, background-color 150ms ease, transform 150ms ease;
     }
     .o-h .sx-pt { top: 50%; left: calc(var(--slabton-sx-e, 0) * 100%); }
     .o-v .sx-pt { left: 50%; top: calc(var(--slabton-sx-e, 0) * 100%); }
@@ -323,9 +359,11 @@ function stickshiftCss() {
     .o-v .sxs-oval .sx-pt { height: calc(${d} * ${OVAL_RATIO}); }
     .sx-pt ha-icon { --mdc-icon-size: calc(${d} * 0.55); }
     .sx-pt .sx-text { padding: 0 3px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .sx-pt:hover { opacity: min(1, calc(var(--slabton-sx-opacity, 0.35) + 0.35)); }
+    /* Icon and text: the state color (--slabton-sx-c) pulled 40 % toward the text color, nearly opaque. */
+    .sx-pt ha-icon, .sx-pt .sx-text { color: color-mix(in srgb, var(--slabton-sx-c, ${ink}) 60%, ${ink}); opacity: min(1, calc(var(--slabton-sx-o) + 0.45)); }
+    .sx-pt:hover { --slabton-sx-o: min(1, calc(${opacity} + 0.35)); }
     .sx-pt:active { transform: translate(-50%, -50%) scale(0.94); }
-    .sx-pt:focus-visible { outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; opacity: 1; }
+    .sx-pt:focus-visible { --slabton-sx-o: 1; outline: 2px solid var(--primary-color, #03a9f4); outline-offset: 2px; }
     @media (prefers-reduced-motion: reduce) {
       .sx-pt { transition: none; }
       .sx-pt:active { transform: translate(-50%, -50%); }
@@ -371,6 +409,8 @@ export function buildCss() {
     /* Stickshift: the bar itself is gone (no background, border or fill); the points, the gate and the handle stay on its track. */
     .root.sx-on .bar { background: none; border-color: transparent; }
     .root.sx-on .fill-clip { display: none; }
+    /* Active point: a ring in the icon color (set by render.js, pulled toward the text color like the icon) lifts the handle off a dark card; without a color it is a faint ring in the text color. */
+    .root.sx-on .handle { border: 2px solid color-mix(in srgb, var(--slabton-sx-ring, transparent) 60%, var(--slabton-text-color, var(--primary-text-color, #212121))); }
     .o-h .bar { width: var(--slabton-length); height: var(--slabton-thickness); }
     .o-v .bar { height: var(--slabton-length); width: var(--slabton-thickness); }
     .fill-clip { position: absolute; inset: 0; overflow: hidden; border-radius: calc(var(--slabton-bar-radius) - var(--slabton-border-width)); pointer-events: none; }

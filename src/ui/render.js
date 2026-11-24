@@ -294,7 +294,8 @@ function pointContent(doc, state) {
     el.className = "sx-text";
     el.textContent = state.text ?? state.label ?? state.value;
   }
-  if (state.color) el.style.setProperty("color", state.color);
+  // The color travels as a variable: styles.js pulls it toward the text color so dark colors stay readable on dark cards.
+  if (state.color) el.style.setProperty("--slabton-sx-c", state.color);
   return el;
 }
 
@@ -395,7 +396,7 @@ function setUnavailableTitle(root, view) {
 }
 
 function setContent(refs, config, view) {
-  const { icon, text } = refs;
+  const { icon, text, handle } = refs;
   const kind = config.handle_content;
   // An unavailable entity shows the warning icon whatever `handle_content` says, otherwise the lock stays unexplained.
   const warning = Boolean(view.unavailable);
@@ -406,6 +407,9 @@ function setContent(refs, config, view) {
   if (showIcon) icon.setAttribute("icon", warning ? UNAVAILABLE_ICON : view.icon);
   if (showIcon && !warning && view.iconColor) icon.style.setProperty("color", view.iconColor);
   else icon.style.removeProperty("color");
+  // Stickshift: the handle gets a ring in the icon color, so it stands out from the card in a dark theme.
+  if (config.stickshift && !warning && view.iconColor) handle.style.setProperty("--slabton-sx-ring", view.iconColor);
+  else handle.style.removeProperty("--slabton-sx-ring");
   text.hidden = label === "" || label == null;
   text.textContent = label ?? "";
 }
