@@ -22,6 +22,27 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 
 ![slABton Promo-Video](https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/promo/slabton-promo.gif)
 
+## Stickshift
+
+Eine feste Schaltkulisse mit einem Punkt je Zustand: ein Tipp auf einen Punkt springt direkt in diesen Zustand.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-dark.png">
+  <img alt="Stickshift" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-light.png" width="720">
+</picture>
+
+```yaml
+type: custom:slabton-card
+entity: input_select.heating_mode
+stickshift: true
+states:
+  - { value: "Off", icon: mdi:power }
+  - { value: "Auto", icon: mdi:calendar-clock }
+  - { value: "On", icon: mdi:fire }
+```
+
+## Galerie
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/state-dark.png">
   <img alt="Modus state" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/state-light.png" width="480">
@@ -42,10 +63,6 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/handle-zones-dark.png">
   <img alt="Griff-Zonen-Icon" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/handle-zones-light.png" width="480">
 </picture>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-dark.png">
-  <img alt="Stickshift" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-light.png" width="480">
-</picture>
 
 ## Funktionen
 
@@ -57,6 +74,8 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Bar-Wert aus einem Entity-Attribut (`bar.attribute`), zum Beispiel Cover-Position oder Climate-Temperatur
 - Switches zeigen den Zustand ihrer eigenen Entity (Icon und Icon-Farbe je Zustand, `switches.<slot>.states`); der Griff hat je Zone eigene Aktionen und ein Icon (`handle_zones`)
 - Stickshift (`stickshift:`): feste Schaltkulisse mit einem anklickbaren Punkt je Zustand, ein Tipp springt direkt in einen Zustand, optional eigene Aktion je Punkt
+- Material-3-Look: tonale Bahn, gefüllter Griff mit Icon, das auf jeder Farbe lesbar bleibt, Hover-, Fokus- und Druck-Zustandsebenen
+- Timer-Aktionen (`timer.start_action`, `timer.end_action`) und Swipe zum Starten oder Stoppen eines Timers
 - Farben, Schriftgrößen und CSS-Variablen; Theme-fähig; beachtet reduzierte Bewegung
 - Texte auf Deutsch und Englisch, visueller Editor
 

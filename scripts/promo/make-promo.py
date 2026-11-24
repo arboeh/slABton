@@ -1,4 +1,4 @@
-"""Record the slABton promo video (about 19 s) from the real card.
+"""Record the slABton promo video (about 30 s) from the real card.
 
 Usage (after `npm run build`; needs playwright and ffmpeg on PATH):
     python scripts/promo/make-promo.py
@@ -50,10 +50,10 @@ def box(page: Page, selector: str) -> Any:
     return result
 
 
-def drag(page: Page, scene: str, fraction: float, duration_ms: int = 600) -> None:
-    """Drag the handle of the card in `scene` to `fraction` (0..1) of the bar in `duration_ms`."""
-    handle = box(page, f"#{scene} .handle")
-    bar = box(page, f"#{scene} .bar")
+def drag(page: Page, scene: str, fraction: float, duration_ms: int = 600, card: int = 0) -> None:
+    """Drag the handle of the `card`-th card in `scene` to `fraction` (0..1) of the bar in `duration_ms`."""
+    handle = box(page, f"#{scene} .handle >> nth={card}")
+    bar = box(page, f"#{scene} .bar >> nth={card}")
     start_x, y = handle["x"] + handle["width"] / 2, handle["y"] + handle["height"] / 2
     half = handle["width"] / 2
     target_x = bar["x"] + half + fraction * (bar["width"] - 2 * half)
@@ -70,6 +70,13 @@ def drag(page: Page, scene: str, fraction: float, duration_ms: int = 600) -> Non
 def timeline(page: Page) -> None:
     page.evaluate("show('intro')")
     page.wait_for_timeout(1200)
+
+    page.evaluate("show('s-new')")  # stickshift: tap a point to jump straight to its state
+    page.wait_for_timeout(900)
+    for index in (2, 0, 1, 2, 0):
+        page.locator("#s-new .sx-pt").nth(index).click()
+        page.wait_for_timeout(900)
+    page.wait_for_timeout(500)
 
     page.evaluate("show('s-state')")  # Auto -> On -> Off -> Idle
     page.wait_for_timeout(600)
@@ -96,12 +103,24 @@ def timeline(page: Page) -> None:
         page.wait_for_timeout(190)
     page.wait_for_timeout(250)
 
-    page.evaluate("show('s-new')")  # stickshift: tap a point to jump straight to its state
-    page.wait_for_timeout(900)
-    for index in (2, 0, 3, 1):
-        page.locator("#s-new .sx-pt").nth(index).click()
-        page.wait_for_timeout(750)
+    page.evaluate("show('s-scale')")  # scale on a state card and on a value card
+    page.wait_for_timeout(700)
+    drag(page, "s-scale", 0.67, 800, card=0)
+    page.wait_for_timeout(300)
+    for value in (35, 64, 92, 48):
+        page.evaluate(
+            "(v) => call('input_number', 'set_value', { value: v }, { entity_id: 'sensor.battery_soc' })", value
+        )
+        page.wait_for_timeout(450)
+    drag(page, "s-scale", 0.0, 800, card=0)
     page.wait_for_timeout(500)
+
+    page.evaluate("show('s-cover')")  # cover position by drag, switch and handle zone show the auto mode
+    page.wait_for_timeout(700)
+    drag(page, "s-cover", 0.25, 900)
+    page.wait_for_timeout(500)
+    drag(page, "s-cover", 1.0, 900)
+    page.wait_for_timeout(600)
 
     page.evaluate("show('s-more')")
     page.wait_for_timeout(800)

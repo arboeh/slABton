@@ -5,6 +5,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+## [1.3.0] - 2026-11-24
+
+> **Existing cards look different.** Bar and handle now use a Material 3 look in every mode, with no change to your
+> config. To get the old look back: `handle_color` (e.g. `white`) with `button_color` for the white handle, `bar_color`
+> for the old track, `--slabton-fill-opacity: 0.85` in `styles:` for the old fill strength, and `point_opacity: 0.35`
+> for the old stickshift points. Details under *Changed*.
+
 ### Added
 
 - `text.header.font_weight` (number 1 to 1000, keyword or `var(--...)`) sets `--slabton-header-weight`; the header also reads `--slabton-header-opacity` (default 1) and `--slabton-header-icon-size` (default 20px) as CSS variables (settable in `styles:`). Defaults are the old values, so nothing changes without them. Editor field and docs.

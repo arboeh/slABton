@@ -5,7 +5,7 @@
 <title>slABton promo</title>
 <style>
   :root {
-    --primary-color: #d35400;
+    --primary-color: #4c8dff; /* cards: calm blue, the brand orange stays on the page copy (--accent) */
     --primary-text-color: #e8e6e3;
     --secondary-text-color: #9198a1;
     --secondary-background-color: #2a2d33;
@@ -50,6 +50,7 @@
   .scene.row { flex-direction: row; align-items: center; gap: 70px; }
   .scene.row .copy { flex: 0 0 440px; }
   .stage.wide { zoom: 1.18; }
+  .stage.tall { zoom: 1.3; }
   slabton-card { display: block; filter: drop-shadow(0 14px 30px rgba(0,0,0,.55)); }
   ha-card { display: block; background: var(--card-background-color); border-radius: 14px; border: 1px solid rgba(255,255,255,.06); }
 </style>
@@ -73,9 +74,17 @@
     <div class="copy"><div class="kicker">Value</div><div class="caption">Any sensor,<br>as a <em>gauge</em></div></div>
     <div class="stage" id="stage-value"></div>
   </div>
-  <div id="s-new" class="layer scene row">
-    <div class="copy"><div class="kicker">New in 1.2</div><div class="caption">Stickshift.<br>States <em>on the switch.</em></div></div>
-    <div class="stage wide" id="stage-new"></div>
+  <div id="s-new" class="layer scene">
+    <div class="copy"><div class="kicker">Stickshift</div><div class="caption">One tap.<br>Straight to <em>the state.</em></div></div>
+    <div class="stage" id="stage-new"></div>
+  </div>
+  <div id="s-scale" class="layer scene">
+    <div class="copy"><div class="kicker">Scale</div><div class="caption">Ticks and labels,<br><em>in every mode.</em></div></div>
+    <div class="stage tall" id="stage-scale"></div>
+  </div>
+  <div id="s-cover" class="layer scene">
+    <div class="copy"><div class="kicker">Covers and switches</div><div class="caption">Drag the position.<br><em>Zones and states</em> on the handle.</div></div>
+    <div class="stage" id="stage-cover"></div>
   </div>
   <div id="s-more" class="layer scene row">
     <div class="copy"><div class="kicker">And more</div><div class="caption">Counter. Timer.<br><em>Analog clock.</em></div></div>
@@ -104,9 +113,15 @@
       lock: [{ entity: "lock.front_door", name: "Front door", mode: "lock", thickness: 56, handle_size: 64 }],
       value: [{ entity: "sensor.battery_soc", mode: "value", preset: "soc", name: "Battery", thickness: 56, handle_size: 64, scale: { ticks: 10, labels: true } }],
       new: [
-        { entity: HEATING, name: "Stickshift", stickshift: true, states: ICONS },
+        { entity: HEATING, name: "Stickshift", stickshift: true, thickness: 72, handle_size: 96, states: ICONS.slice(0, 3) },
+      ],
+      scale: [
+        { entity: HEATING, name: "Heating", icon: "mdi:radiator", thickness: 56, handle_size: 64, states: ICONS, scale: { ticks: 4, labels: true } },
+        { entity: "sensor.battery_soc", mode: "value", preset: "soc", name: "Battery", thickness: 56, handle_size: 64, scale: { ticks: 10, labels: true } },
+      ],
+      cover: [
         {
-          entity: "cover.living_room", name: "Living room shutter", handle_content: "icon",
+          entity: "cover.living_room", name: "Living room shutter", handle_content: "icon", thickness: 56, handle_size: 64,
           switches: { end: { entity: "sensor.cover_living_room_mode", icon: "mdi:calendar-clock", tap_action: { action: "none" }, states: [
             { value: "auto", icon: "mdi:calendar-clock", color: "#2fb67c" },
             { value: "off", icon: "mdi:power", color: "#9198a1" },

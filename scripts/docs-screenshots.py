@@ -80,12 +80,11 @@ SHOTS: dict[str, dict[str, Any]] = {
         },
     },
     "stickshift": {
-        "entity": HEATING, "name": "Stickshift", "stickshift": True,
+        "entity": HEATING, "name": "Stickshift", "stickshift": True, "thickness": 64, "handle_size": 88,
         "states": [
             {"value": "Off", "icon": "mdi:power", "color": "blue"},
             {"value": "Auto", "icon": "mdi:calendar-clock", "color": "green"},
             {"value": "On", "icon": "mdi:fire", "color": "red"},
-            {"value": "Idle", "icon": "mdi:sleep", "color": "orange"},
         ],
     },
     # Lock, value, counter

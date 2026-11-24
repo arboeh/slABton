@@ -19,6 +19,22 @@ Switch through several states, swipe to lock / unlock, or show a value.
   <source src="assets/promo/slabton-promo.mp4" type="video/mp4">
 </video>
 
+## Stickshift
+
+A fixed gate with one point per state: tap a point and the entity jumps straight to that state.
+
+![Stickshift](assets/shots/stickshift-light.png#only-light)![Stickshift](assets/shots/stickshift-dark.png#only-dark)
+
+```yaml
+type: custom:slabton-card
+entity: input_select.heating_mode
+stickshift: true
+states:
+  - { value: "Off", icon: mdi:power }
+  - { value: "Auto", icon: mdi:calendar-clock }
+  - { value: "On", icon: mdi:fire }
+```
+
 ## Features
 
 - Handle shapes: round (default), oval, square
@@ -39,6 +55,8 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Switches show the state of their own entity: icon and icon color per state (`switches.<slot>.states`)
 - Handle zones (`handle_zones`): own actions and own handle icon at start, mid and end
 - Stickshift (`stickshift:`): fixed gate with one clickable point per state, optional own action per point
+- Material 3 look: tonal track, filled handle with an icon that stays readable on any color, hover, focus and press state layers
+- Timer actions (`timer.start_action`, `timer.end_action`) and swipe to start or stop a timer
 - Header and header icon
 - Animations: `none`, `slide`, `fade`, `pulse`, `shimmer` (respects reduced motion)
 - Theme aware, colors and CSS variables overridable

@@ -19,6 +19,22 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
   <source src="/assets/promo/slabton-promo.mp4" type="video/mp4">
 </video>
 
+## Stickshift
+
+Eine feste Schaltkulisse mit einem Punkt je Zustand: ein Tipp auf einen Punkt springt direkt in diesen Zustand.
+
+![Stickshift](/assets/shots/stickshift-light.png#only-light)![Stickshift](/assets/shots/stickshift-dark.png#only-dark)
+
+```yaml
+type: custom:slabton-card
+entity: input_select.heating_mode
+stickshift: true
+states:
+  - { value: "Off", icon: mdi:power }
+  - { value: "Auto", icon: mdi:calendar-clock }
+  - { value: "On", icon: mdi:fire }
+```
+
 ## Funktionen
 
 - Griffformen: rund (Standard), oval, eckig
@@ -39,6 +55,8 @@ Mehrere Zustände schalten, per Swipe sperren / entsperren oder einen Wert anzei
 - Schalter zeigen den Zustand ihrer eigenen Entity: Icon und Icon-Farbe je Zustand (`switches.<slot>.states`)
 - Griff-Zonen (`handle_zones`): eigene Aktionen und eigenes Griff-Icon bei Start, Mitte und Ende
 - Stickshift (`stickshift:`): feste Schaltkulisse mit einem anklickbaren Punkt je Zustand, optional eigene Aktion je Punkt
+- Material-3-Look: tonale Bahn, gefüllter Griff mit Icon, das auf jeder Farbe lesbar bleibt, Hover-, Fokus- und Druck-Zustandsebenen
+- Timer-Aktionen (`timer.start_action`, `timer.end_action`) und Swipe zum Starten oder Stoppen eines Timers
 - Header und Header-Icon
 - Animationen: `none`, `slide`, `fade`, `pulse`, `shimmer` (beachtet reduzierte Bewegung)
 - Theme-fähig, Farben und CSS-Variablen überschreibbar

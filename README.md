@@ -22,6 +22,27 @@ Switch through several states, swipe to lock / unlock, or show a value.
 
 ![slABton promo video](https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/promo/slabton-promo.gif)
 
+## Stickshift
+
+A fixed gate with one point per state: tap a point and the entity jumps straight to that state.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-dark.png">
+  <img alt="Stickshift" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-light.png" width="720">
+</picture>
+
+```yaml
+type: custom:slabton-card
+entity: input_select.heating_mode
+stickshift: true
+states:
+  - { value: "Off", icon: mdi:power }
+  - { value: "Auto", icon: mdi:calendar-clock }
+  - { value: "On", icon: mdi:fire }
+```
+
+## Gallery
+
 <picture>
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/state-dark.png">
   <img alt="State mode" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/state-light.png" width="480">
@@ -42,10 +63,6 @@ Switch through several states, swipe to lock / unlock, or show a value.
   <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/handle-zones-dark.png">
   <img alt="Handle zone icon" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/handle-zones-light.png" width="480">
 </picture>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-dark.png">
-  <img alt="Stickshift" src="https://raw.githubusercontent.com/arboeh/slABton/main/docs/assets/shots/stickshift-light.png" width="480">
-</picture>
 
 ## Features
 
@@ -57,6 +74,8 @@ Switch through several states, swipe to lock / unlock, or show a value.
 - Bar value from an entity attribute (`bar.attribute`), for example cover position or climate temperature
 - Switches show the state of their own entity (icon and icon color per state, `switches.<slot>.states`); the handle has its own actions and icon per zone (`handle_zones`)
 - Stickshift (`stickshift:`): a fixed gate with one clickable point per state, a tap jumps straight to a state, optional own action per point
+- Material 3 look: tonal track, filled handle with an icon that stays readable on any color, hover, focus and press state layers
+- Timer actions (`timer.start_action`, `timer.end_action`) and swipe to start or stop a timer
 - Colors, font sizes and CSS variables; theme aware; respects reduced motion
 - English and German texts, visual editor
 
