@@ -14,6 +14,24 @@ alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein a
 > Geändert in diesem Release: `counter.*`- und `timer.*`-Entities liefen bisher im Modus `state`.
 > Mit `mode: state` bleibt das alte Verhalten.
 
+## Schnellstart im visuellen Editor
+
+Eine Karte, die noch nicht eingerichtet ist (nur `type`, `entity` und `name`), zeigt im visuellen Editor über dem
+Formular einen **Schnellstart**: Kacheln mit Live-Vorschau und Kurztext. Eine Kachel wählen, und der Editor trägt die
+Optionen ein:
+
+| Kachel | Frage | Ergebnis |
+| --- | --- | --- |
+| Keine | keine | Schließt den Schnellstart, die Config bleibt wie sie ist |
+| Uhr | keine | `mode: clock` |
+| Timer | eine `timer.*`-Entity | `entity`, `mode: timer` |
+| Schloss | eine `lock.*`- oder `alarm_control_panel.*`-Entity | `entity`, `mode: lock` |
+| Thermometer | ein Temperatur-`sensor.*` | `entity`, `mode: value`, `preset: thermometer` |
+
+- Das Ergebnis ist eine normale Config: jede Option bleibt im Formular und im Code-Editor änderbar, nichts verweist auf die Kachel zurück.
+- Eine Kachel **ersetzt** die Optionen der Karte (Schlüssel, die Home Assistant selbst verwaltet, etwa `grid_options` und `visibility`, bleiben). Der Editor von Home Assistant hat kein Rückgängig; wähle "Keine", wenn die Karte schon passt.
+- Den Schnellstart gibt es nur im visuellen Editor, nicht in YAML. Er ist nicht dasselbe wie `preset:`, das nur Bereichs-Vorgaben für den Modus `value` setzt.
+- Sobald die Karte eine weitere Option hat, erscheint der Schnellstart nicht mehr.
 
 ## Allgemeine Optionen
 
@@ -26,7 +44,8 @@ alles andere `state`. `input_datetime` / `input_date` und `clock` brauchen ein a
 | `name` | keiner | Header-Text |
 | `icon` | nach Modus | Header- und Griff-Icon |
 | `header_position` | `top` | `top`, `bottom`, `none` |
-| `header_icon_position` | `left` | `left` (wie bei der Tile-Karte), `right` |
+| `header_icon_position` | `left` | `left` (wie bei der Tile-Karte), `right`, `none` (kein Icon im Header, der Name bleibt) |
+| `header_align` | `start` | `start`, `center`, `end`: Lage von Icon und Name in der Header-Zeile |
 | `orientation` | `horizontal` | `horizontal`, `vertical` |
 | `direction` | `ltr` | `ltr`, `rtl` |
 | `length` | 0 | Bar-Länge in px (0 = volle Breite; vertikal Standard 160) |

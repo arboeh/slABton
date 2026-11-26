@@ -193,7 +193,7 @@ states:
 
 ## Header
 
-`header_position` (`top`, `bottom`, `none`) und `header_icon_position` (`left`, `right`) platzieren den Header. `text.header` setzt Größe, Farbe und Icon-Farbe (siehe [Textdarstellung](#textdarstellung)).
+`header_position` (`top`, `bottom`, `none`) und `header_icon_position` (`left`, `right`, `none`) und `header_align` (`start`, `center`, `end`) platzieren den Header. `text.header` setzt Größe, Farbe und Icon-Farbe (siehe [Textdarstellung](#textdarstellung)).
 
 ![Header-Icon rechts](/assets/shots/header-icon-right-light.png#only-light)
 ![Header-Icon rechts](/assets/shots/header-icon-right-dark.png#only-dark)

@@ -380,6 +380,13 @@ const TEXT_VAR_NAMES = [
 ];
 
 describe("header css", () => {
+  it("lets a long header title shrink when the header is aligned with the icon on the right", () => {
+    const css = buildCss();
+    expect(css).toContain(".header.icon-right.align-center .title, .header.icon-right.align-end .title { flex: 0 1 auto; min-width: 0; }");
+    expect(css).toContain(".header.align-center { justify-content: center; }");
+    expect(css).toContain(".header.icon-right.align-end { justify-content: flex-start; }");
+  });
+
   it("reads weight, opacity and icon size from variables with the old values as defaults", () => {
     const css = buildCss();
     expect(css).toContain("font-weight: var(--slabton-header-weight, 500)");

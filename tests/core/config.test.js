@@ -349,6 +349,18 @@ describe("actions", () => {
     expect(() => normalizeConfig({ ...base, header_icon_position: "top" })).toThrow(/invalid header_icon_position/);
   });
 
+  it("accepts header_icon_position none", () => {
+    expect(normalizeConfig({ ...base, header_icon_position: "none" }).header_icon_position).toBe("none");
+  });
+
+  it("defaults the header alignment to start and validates the option", () => {
+    expect(normalizeConfig(base).header_align).toBe("start");
+    for (const align of ["start", "center", "end"]) {
+      expect(normalizeConfig({ ...base, header_align: align }).header_align).toBe(align);
+    }
+    expect(() => normalizeConfig({ ...base, header_align: "middle" })).toThrow(/invalid header_align/);
+  });
+
   it("ignores actions of the HA picker that the card does not implement", () => {
     const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
     for (const action of ["default", "assist", "fire-dom-event"]) {

@@ -28,7 +28,8 @@ export const HANDLE_SHAPES = ["round", "oval", "square"];
 export const HANDLE_POSITIONS = ["flex", "fixed", "switch", "start", "mid", "end"];
 export const HANDLE_CONTENTS = ["icon", "position", "text", "none"];
 export const HEADER_POSITIONS = ["top", "bottom", "none"];
-export const HEADER_ICON_POSITIONS = ["left", "right"];
+export const HEADER_ICON_POSITIONS = ["left", "right", "none"];
+export const HEADER_ALIGNS = ["start", "center", "end"];
 export const SWITCH_SLOTS = ["start", "mid", "end"];
 export const ARM_SERVICES = ["alarm_arm_away", "alarm_arm_home", "alarm_arm_night", "alarm_arm_vacation"];
 export const PRESET_NAMES = ["none", "thermometer", "energy", "soc"];
@@ -68,6 +69,7 @@ export const DEFAULTS = {
   fixed_position: 50,
   header_position: "top",
   header_icon_position: "left",
+  header_align: "start",
   border_width: 0,
   swipe_threshold: 85,
   arm_service: "alarm_arm_away",
@@ -345,6 +347,7 @@ function normalizeLayout(raw, mode) {
     header_icon_position: pickEnum(
       raw.header_icon_position, HEADER_ICON_POSITIONS, DEFAULTS.header_icon_position, "header_icon_position",
     ),
+    header_align: pickEnum(raw.header_align, HEADER_ALIGNS, DEFAULTS.header_align, "header_align"),
     orientation: pickEnum(raw.orientation, ORIENTATIONS, DEFAULTS.orientation, "orientation"),
     direction: pickEnum(raw.direction, DIRECTIONS, DEFAULTS.direction, "direction"),
     length: toNumber(raw.length, DEFAULTS.length, 0, 2000),

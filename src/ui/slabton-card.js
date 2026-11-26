@@ -25,6 +25,7 @@ import * as stateMode from "../core/modes/state.js";
 import * as timerMode from "../core/modes/timer.js";
 import * as valueMode from "../core/modes/value.js";
 import { renderTemplate } from "../core/placeholders.js";
+import { STUB_DOMAINS } from "../core/templates.js";
 import {
   matchState, renderCard, renderPoints, stickshiftSignature, updatePointContent, updatePoints, updateSwitches, updateView, zoneOf,
 } from "./render.js";
@@ -53,7 +54,6 @@ const NOTICES = {
   [NOTICE.INVALID_RANGE]: "counter: the maximum must be greater than the minimum (check counter.min / counter.max or the entity attributes)",
   [NOTICE.INVALID_VALUE_RANGE]: "value: the maximum must be greater than the minimum (check min / max or the entity attributes); the bar cannot be dragged",
 };
-const STUB_DOMAINS = ["input_select", "select", "switch", "input_boolean", "light"];
 
 export class SlabtonCard extends HTMLElement {
   constructor() {

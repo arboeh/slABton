@@ -51,6 +51,28 @@ describe("renderCard", () => {
     expect(right.classList.contains("icon-right")).toBe(true);
   });
 
+  it("leaves out the header icon for header_icon_position none and keeps the name", () => {
+    const header = setup({ name: "N", icon: "mdi:fire", header_icon_position: "none" }).shadow.querySelector(".header");
+    expect(header.querySelector(".header-icon")).toBeNull();
+    expect(header.querySelector(".title").textContent).toBe("N");
+    expect(header.classList.contains("icon-right")).toBe(false);
+  });
+
+  it("renders no header without a name when the icon is none", () => {
+    const { shadow } = setup({ icon: "mdi:fire", header_icon_position: "none" });
+    expect(shadow.querySelector(".header")).toBeNull();
+  });
+
+  it("aligns the header only when asked to", () => {
+    const start = setup({ name: "N" }).shadow.querySelector(".header");
+    expect([...start.classList].some((c) => c.startsWith("align-"))).toBe(false);
+    const center = setup({ name: "N", header_align: "center" }).shadow.querySelector(".header");
+    expect(center.classList.contains("align-center")).toBe(true);
+    const end = setup({ name: "N", icon: "mdi:fire", header_align: "end", header_icon_position: "right" }).shadow.querySelector(".header");
+    expect(end.classList.contains("align-end")).toBe(true);
+    expect(end.classList.contains("icon-right")).toBe(true);
+  });
+
   it("hides the header when set to none", () => {
     const { shadow } = setup({ name: "N", header_position: "none" });
     expect(shadow.querySelector(".header")).toBeNull();

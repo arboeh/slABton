@@ -77,6 +77,7 @@ states:
 - Material-3-Look: tonale Bahn, gefüllter Griff mit Icon, das auf jeder Farbe lesbar bleibt, Hover-, Fokus- und Druck-Zustandsebenen
 - Timer-Aktionen (`timer.start_action`, `timer.end_action`) und Swipe zum Starten oder Stoppen eines Timers
 - Farben, Schriftgrößen und CSS-Variablen; Theme-fähig; beachtet reduzierte Bewegung
+- Schnellstart im visuellen Editor: Kachel mit Live-Vorschau wählen (Uhr, Timer, Schloss, Thermometer), eine Frage beantworten, fertig; das Ergebnis ist eine normale Config
 - Texte auf Deutsch und Englisch, visueller Editor
 
 ## Installation

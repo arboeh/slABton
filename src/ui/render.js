@@ -13,11 +13,13 @@ const SWITCH_POS = { start: 0, mid: 0.5, end: 1 };
 const ON_STATES = ["on", "open", "unlocked", "home"];
 
 function headerHtml(config) {
-  if (config.header_position === "none" || (!config.name && !config.icon)) return "";
-  const icon = config.icon ? '<ha-icon class="header-icon"></ha-icon>' : "";
+  const showIcon = Boolean(config.icon) && config.header_icon_position !== "none";
+  if (config.header_position === "none" || (!config.name && !showIcon)) return "";
+  const icon = showIcon ? '<ha-icon class="header-icon"></ha-icon>' : "";
   const title = config.name ? `<span class="title">${escapeHtml(config.name)}</span>` : "";
-  const side = config.header_icon_position === "right" ? " icon-right" : "";
-  return `<div class="header${side}">${icon}${title}</div>`;
+  const side = showIcon && config.header_icon_position === "right" ? " icon-right" : "";
+  const align = config.header_align === "start" ? "" : ` align-${config.header_align}`;
+  return `<div class="header${side}${align}">${icon}${title}</div>`;
 }
 
 function switchesHtml(config) {

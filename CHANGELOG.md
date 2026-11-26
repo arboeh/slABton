@@ -5,6 +5,11 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 
 ## [Unreleased]
 
+### Added
+
+- Quick start in the visual editor: a card that is not set up yet (only `type`, `entity`, `name`) offers tiles with a live preview for Clock, Timer, Lock and Thermometer, plus "None". A tile asks at most one question (the entity, filtered by domain) and expands into a normal config; `grid_options`, `layout_options`, `view_layout` and `visibility` are kept. The existing `preset:` option is unchanged. Docs: *Quick start in the visual editor*.
+- `header_icon_position: none` hides the header icon (the name stays); the new `header_align` (`start`, `center`, `end`, default `start`) aligns icon and name in the header line. Without the options nothing changes. Visual editor field, docs.
+
 ## [1.3.0] - 2026-11-24
 
 > **Existing cards look different.** Bar and handle now use a Material 3 look in every mode, with no change to your

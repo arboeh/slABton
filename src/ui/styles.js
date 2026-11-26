@@ -477,6 +477,10 @@ export function buildCss() {
     .header ha-icon { --mdc-icon-size: var(--slabton-header-icon-size, 20px); flex: none; color: var(--slabton-header-icon-color, inherit); }
     .header.icon-right { flex-direction: row-reverse; }
     .header.icon-right .title { flex: 1; min-width: 0; }
+    .header.align-center { justify-content: center; }
+    .header.align-end { justify-content: flex-end; }
+    .header.icon-right.align-center .title, .header.icon-right.align-end .title { flex: 0 1 auto; min-width: 0; }
+    .header.icon-right.align-end { justify-content: flex-start; }
     .title { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--slabton-header-color, inherit); }
     .stage { display: flex; justify-content: center; }
     .o-h .stage { padding: calc(var(--slabton-cross-extra, 0px) + var(--slabton-gap-cross, 0px)) calc(var(--slabton-overhang, 0px) + var(--slabton-gap-along, 0px)); }

@@ -8,7 +8,7 @@
 
 import {
   ARM_SERVICES, CLOCK_DISPLAYS, CLOCK_FACE_NUMBERS, DEFAULTS, DIRECTIONS, HANDLE_CONTENTS, HANDLE_POSITIONS, HANDLE_SHAPES,
-  HEADER_ICON_POSITIONS, HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, fontWeightCss, inferMode,
+  HEADER_ALIGNS, HEADER_ICON_POSITIONS, HEADER_POSITIONS, HOUR_FORMATS, ORIENTATIONS, PRESET_NAMES, fontWeightCss, inferMode,
   isLegacyCoverConfig,
 } from "../core/config.js";
 import {
@@ -18,7 +18,9 @@ import {
   STICKSHIFT_MIN_POINT_SIZE, TEXT_AREAS, TEXT_OPTIONS, VALUE_SETTABLE_DOMAINS, scalePositionsFor,
 } from "../core/constants.js";
 import { DEFAULT_LANGUAGE, hasTranslation, resolveLanguage, t } from "../core/i18n.js";
+import { HA_MANAGED_KEYS, isUntouchedConfig } from "../core/templates.js";
 import { isPlainObject, safeCss, toNumber, warn } from "../core/util.js";
+import { PICKER_TAG } from "./template-picker.js";
 
 const select = (options) => ({
   select: { mode: "dropdown", options: options.map((value) => ({ value, label: value })) },
@@ -226,6 +228,7 @@ export function buildSchema(config = {}, lang = DEFAULT_LANGUAGE) {
     { name: "icon", selector: { icon: {} } },
     { name: "header_position", selector: select(HEADER_POSITIONS) },
     { name: "header_icon_position", selector: select(HEADER_ICON_POSITIONS) },
+    { name: "header_align", selector: select(HEADER_ALIGNS) },
     ...modeFields(mode, lang, config),
     { name: "bar_text", selector: text() },
     section("bar", t(lang, "editor.section.bar"), barFields()),
@@ -474,6 +477,9 @@ export class SlabtonCardEditor extends HTMLElement {
     this._hass = null;
     this._form = null;
     this._hints = null;
+    // Quick start picker: shown for a card that has not been set up, until the user picks "none".
+    this._picker = null;
+    this._pickerDismissed = false;
     this._waiting = false;
     this._computeLabel = (item) => this._label(item);
   }
@@ -504,6 +510,7 @@ export class SlabtonCardEditor extends HTMLElement {
   set hass(hass) {
     this._hass = hass;
     if (this._form) this._form.hass = hass;
+    if (this._picker) this._picker.hass = hass;
   }
 
   get hass() {
@@ -518,6 +525,7 @@ export class SlabtonCardEditor extends HTMLElement {
     if (!customElements.get("ha-form")) {
       this._form = null;
       this._hints = null;
+      this._picker = null;
       const hint = document.createElement("p");
       hint.textContent = t(resolveLanguage(this._hass), "editor.no_form");
       this.shadowRoot.replaceChildren(hint);
@@ -546,6 +554,36 @@ export class SlabtonCardEditor extends HTMLElement {
     this._form.data = formData(this._config);
     this._form.schema = this._schema();
     this._renderHints();
+    this._syncPicker();
+  }
+
+  /** Show the quick start picker above the form while the card is untouched; drop it as soon as it is not. */
+  _syncPicker() {
+    const wanted = !this._pickerDismissed && isUntouchedConfig(this._config);
+    if (!wanted) {
+      this._picker?.remove();
+      this._picker = null;
+      return;
+    }
+    if (!this._picker) {
+      const picker = document.createElement(PICKER_TAG);
+      picker.addEventListener("template-apply", (event) => this._applyTemplate(event.detail.config));
+      picker.addEventListener("template-dismiss", () => {
+        this._pickerDismissed = true;
+        this._syncPicker();
+      });
+      this._picker = picker;
+      picker.hass = this._hass;
+      this.shadowRoot.prepend(picker);
+    }
+    this._picker.hass = this._hass;
+  }
+
+  /** Replace the card options by the expanded template; only the keys Home Assistant manages stay. */
+  _applyTemplate(expanded) {
+    const kept = Object.fromEntries(HA_MANAGED_KEYS.filter((key) => this._config[key] !== undefined).map((key) => [key, this._config[key]]));
+    this._config = { type: "custom:slabton-card", ...kept, ...expanded };
+    this._publish();
   }
 
   /** Show the notes of `validationHints` (text only) below the form. */
@@ -570,6 +608,11 @@ export class SlabtonCardEditor extends HTMLElement {
     const scale = scaleForThickness(resolved, thicknessOf(this._config), thicknessOf(cleaned));
     const withScale = scale === undefined ? cleaned : { ...cleaned, scale };
     this._config = stickshift === undefined ? withScale : { ...withScale, stickshift };
+    this._publish();
+  }
+
+  /** Tell Home Assistant about `this._config` and keep the form, notes and picker in step with it. */
+  _publish() {
     this.dispatchEvent(new CustomEvent("config-changed", {
       detail: { config: this._config }, bubbles: true, composed: true,
     }));
@@ -577,5 +620,6 @@ export class SlabtonCardEditor extends HTMLElement {
     this._form.data = formData(this._config);
     this._form.schema = this._schema();
     this._renderHints();
+    this._syncPicker();
   }
 }

@@ -14,6 +14,23 @@ everything else gives `state`. `input_datetime` / `input_date` and `clock` need 
 > Changed in this release: `counter.*` and `timer.*` entities used to fall into `state` mode.
 > Set `mode: state` to keep the old behavior.
 
+## Quick start in the visual editor
+
+A card that is not set up yet (only `type`, `entity` and `name`) shows a **Quick start** above the form in the visual
+editor: tiles with a live preview, each with a short text. Pick one and the editor fills in the options for you:
+
+| Tile | Question | Result |
+| --- | --- | --- |
+| None | none | Closes the quick start, the config stays as it is |
+| Clock | none | `mode: clock` |
+| Timer | a `timer.*` entity | `entity`, `mode: timer` |
+| Lock | a `lock.*` or `alarm_control_panel.*` entity | `entity`, `mode: lock` |
+| Thermometer | a temperature `sensor.*` | `entity`, `mode: value`, `preset: thermometer` |
+
+- The result is a normal config: every option stays editable in the form and in the code editor, nothing refers back to the tile.
+- A tile **replaces** the options of the card (Home Assistant's own keys such as `grid_options` and `visibility` stay). Home Assistant has no undo in the editor, so pick "None" if the card is already what you want.
+- The quick start is only in the visual editor, not in YAML. It is not the same as `preset:`, which only sets range defaults for the `value` mode.
+- Once the card has any other option, the quick start no longer shows.
 
 ## General options
 
@@ -26,7 +43,8 @@ everything else gives `state`. `input_datetime` / `input_date` and `clock` need 
 | `name` | none | Header text |
 | `icon` | by mode | Header and handle icon |
 | `header_position` | `top` | `top`, `bottom`, `none` |
-| `header_icon_position` | `left` | `left` (like the Tile card), `right` |
+| `header_icon_position` | `left` | `left` (like the Tile card), `right`, `none` (no icon in the header, the name stays) |
+| `header_align` | `start` | `start`, `center`, `end`: where icon and name sit in the header line |
 | `orientation` | `horizontal` | `horizontal`, `vertical` |
 | `direction` | `ltr` | `ltr`, `rtl` |
 | `length` | 0 | Bar length in px (0 = full width; vertical default 160) |

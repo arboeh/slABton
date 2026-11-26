@@ -35,6 +35,15 @@ describe("locale files", () => {
     }
   });
 
+  it("have the quick start texts in both languages", () => {
+    const keys = Object.keys(en).filter((key) => key.startsWith("editor.template."));
+    expect(keys.length).toBeGreaterThanOrEqual(15);
+    for (const key of keys) expect(typeof de[key], key).toBe("string");
+    // The existing "preset" label keeps its own name: the quick start is a different feature.
+    expect(en["editor.preset"]).toBe("Preset");
+    expect(de["editor.preset"]).toBe("Vorlage");
+  });
+
   it("only hold non-empty strings", () => {
     for (const dict of [en, de]) {
       for (const [key, value] of Object.entries(dict)) {

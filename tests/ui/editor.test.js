@@ -109,6 +109,7 @@ describe("buildSchema", () => {
 
   it("offers the header icon position", () => {
     expect(names(buildSchema({ entity: "input_select.a" }))).toContain("header_icon_position");
+    expect(names(buildSchema({ entity: "input_select.a" }))).toContain("header_align");
   });
 
   it("shows state fields for multi-state entities", () => {
