@@ -57,6 +57,38 @@ bar_text: "{value}"
 - Keep the default `mode` for climate and cover. With `mode: value` the handle and the lock follow the state of
   the entity, and a climate entity has no numeric state.
 
+## Segmented bar
+
+`bar.segments` cuts the bar into equal segments across the bar, like the slats of a blind or the blocks of a level meter. The quick start tile "Shutter" uses it.
+
+```yaml
+type: custom:slabton-card
+entity: cover.living_room
+orientation: vertical
+thickness: 64
+bar:
+  segments:
+    count: 10
+    gap: 3
+    on_color: "#2196f3"
+    off_color: "#757575"
+```
+
+| Option | Default | Description |
+| --- | --- | --- |
+| `count` | 10 | Number of segments, a whole number from 2 to 50 |
+| `gap` | 3 | Gap between segments in px, 0 to 20 |
+| `on_color` | fill color | CSS color of the active segments (the state color with `bar_state_color`) |
+| `off_color` | track color | CSS color of the inactive segments |
+
+- Short form: `segments: 10` sets the count, `segments: true` takes all defaults. `segments: false` or a missing option means off, and the bar looks as before.
+- Whole segments: the number of active segments is the position times `count`, rounded to the nearest whole segment (55 % of 10 gives 6, 4 % gives 0). The segments grow from the start of the bar: left, with `direction: rtl` right; vertical from the bottom, with `rtl` from the top. A cover at 60 % open therefore shows 6 blue segments at the bottom and 4 grey ones above.
+- Horizontal cover: a cover with `segments` and `orientation: horizontal` runs reversed unless `direction` is set. The grey (closed) segments then start at the left and grow to the right, like the grey of the vertical shutter grows down from the top, and 100 % open is at the left. Set `direction: ltr` to keep the normal direction.
+- The segments replace only the look of track and fill. Value, handle, drag and tap, scale, texts, actions and `bar.attribute` work as before. The segments jump to the next whole segment, there is no slide animation.
+- Variables on the card (`styles:` can override them): `--slabton-seg-n` (count), `--slabton-seg-gap`, `--slabton-seg-on-color`, `--slabton-seg-off-color`.
+- Not combinable with `stickshift`, which has no bar: the option is ignored with a warning. Invalid values are ignored with a console warning and the default applies; unknown keys are warned about.
+- Visual editor: no fields for it yet, the code editor shows the block.
+
 ## Placeholders
 
 `bar_text` and `timer.info` take text with placeholders in single curly braces. This is **not** a template

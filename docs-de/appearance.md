@@ -58,6 +58,38 @@ bar_text: "{value}"
 - Für Climate und Cover den Standard-`mode` lassen. Mit `mode: value` folgen Griff und Sperre dem Zustand des
   Entities, und ein Climate hat keinen numerischen Zustand.
 
+## Segmentierte Bar
+
+`bar.segments` teilt die Bar quer in gleich große Segmente, wie die Lamellen einer Jalousie oder die Blöcke einer Pegelanzeige. Die Schnellstart-Kachel "Jalousie" nutzt es.
+
+```yaml
+type: custom:slabton-card
+entity: cover.wohnzimmer
+orientation: vertical
+thickness: 64
+bar:
+  segments:
+    count: 10
+    gap: 3
+    on_color: "#2196f3"
+    off_color: "#757575"
+```
+
+| Option | Standard | Beschreibung |
+| --- | --- | --- |
+| `count` | 10 | Anzahl der Segmente, eine ganze Zahl von 2 bis 50 |
+| `gap` | 3 | Abstand zwischen den Segmenten in px, 0 bis 20 |
+| `on_color` | Füllfarbe | CSS-Farbe der aktiven Segmente (mit `bar_state_color` die Zustandsfarbe) |
+| `off_color` | Bahnfarbe | CSS-Farbe der inaktiven Segmente |
+
+- Kurzform: `segments: 10` setzt die Anzahl, `segments: true` nimmt alle Standardwerte. `segments: false` oder fehlende Option heißt aus, die Bar sieht aus wie bisher.
+- Ganze Segmente: die Zahl der aktiven Segmente ist die Position mal `count`, gerundet auf das nächste ganze Segment (55 % von 10 ergibt 6, 4 % ergibt 0). Die Segmente wachsen vom Anfang der Bar: links, mit `direction: rtl` rechts; senkrecht von unten, mit `rtl` von oben. Ein Cover mit 60 % Öffnung zeigt daher unten 6 blaue und darüber 4 graue Segmente.
+- Waagerechte Jalousie: Ein Cover mit `segments` und `orientation: horizontal` läuft umgekehrt, solange `direction` nicht gesetzt ist. Die grauen (geschlossenen) Segmente beginnen dann links und wachsen nach rechts, wie das Grau der senkrechten Jalousie von oben nach unten wächst; 100 % offen liegt links. Mit `direction: ltr` bleibt die normale Richtung.
+- Die Segmente ersetzen nur das Aussehen von Bahn und Füllung. Wert, Griff, Ziehen und Tippen, Skala, Texte, Aktionen und `bar.attribute` arbeiten wie bisher. Die Segmente springen zum nächsten ganzen Segment, eine Gleit-Animation gibt es nicht.
+- Variablen an der Karte (`styles:` kann sie überschreiben): `--slabton-seg-n` (Anzahl), `--slabton-seg-gap`, `--slabton-seg-on-color`, `--slabton-seg-off-color`.
+- Nicht mit `stickshift` kombinierbar, das keine Bar hat: die Option wird mit Warnung ignoriert. Ungültige Werte werden mit einer Konsolenwarnung ignoriert und der Standard gilt; unbekannte Schlüssel werden gemeldet.
+- Visueller Editor: dafür gibt es noch keine Felder, der Code-Editor zeigt den Block.
+
 ## Platzhalter
 
 `bar_text` und `timer.info` nehmen Text mit Platzhaltern in einfachen geschweiften Klammern. Das ist **keine**

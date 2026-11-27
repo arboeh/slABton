@@ -215,6 +215,18 @@ export const STICKSHIFT_DEFAULT_GATE_SIZE = 4;
 export const STICKSHIFT_MIN_GATE_SIZE = 1;
 export const STICKSHIFT_MAX_GATE_SIZE = 40;
 
+/**
+ * Segmented bar (`bar.segments`): the bar is cut into `count` equal segments across the bar, `gap` px apart. Whole
+ * segments are active (`on_color`) or inactive (`off_color`). The basis for later level-meter looks.
+ */
+export const SEGMENT_OPTIONS = Object.freeze(["count", "gap", "on_color", "off_color"]);
+export const DEFAULT_SEGMENT_COUNT = 10;
+export const MIN_SEGMENT_COUNT = 2;
+export const MAX_SEGMENT_COUNT = 50;
+export const DEFAULT_SEGMENT_GAP_PX = 3;
+export const MIN_SEGMENT_GAP_PX = 0;
+export const MAX_SEGMENT_GAP_PX = 20;
+
 /** Bar thickness limits in px (the upper one is also the longest tick of a scale). */
 export const MIN_THICKNESS = 12;
 export const MAX_THICKNESS = 200;

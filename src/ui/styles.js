@@ -161,6 +161,15 @@ function stickshiftVars(sx) {
   return vars;
 }
 
+/** Variables of the segmented bar: count and gap always, colors only when configured. */
+function segmentVars(segments) {
+  if (!segments) return {};
+  const vars = { "--slabton-seg-n": String(segments.count), "--slabton-seg-gap": `${segments.gap}px` };
+  if (segments.on_color) vars["--slabton-seg-on-color"] = segments.on_color;
+  if (segments.off_color) vars["--slabton-seg-off-color"] = segments.off_color;
+  return vars;
+}
+
 /** CSS custom properties derived from the config (name -> value). */
 export function buildVars(config) {
   const { cross, along } = handleDimensions(config);
@@ -196,7 +205,7 @@ export function buildVars(config) {
   // An own handle color has no known tone: the text color then also reaches the handle (the contrast pick needs a derived fill).
   if (config.handle_color && config.text_color) vars["--slabton-handle-ink"] = config.text_color;
   if (config.border_color) vars["--slabton-border-color"] = config.border_color;
-  Object.assign(vars, stickshiftVars(config.stickshift));
+  Object.assign(vars, stickshiftVars(config.stickshift), segmentVars(config.bar_segments));
   if (config.scale?.size != null) vars["--slabton-scale-size"] = `${config.scale.size}px`;
   if (config.scale?.color) vars["--slabton-scale-color"] = config.scale.color;
   // `text:` comes after `styles:` so that it wins: text option > styles > default.
@@ -458,6 +467,51 @@ function stickshiftCss() {
     }`;
 }
 
+/**
+ * Segmented bar (`bar.segments`, class `.seg-on`): replaces track and fill by `n` segments across the bar. One layer, no
+ * element per segment: a hard-stop gradient colours the first `k` segments (`--slabton-seg-k`, set by render.js) in the
+ * on-colour and the rest in the off-colour, and a repeating mask cuts the gaps. The segment width is
+ * `(100% - (n - 1) * gap) / n`, so the last segment ends exactly at the end of the bar. The colour edge lies in the
+ * middle of a gap (hidden by the mask). The fill grows from the start of the bar like the normal fill: left (rtl: right),
+ * vertical from the bottom (rtl: from the top). On-colour: `on_color`, else the fill colour; off-colour: `off_color`, else the track colour.
+ */
+function segmentsCss() {
+  const n = "var(--slabton-seg-n, 10)";
+  // The n - 1 gaps take at most half the bar: the segments keep the other half, so a large count with a large gap
+  // never leaves a negative segment width (the bar would vanish).
+  const gap = `min(var(--slabton-seg-gap, 3px), calc(50% / (${n} - 1)))`;
+  const width = `calc((100% - (${n} - 1) * ${gap}) / ${n})`;
+  const pitch = `calc(${width} + ${gap})`;
+  const edge = `calc(var(--slabton-seg-k, 0) * ${pitch} - ${gap} / 2)`;
+  const on = "var(--slabton-seg-on-color, var(--slabton-active-color, var(--slabton-fill-color, var(--primary-color, #03a9f4))))";
+  const off = "var(--slabton-seg-off-color, var(--slabton-bar-color, var(--secondary-background-color, #e0e0e0)))";
+  const offTone = `var(--slabton-seg-off-color, var(--slabton-bar-color, ${TRACK_TONE}))`;
+  const dir = "var(--slabton-seg-dir, to right)";
+  const mask = `repeating-linear-gradient(${dir}, #000 0, #000 ${width}, transparent ${width}, transparent ${pitch})`;
+  const paint = (offColor) => `linear-gradient(${dir}, ${on} 0, ${on} ${edge}, ${offColor} ${edge}, ${offColor} 100%)`;
+  return `
+    .segs {
+      position: absolute; inset: 0; overflow: hidden; pointer-events: none;
+      border-radius: calc(var(--slabton-bar-radius) - var(--slabton-border-width));
+      background: ${paint(off)};
+      -webkit-mask-image: ${mask}; mask-image: ${mask};
+    }
+    @supports (background: color-mix(in srgb, red, blue)) {
+      .segs { background: ${paint(offTone)}; }
+    }
+    .o-h:not(.rev) .segs { --slabton-seg-dir: to right; }
+    .o-h.rev .segs { --slabton-seg-dir: to left; }
+    .o-v:not(.rev) .segs { --slabton-seg-dir: to top; }
+    .o-v.rev .segs { --slabton-seg-dir: to bottom; }
+    /* Bar text: contrast against the segment on-color, not the primary color. */
+    .root.seg-on { --slabton-fill-surface: ${on}; }
+    /* bar_state_color would put the text on the fill everywhere, but the off segments stay grey: back to the progress rule. */
+    .root.seg-on.bar-state { --slabton-over-bar: clamp(0, calc((var(--slabton-p, 0) - 0.5) * 1000), 1); --slabton-over-far: 0; }
+    /* No track and no fill behind the segments: the gaps show the card. */
+    .root.seg-on .fill-clip { display: none; }
+    .root.seg-on .bar { background: none; }`;
+}
+
 /** Room kept beyond the stage edge along the bar: the expired glow reaches 14 px blur + 4 px spread. */
 const CLIP_MARGIN_PX = 18;
 
@@ -608,6 +662,7 @@ export function buildCss() {
     .sw ha-icon { --mdc-icon-size: min(16px, calc(var(--slabton-sw-d) * 0.6)); }
     .sw.active { color: var(--primary-color, #03a9f4); border-color: var(--primary-color, #03a9f4); }
     ${stickshiftCss()}
+    ${segmentsCss()}
 
     .unavailable .bar { opacity: 0.5; }
     /* The lock lives in the card (it blocks every gesture but a tap); the handle stays tappable for more-info. */

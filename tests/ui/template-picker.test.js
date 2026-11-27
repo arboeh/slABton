@@ -29,7 +29,9 @@ describe("tiles", () => {
   it("shows one button tile per template with name and description", () => {
     const { picker } = mount();
     const tiles = [...root(picker).querySelectorAll(".tile")];
-    expect(tiles.map((el) => el.dataset.template)).toEqual(["none", "clock", "timer", "lock", "thermometer"]);
+    expect(tiles.map((el) => el.dataset.template)).toEqual([
+      "none", "clock", "timer", "lock", "thermometer", "thermostat", "shutter", "battery",
+    ]);
     for (const el of tiles) {
       expect(el.tagName).toBe("BUTTON");
       expect(el.type).toBe("button");
@@ -55,15 +57,32 @@ describe("tiles", () => {
 
   it("puts a live preview card with the example state into every tile except none", () => {
     const { picker } = mount();
-    for (const id of ["clock", "timer", "lock", "thermometer"]) {
+    const modes = {
+      clock: "clock", timer: "timer", lock: "lock", thermometer: "value", thermostat: "state", shutter: "value", battery: "value",
+    };
+    for (const [id, mode] of Object.entries(modes)) {
       const preview = tile(picker, id).querySelector(".preview");
       const card = preview.querySelector("slabton-card");
       expect(card, id).not.toBeNull();
       expect(card.hass.states).toBeDefined();
-      expect(card._config.mode).toBe({ clock: "clock", timer: "timer", lock: "lock", thermometer: "value" }[id]);
+      expect(card._config.mode).toBe(mode);
     }
     const timerCard = tile(picker, "timer").querySelector("slabton-card");
     expect(Object.keys(timerCard.hass.states)).toEqual(["timer.sample"]);
+  });
+
+  it("shows the example value in the previews of the phase B templates", () => {
+    const { picker } = mount();
+    const card = (id) => tile(picker, id).querySelector("slabton-card");
+    const rootOf = (id) => card(id).shadowRoot.querySelector(".root");
+    expect(Object.keys(card("thermostat").hass.states)).toEqual(["climate.sample"]);
+    expect(card("thermostat").shadowRoot.querySelector(".bar-text").textContent).toContain("21.5");
+    // Shutter at 60 %: six of ten slats are open (blue).
+    expect(rootOf("shutter").style.getPropertyValue("--slabton-p")).toBe("0.6");
+    expect(rootOf("shutter").style.getPropertyValue("--slabton-seg-k")).toBe("6");
+    expect(rootOf("shutter").classList.contains("seg-on")).toBe(true);
+    expect(card("shutter").shadowRoot.querySelector(".h-text").textContent).toBe("60%");
+    expect(card("battery").shadowRoot.querySelector(".h-text").textContent).toBe("73%");
   });
 
   it("keeps the previews out of reach: inert, hidden from assistive technology, no services", () => {
@@ -341,6 +360,45 @@ describe("choosing", () => {
     const { picker } = mount();
     tile(picker, "timer").click();
     root(picker).querySelector(".button:not(.filled)").click();
-    expect(root(picker).querySelectorAll(".tile")).toHaveLength(5);
+    expect(root(picker).querySelectorAll(".tile")).toHaveLength(8);
+  });
+
+  it.each([
+    ["thermostat", "climate.living_room", [{ domain: ["climate"] }], {
+      entity: "climate.living_room", bar: { attribute: "current_temperature", unit: "°C" }, bar_text: "{value}",
+    }],
+    ["shutter", "cover.living_room", [{ domain: ["cover"] }], null],
+    ["battery", "sensor.battery", [{ domain: ["sensor"], device_class: ["battery"] }], {
+      entity: "sensor.battery", mode: "value", preset: "soc",
+    }],
+  ])("asks for the entity of %s and applies the expanded config", (id, entity, filter, expected) => {
+    const { picker, applied } = mount();
+    tile(picker, id).click();
+    const form = root(picker).querySelector("ha-form");
+    expect(form.schema[0].selector.entity.filter).toEqual(filter);
+    form.dispatchEvent(new CustomEvent("value-changed", { detail: { value: { entity } }, bubbles: true }));
+    root(picker).querySelector(".button.filled").click();
+    expect(applied).toHaveLength(1);
+    expect(applied[0].entity).toBe(entity);
+    if (expected) expect(applied[0]).toEqual(expected);
+    else expect(applied[0]).toMatchObject({ mode: "value", orientation: "vertical" });
+  });
+});
+
+describe("buttons of the entity question", () => {
+  const css = () => {
+    const { picker } = mount();
+    return root(picker).querySelector("style").textContent;
+  };
+
+  it("have a Material 3 state layer: 8 % on hover, 10 % on focus and press, none while disabled", () => {
+    const style = css();
+    expect(style).toContain(".button::before");
+    expect(style).toMatch(/\.button:not\(:disabled\):hover::before \{ opacity: 0\.08; \}/);
+    expect(style).toMatch(/\.button:not\(:disabled\):focus-visible::before, \.button:not\(:disabled\):active::before \{ opacity: 0\.1; \}/);
+  });
+
+  it("do not animate the state layer with reduced motion", () => {
+    expect(css()).toMatch(/prefers-reduced-motion: reduce\)[^}]*\.button::before/);
   });
 });

@@ -191,3 +191,50 @@ describe("cover travel", () => {
     expect(vi.getTimerCount()).toBe(0);
   });
 });
+
+describe("shutter card (segmented bar)", () => {
+  const SHUTTER = {
+    orientation: "vertical",
+    bar: { segments: { count: 10, gap: 3, on_color: "#2196f3", off_color: "#757575" } },
+  };
+  const segments = (el) => q(el, ".root").style.getPropertyValue("--slabton-seg-k");
+
+  it("shows a position of 60 % as 6 active segments", () => {
+    const el = create(SHUTTER, makeState(COVER, "open", { ...FULL, current_position: 60 }));
+    expect(q(el, ".segs")).not.toBeNull();
+    expect(q(el, ".root").classList.contains("seg-on")).toBe(true);
+    expect(segments(el)).toBe("6");
+    expect(fill(el)).toBe("0.6");
+    expect(q(el, ".h-text").textContent).toBe("60%");
+  });
+
+  it("shows open as all segments and closed as none", () => {
+    const el = create(SHUTTER);
+    expect(segments(el)).toBe("10");
+    report(el, "closed", { current_position: 0 });
+    expect(segments(el)).toBe("0");
+  });
+
+  it("follows the travel of the cover", () => {
+    const el = create(SHUTTER);
+    report(el, "closing", { current_position: 40 });
+    expect(segments(el)).toBe("4");
+    report(el, "closing", { current_position: 25 });
+    expect(segments(el)).toBe("3");
+  });
+
+  it("keeps the gestures of the cover: tap toggles, the handle can be dragged", () => {
+    const el = create(SHUTTER);
+    expect(q(el, ".root").classList.contains("nodrag")).toBe(false);
+    tap(q(el, ".handle"));
+    expect(el.hass.callService).toHaveBeenCalledWith("cover", "toggle", {}, { entity_id: COVER });
+  });
+
+  it("keeps the config values of the template (colors, count, gap) on the host", () => {
+    const el = create(SHUTTER);
+    expect(el.style.getPropertyValue("--slabton-seg-n")).toBe("10");
+    expect(el.style.getPropertyValue("--slabton-seg-gap")).toBe("3px");
+    expect(el.style.getPropertyValue("--slabton-seg-on-color")).toBe("#2196f3");
+    expect(el.style.getPropertyValue("--slabton-seg-off-color")).toBe("#757575");
+  });
+});

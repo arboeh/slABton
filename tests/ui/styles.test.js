@@ -796,6 +796,93 @@ describe("buildCss", () => {
   });
 });
 
+describe("segmented bar", () => {
+  const EFFECTIVE_GAP = "min(var(--slabton-seg-gap, 3px), calc(50% / (var(--slabton-seg-n, 10) - 1)))";
+  const segCfg = (segments, extra = {}) => cfg({ entity: "sensor.x", mode: "value", bar: { segments }, ...extra });
+
+  it("sets count and gap as variables, and the colors only when configured", () => {
+    expect(buildVars(segCfg(true))).toMatchObject({ "--slabton-seg-n": "10", "--slabton-seg-gap": "3px" });
+    expect(buildVars(segCfg(true))).not.toHaveProperty("--slabton-seg-on-color");
+    expect(buildVars(segCfg(true))).not.toHaveProperty("--slabton-seg-off-color");
+    const colored = buildVars(segCfg({ count: 7, gap: 0, on_color: "#2196f3", off_color: "grey" }));
+    expect(colored).toMatchObject({
+      "--slabton-seg-n": "7", "--slabton-seg-gap": "0px", "--slabton-seg-on-color": "#2196f3", "--slabton-seg-off-color": "grey",
+    });
+  });
+
+  it("sets no segment variable without segments", () => {
+    const vars = buildVars(cfg({ entity: "sensor.x", mode: "value" }));
+    expect(Object.keys(vars).filter((key) => key.startsWith("--slabton-seg-"))).toEqual([]);
+  });
+
+  it("applies and removes the variables like the others", () => {
+    const host = document.createElement("div");
+    const keys = applyVars(host, segCfg(5));
+    expect(host.style.getPropertyValue("--slabton-seg-n")).toBe("5");
+    applyVars(host, cfg({ entity: "sensor.x", mode: "value" }), keys);
+    expect(host.style.getPropertyValue("--slabton-seg-n")).toBe("");
+  });
+
+  it("cuts the segments with a repeating mask and colors them with a hard-stop gradient", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.segs \{[^}]*mask-image: repeating-linear-gradient\(var\(--slabton-seg-dir, to right\), #000 0/);
+    expect(css).toMatch(/\.segs \{[^}]*-webkit-mask-image:/);
+    expect(css).toMatch(/\.segs \{[^}]*background: linear-gradient\(var\(--slabton-seg-dir, to right\), var\(--slabton-seg-on-color/);
+    // The last segment ends at the end of the bar: n segments plus n - 1 gaps fill the 100 %.
+    expect(css).toContain(`calc((100% - (var(--slabton-seg-n, 10) - 1) * ${EFFECTIVE_GAP}) / var(--slabton-seg-n, 10))`);
+    expect(css).toContain("var(--slabton-seg-k, 0)");
+  });
+
+  it("limits the gap to half the bar, so the segments never get a negative width", () => {
+    // n - 1 gaps take at most 50 % of the bar: the segments keep at least the other half, however large count and gap are.
+    const css = buildCss();
+    expect(EFFECTIVE_GAP).toContain("calc(50% / (var(--slabton-seg-n, 10) - 1))");
+    expect(css).not.toMatch(/\* var\(--slabton-seg-gap, 3px\)\) \/ var/);
+    expect(css).toContain(`calc(var(--slabton-seg-k, 0) * calc(calc((100% - (var(--slabton-seg-n, 10) - 1) * ${EFFECTIVE_GAP}) / var(--slabton-seg-n, 10)) + ${EFFECTIVE_GAP}) - ${EFFECTIVE_GAP} / 2)`);
+  });
+
+  it("picks the bar text contrast against the segment on-color", () => {
+    expect(buildCss()).toMatch(/\.root\.seg-on \{ --slabton-fill-surface: var\(--slabton-seg-on-color, var\(--slabton-active-color/);
+  });
+
+  it("keeps the bar text on the progress rule with bar_state_color, since the off segments stay grey", () => {
+    const css = buildCss();
+    expect(css).toMatch(/\.root\.seg-on\.bar-state \{ --slabton-over-bar: clamp\(0, calc\(\(var\(--slabton-p, 0\) - 0\.5\) \* 1000\), 1\); --slabton-over-far: 0; \}/);
+    // Later and more specific than the plain bar-state rule, so it wins.
+    expect(css.indexOf(".root.seg-on.bar-state")).toBeGreaterThan(css.indexOf(".bar-state { --slabton-over-bar: 1;"));
+  });
+
+  it("takes the fill color and the track color without on and off colors", () => {
+    const css = buildCss();
+    expect(css).toContain("var(--slabton-seg-on-color, var(--slabton-active-color, var(--slabton-fill-color, var(--primary-color, #03a9f4))))");
+    expect(css).toContain("var(--slabton-seg-off-color, var(--slabton-bar-color, var(--secondary-background-color, #e0e0e0)))");
+    // With color-mix the off color is the tonal track like the bar itself.
+    expect(css).toMatch(/@supports \(background: color-mix\(in srgb, red, blue\)\) \{\s*\.segs \{ background: [^}]*color-mix\(in srgb, var\(--slabton-text-color/);
+  });
+
+  it("grows from the start of the bar: left, right with rtl, bottom, top with rtl", () => {
+    const css = buildCss();
+    expect(css).toContain(".o-h:not(.rev) .segs { --slabton-seg-dir: to right; }");
+    expect(css).toContain(".o-h.rev .segs { --slabton-seg-dir: to left; }");
+    expect(css).toContain(".o-v:not(.rev) .segs { --slabton-seg-dir: to top; }");
+    expect(css).toContain(".o-v.rev .segs { --slabton-seg-dir: to bottom; }");
+  });
+
+  it("drops the track and the fill behind the segments, only with seg-on", () => {
+    const css = buildCss();
+    expect(css).toContain(".root.seg-on .fill-clip { display: none; }");
+    expect(css).toContain(".root.seg-on .bar { background: none; }");
+  });
+
+  it("follows the bar corners and does not take pointer events", () => {
+    expect(buildCss()).toMatch(/\.segs \{[^}]*pointer-events: none;[^}]*border-radius: calc\(var\(--slabton-bar-radius\) - var\(--slabton-border-width\)\)/);
+  });
+
+  it("does not change the card height", () => {
+    expect(cardHeightPx(segCfg(10))).toBe(cardHeightPx(cfg({ entity: "sensor.x", mode: "value" })));
+  });
+});
+
 function escapeRe(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }

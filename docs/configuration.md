@@ -26,11 +26,17 @@ editor: tiles with a live preview, each with a short text. Pick one and the edit
 | Timer | a `timer.*` entity | `entity`, `mode: timer` |
 | Lock | a `lock.*` or `alarm_control_panel.*` entity | `entity`, `mode: lock` |
 | Thermometer | a temperature `sensor.*` | `entity`, `mode: value`, `preset: thermometer` |
+| Thermostat | a `climate.*` entity | `entity`, `bar.attribute: current_temperature`, `bar.unit: "°C"`, `bar_text: "{value}"`; the mode stays `state` |
+| Shutter | a `cover.*` entity | `entity`, `mode: value`, `orientation: vertical`, `thickness: 64`, `bar.segments` (10 slats, grey closed, blue open) |
+| Battery | a battery `sensor.*` (`device_class: battery`) | `entity`, `mode: value`, `preset: soc` |
 
 - The result is a normal config: every option stays editable in the form and in the code editor, nothing refers back to the tile.
 - A tile **replaces** the options of the card (Home Assistant's own keys such as `grid_options` and `visibility` stay). Home Assistant has no undo in the editor, so pick "None" if the card is already what you want.
-- The quick start is only in the visual editor, not in YAML. It is not the same as `preset:`, which only sets range defaults for the `value` mode.
+- The quick start is only in the visual editor, not in YAML. It is not the same as `preset:`, which only sets range defaults for the `value` mode (shown as "Value profile" in the visual editor).
 - Once the card has any other option, the quick start no longer shows.
+- **Thermostat** only reads the measured temperature (read-only bar, the handle keeps its normal actions). The range comes from `min_temp` / `max_temp` of the entity.
+- **Shutter** lists every `cover.*`, not only shutters: a garage door or gate shows up too, and a tap switches it without asking. Choose the entity with care.
+- **Battery** lists only sensors with `device_class: battery`. A home battery that does not report it is missing from the list: pick "None" and set `preset: soc` yourself. The tile shows the level only; there is no charging animation yet.
 
 ## General options
 
@@ -38,7 +44,7 @@ editor: tiles with a live preview, each with a short text. Pick one and the edit
 | --- | --- | --- |
 | `entity` | required (not for `clock`) | Entity id |
 | `mode` | by domain | `state`, `lock`, `value`, `counter`, `timer`, `clock` |
-| `bar` | none | Bar value separate from the button, also from an attribute (`bar.attribute`), see [Bar value](appearance.md#bar-value) |
+| `bar` | none | Bar value separate from the button, also from an attribute (`bar.attribute`), see [Bar value](appearance.md#bar-value); `bar.segments` cuts the bar into segments, see [Segmented bar](appearance.md#segmented-bar) |
 | `bar_text` | none | Text in the bar with [placeholders](appearance.md#placeholders) |
 | `name` | none | Header text |
 | `icon` | by mode | Header and handle icon |

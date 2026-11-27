@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import "../../src/ui/slabton-card.js";
 import { normalizeConfig } from "../../src/core/config.js";
-import { renderCard, rootClasses, updateSwitches, updateView, zoneOf } from "../../src/ui/render.js";
+import { renderCard, rootClasses, segmentsActive, updateSwitches, updateView, zoneOf } from "../../src/ui/render.js";
 import { buildCss } from "../../src/ui/styles.js";
 import * as stateMode from "../../src/core/modes/state.js";
 import * as lockMode from "../../src/core/modes/lock.js";
@@ -913,5 +913,78 @@ describe("switch aria-label", () => {
     expect(refs.switches.end.getAttribute("aria-label")).toBe("Auto");
     updateSwitches(refs, config, createHass({ "sensor.m": makeState("sensor.m", "nap") }));
     expect(refs.switches.end.hasAttribute("aria-label")).toBe(false);
+  });
+});
+
+describe("segmented bar", () => {
+  const valueConfig = (segments, extra = {}) => ({
+    entity: "sensor.x", mode: "value", min: 0, max: 100, bar: { segments }, ...extra,
+  });
+  const view = (fillPos) => ({ pos: fillPos, fillPos, icon: "mdi:x", text: "", positionText: "", ariaNow: 0 });
+  const activeAt = (config, refs, fillPos) => {
+    updateView(refs, config, view(fillPos));
+    return refs.root.style.getPropertyValue("--slabton-seg-k");
+  };
+
+  it("adds one segment layer and the seg-on class only with bar.segments", () => {
+    const { shadow, refs } = setup(valueConfig(10));
+    expect(shadow.querySelectorAll(".bar > .segs")).toHaveLength(1);
+    expect(shadow.querySelector(".segs").getAttribute("aria-hidden")).toBe("true");
+    expect(shadow.querySelector(".segs").children).toHaveLength(0);
+    expect(refs.root.classList.contains("seg-on")).toBe(true);
+    const plain = setup({ entity: "sensor.x", mode: "value" });
+    expect(plain.shadow.querySelector(".segs")).toBeNull();
+    expect(plain.refs.root.classList.contains("seg-on")).toBe(false);
+  });
+
+  it("keeps the rest of the bar: fill layer, handle and scale stay", () => {
+    const { shadow } = setup(valueConfig({ count: 6 }, { scale: true }));
+    for (const selector of [".fill", ".handle", ".scale", ".rail"]) expect(shadow.querySelector(selector), selector).not.toBeNull();
+  });
+
+  it("rounds to whole segments at 0, 55 and 100 percent", () => {
+    const { config, refs } = setup(valueConfig(10));
+    expect(activeAt(config, refs, 0)).toBe("0");
+    expect(activeAt(config, refs, 0.04)).toBe("0");
+    expect(activeAt(config, refs, 0.06)).toBe("1");
+    expect(activeAt(config, refs, 0.55)).toBe("6");
+    expect(activeAt(config, refs, 1)).toBe("10");
+  });
+
+  it("follows the configured segment count", () => {
+    const { config, refs } = setup(valueConfig({ count: 4 }));
+    expect(activeAt(config, refs, 0.5)).toBe("2");
+    expect(activeAt(config, refs, 0.6)).toBe("2");
+    expect(activeAt(config, refs, 0.7)).toBe("3");
+  });
+
+  it("follows the drag position, like the fill", () => {
+    const { config, refs } = setup(valueConfig(10));
+    updateView(refs, config, view(0.2), { dragPos: 0.8 });
+    expect(refs.root.style.getPropertyValue("--slabton-seg-k")).toBe("8");
+    expect(refs.root.style.getPropertyValue("--slabton-p")).toBe("0.8");
+  });
+
+  it("never leaves 0 to count, whatever the position", () => {
+    expect(segmentsActive(10, -1)).toBe(0);
+    expect(segmentsActive(10, 2)).toBe(10);
+    expect(segmentsActive(10, NaN)).toBe(0);
+    expect(segmentsActive(10, undefined)).toBe(0);
+  });
+
+  it("sets no segment variable on a card without segments", () => {
+    const { config, refs } = setup({ entity: "sensor.x", mode: "value" });
+    updateView(refs, config, view(0.5));
+    expect(refs.root.style.getPropertyValue("--slabton-seg-k")).toBe("");
+  });
+
+  it("keeps the classes of both orientations and of rtl next to seg-on", () => {
+    const horizontal = setup(valueConfig(10)).refs.root.className;
+    expect(horizontal).toContain("o-h");
+    expect(horizontal).toContain("seg-on");
+    const vertical = setup(valueConfig(10, { orientation: "vertical", direction: "rtl" })).refs.root.className;
+    expect(vertical).toContain("o-v");
+    expect(vertical).toContain("rev");
+    expect(vertical).toContain("seg-on");
   });
 });

@@ -7,12 +7,14 @@ import {
 } from "../../src/core/templates.js";
 
 const withEntity = TEMPLATES.filter((template) => template.build);
-const SAMPLE_MODES = { clock: "clock", timer: "timer", lock: "lock", thermometer: "value" };
+const SAMPLE_MODES = {
+  clock: "clock", timer: "timer", lock: "lock", thermometer: "value", thermostat: "state", shutter: "value", battery: "value",
+};
 
 describe("catalog", () => {
-  it("has the five phase A templates with unique ids", () => {
+  it("has the phase A and B templates in order with unique ids", () => {
     const ids = TEMPLATES.map((template) => template.id);
-    expect(ids).toEqual(["none", "clock", "timer", "lock", "thermometer"]);
+    expect(ids).toEqual(["none", "clock", "timer", "lock", "thermometer", "thermostat", "shutter", "battery"]);
     expect(new Set(ids).size).toBe(ids.length);
   });
 
@@ -48,7 +50,41 @@ describe("build", () => {
 
   it("asks for an entity exactly where the config needs one", () => {
     expect(findTemplate("clock").entity).toBeNull();
-    for (const id of ["timer", "lock", "thermometer"]) expect(findTemplate(id).entity.domains.length).toBeGreaterThan(0);
+    for (const id of ["timer", "lock", "thermometer", "thermostat", "shutter", "battery"]) {
+      expect(findTemplate(id).entity.domains.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("expands the thermostat to a bar that reads the measured temperature in the state mode", () => {
+    const config = findTemplate("thermostat").build("climate.living_room");
+    expect(config).toEqual({
+      entity: "climate.living_room", bar: { attribute: "current_temperature", unit: "°C" }, bar_text: "{value}",
+    });
+    expect(config).not.toHaveProperty("mode");
+    const normalized = normalizeConfig(config);
+    expect(normalized).toMatchObject({ mode: "state", bar_attribute: "current_temperature", unit: "°C" });
+  });
+
+  it("expands the shutter to a vertical segmented cover bar", () => {
+    const config = findTemplate("shutter").build("cover.living_room");
+    expect(config).toMatchObject({ entity: "cover.living_room", mode: "value", orientation: "vertical" });
+    const normalized = normalizeConfig(config);
+    expect(normalized.bar_segments).toEqual({ count: 10, gap: 3, on_color: "#2196f3", off_color: "#757575" });
+    expect(normalized).toMatchObject({ mode: "value", orientation: "vertical", unit: "%", decimals: 0 });
+  });
+
+  it("expands the battery to the soc preset", () => {
+    expect(findTemplate("battery").build("sensor.battery")).toEqual({ entity: "sensor.battery", mode: "value", preset: "soc" });
+    expect(normalizeConfig(findTemplate("battery").build("sensor.battery"))).toMatchObject({ preset: "soc", min: 0, max: 100, unit: "%" });
+  });
+
+  it("builds the new templates without touching their input or sharing nested objects", () => {
+    const first = findTemplate("shutter").build("cover.a");
+    first.bar.segments.count = 99;
+    expect(findTemplate("shutter").build("cover.a").bar.segments.count).toBe(10);
+    const thermostat = findTemplate("thermostat").build("climate.a");
+    thermostat.bar.unit = "x";
+    expect(findTemplate("thermostat").build("climate.a").bar.unit).toBe("°C");
   });
 
   it("returns a new object on every call and keeps no reference to the template", () => {
@@ -96,7 +132,19 @@ describe("entity question", () => {
   it("builds the ha-form filter from the catalog", () => {
     expect(entityFilter(findTemplate("thermometer").entity)).toEqual([{ domain: ["sensor"], device_class: ["temperature"] }]);
     expect(entityFilter(findTemplate("lock").entity)).toEqual([{ domain: ["lock", "alarm_control_panel"] }]);
+    expect(entityFilter(findTemplate("thermostat").entity)).toEqual([{ domain: ["climate"] }]);
+    expect(entityFilter(findTemplate("shutter").entity)).toEqual([{ domain: ["cover"] }]);
+    expect(entityFilter(findTemplate("battery").entity)).toEqual([{ domain: ["sensor"], device_class: ["battery"] }]);
     expect(entityFilter(null)).toEqual([]);
+  });
+
+  it("accepts the right domain for each new template", () => {
+    expect(isEntityFor(findTemplate("thermostat"), "climate.living_room")).toBe(true);
+    expect(isEntityFor(findTemplate("thermostat"), "sensor.living_room")).toBe(false);
+    expect(isEntityFor(findTemplate("shutter"), "cover.garage")).toBe(true);
+    expect(isEntityFor(findTemplate("shutter"), "switch.garage")).toBe(false);
+    expect(isEntityFor(findTemplate("battery"), "sensor.battery")).toBe(true);
+    expect(isEntityFor(findTemplate("battery"), "cover.battery")).toBe(false);
   });
 
   it("accepts only entities of the asked domains", () => {

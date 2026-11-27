@@ -44,13 +44,17 @@ const STYLE = `
 .question { display: flex; flex-direction: column; gap: 12px; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; }
 .button {
+  position: relative; overflow: hidden;
   min-height: 40px; padding: 0 16px; font: inherit; font-weight: 500; cursor: pointer; border-radius: 20px;
   border: 1px solid var(--outline-color, var(--divider-color, currentColor)); background: transparent; color: var(--primary-color);
 }
 .button.filled { border-color: transparent; background: var(--primary-color); color: var(--text-primary-color, #fff); }
 .button:disabled { cursor: default; opacity: 0.38; }
 .button:focus-visible { outline: 2px solid var(--primary-color); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .tile, .tile::before { transition: none; } }
+.button::before { content: ""; position: absolute; inset: 0; background: currentColor; opacity: 0; pointer-events: none; transition: opacity var(--st-motion); }
+.button:not(:disabled):hover::before { opacity: 0.08; }
+.button:not(:disabled):focus-visible::before, .button:not(:disabled):active::before { opacity: 0.1; }
+@media (prefers-reduced-motion: reduce) { .tile, .tile::before, .button::before { transition: none; } }
 `;
 
 /** Static example `hass` of a template's preview: one fake entity, the language of the user, no services. */

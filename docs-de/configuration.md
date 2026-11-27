@@ -27,11 +27,17 @@ Optionen ein:
 | Timer | eine `timer.*`-Entity | `entity`, `mode: timer` |
 | Schloss | eine `lock.*`- oder `alarm_control_panel.*`-Entity | `entity`, `mode: lock` |
 | Thermometer | ein Temperatur-`sensor.*` | `entity`, `mode: value`, `preset: thermometer` |
+| Thermostat | eine `climate.*`-Entity | `entity`, `bar.attribute: current_temperature`, `bar.unit: "°C"`, `bar_text: "{value}"`; der Modus bleibt `state` |
+| Jalousie | eine `cover.*`-Entity | `entity`, `mode: value`, `orientation: vertical`, `thickness: 64`, `bar.segments` (10 Lamellen, grau geschlossen, blau offen) |
+| Batterie | ein Batterie-`sensor.*` (`device_class: battery`) | `entity`, `mode: value`, `preset: soc` |
 
 - Das Ergebnis ist eine normale Config: jede Option bleibt im Formular und im Code-Editor änderbar, nichts verweist auf die Kachel zurück.
 - Eine Kachel **ersetzt** die Optionen der Karte (Schlüssel, die Home Assistant selbst verwaltet, etwa `grid_options` und `visibility`, bleiben). Der Editor von Home Assistant hat kein Rückgängig; wähle "Keine", wenn die Karte schon passt.
-- Den Schnellstart gibt es nur im visuellen Editor, nicht in YAML. Er ist nicht dasselbe wie `preset:`, das nur Bereichs-Vorgaben für den Modus `value` setzt.
+- Den Schnellstart gibt es nur im visuellen Editor, nicht in YAML. Er ist nicht dasselbe wie `preset:`, das nur Bereichs-Vorgaben für den Modus `value` setzt (im visuellen Editor als "Wertprofil" beschriftet).
 - Sobald die Karte eine weitere Option hat, erscheint der Schnellstart nicht mehr.
+- **Thermostat** liest nur die gemessene Temperatur (Bar nur lesend, der Griff behält seine normalen Aktionen). Der Bereich kommt aus `min_temp` / `max_temp` der Entity.
+- **Jalousie** listet jede `cover.*`, nicht nur Jalousien: ein Garagentor oder Tor erscheint auch, und ein Tipp schaltet es ohne Rückfrage um. Wähle die Entity mit Bedacht.
+- **Batterie** listet nur Sensoren mit `device_class: battery`. Ein Heim-Akku, der das nicht meldet, fehlt in der Liste: wähle "Keine" und setze `preset: soc` selbst. Die Kachel zeigt nur den Ladestand, eine Lade-Animation gibt es noch nicht.
 
 ## Allgemeine Optionen
 
@@ -39,7 +45,7 @@ Optionen ein:
 | --- | --- | --- |
 | `entity` | Pflicht (nicht bei `clock`) | Entity-ID |
 | `mode` | nach Domain | `state`, `lock`, `value`, `counter`, `timer`, `clock` |
-| `bar` | keiner | Bar-Wert getrennt vom Button, auch aus einem Attribut (`bar.attribute`), siehe [Bar-Wert](appearance.md#bar-wert) |
+| `bar` | keiner | Bar-Wert getrennt vom Button, auch aus einem Attribut (`bar.attribute`), siehe [Bar-Wert](appearance.md#bar-wert); `bar.segments` teilt die Bar in Segmente, siehe [Segmentierte Bar](appearance.md#segmentierte-bar) |
 | `bar_text` | keiner | Text in der Bar mit [Platzhaltern](appearance.md#platzhalter) |
 | `name` | keiner | Header-Text |
 | `icon` | nach Modus | Header- und Griff-Icon |
@@ -79,7 +85,7 @@ Ein `cover`-Entity läuft ohne weitere Optionen im Modus `value`: Ziehen setzt d
 ```yaml
 type: custom:slabton-card
 entity: cover.wohnzimmer
-name: Rollladen Wohnzimmer
+name: Jalousie Wohnzimmer
 switches:
   end:
     entity: sensor.cover_living_room_mode

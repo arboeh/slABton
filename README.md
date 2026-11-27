@@ -77,7 +77,8 @@ states:
 - Material 3 look: tonal track, filled handle with an icon that stays readable on any color, hover, focus and press state layers
 - Timer actions (`timer.start_action`, `timer.end_action`) and swipe to start or stop a timer
 - Colors, font sizes and CSS variables; theme aware; respects reduced motion
-- Quick start in the visual editor: pick a tile with a live preview (clock, timer, lock, thermometer), answer one question, done; the result is a normal config
+- Quick start in the visual editor: pick a tile with a live preview (clock, timer, lock, thermometer, thermostat, shutter, battery), answer one question, done; the result is a normal config
+- Segmented bar (`bar.segments`): the bar as slats or level-meter segments, whole segments active or inactive
 - English and German texts, visual editor
 
 ## Installation

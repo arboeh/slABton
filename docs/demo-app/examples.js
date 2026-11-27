@@ -288,7 +288,7 @@ text:
 window.SLABTON_EXAMPLE_LABELS = {
   de: {
     state: "Zustand (Select)", overhang: "Zustand, Griff-Überstand", vertical: "Zustand, vertikal",
-    lock: "Sperre (Swipe)", value: "Wert (Sensor)", "labels-outside": "Wert, Beschriftung außen", "ticks-outside": "Wert, Striche und Beschriftung außen", draggable: "Wert (ziehbare Zahl)", cover: "Rollladen (Position)", "cover-simple": "Rollladen (ohne Position)", "cover-auto": "Rollladen mit Auto-Modus", counter: "Zähler",
+    lock: "Sperre (Swipe)", value: "Wert (Sensor)", "labels-outside": "Wert, Beschriftung außen", "ticks-outside": "Wert, Striche und Beschriftung außen", draggable: "Wert (ziehbare Zahl)", cover: "Jalousie (Position)", "cover-simple": "Jalousie (ohne Position)", "cover-auto": "Jalousie mit Auto-Modus", counter: "Zähler",
     stickshift: "Zustand, Stickshift", "state-color": "Zustand, ganze Bar in Zustandsfarbe", "timer-actions": "Timer, Start- und Endaktion",
     timer: "Timer", clock: "Uhr (digital)", analog: "Uhr (analog)", "bar-attribute": "Wert aus Attribut", styled: "Farben und Text",
   },

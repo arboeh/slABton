@@ -40,8 +40,8 @@ describe("locale files", () => {
     expect(keys.length).toBeGreaterThanOrEqual(15);
     for (const key of keys) expect(typeof de[key], key).toBe("string");
     // The existing "preset" label keeps its own name: the quick start is a different feature.
-    expect(en["editor.preset"]).toBe("Preset");
-    expect(de["editor.preset"]).toBe("Vorlage");
+    expect(en["editor.preset"]).toBe("Value profile");
+    expect(de["editor.preset"]).toBe("Wertprofil");
   });
 
   it("only hold non-empty strings", () => {

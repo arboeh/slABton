@@ -39,6 +39,20 @@ function stickshiftHtml(config) {
   return `<div class="sx sxs-${config.stickshift.shape}"></div>`;
 }
 
+/**
+ * Segment layer of `bar.segments`: one element, the segments are drawn by CSS (gradients cut by a mask) from
+ * `--slabton-seg-n`, `--slabton-seg-gap` and the active count `--slabton-seg-k` (see `segmentsActive`).
+ */
+function segmentsHtml(config) {
+  return config.bar_segments ? '<div class="segs" aria-hidden="true"></div>' : "";
+}
+
+/** Whole segments that count as active at `fillPos` (0..1): rounded, never outside 0..count. */
+export function segmentsActive(count, fillPos) {
+  if (!Number.isFinite(fillPos)) return 0;
+  return Math.min(count, Math.max(0, Math.round(fillPos * count)));
+}
+
 /** True when the scale's ticks stand outside the bar (`ticks_placement` is "outside"). */
 const ticksOutside = (config) => config.scale?.ticksPlacement === "outside";
 
@@ -188,6 +202,7 @@ export function rootClasses(config) {
   if (config.allow_unavailable_actions) classes.push("allow-actions");
   if (config.bar_state_color) classes.push("bar-state");
   if (config.stickshift) classes.push("sx-on");
+  if (config.bar_segments) classes.push("seg-on");
   return classes.join(" ");
 }
 
@@ -226,6 +241,7 @@ export function renderCard(shadow, config, css) {
           ${outsideBefore}
           <div class="bar">
             <div class="fill-clip"><div class="fill"></div></div>
+            ${segmentsHtml(config)}
             ${scaleHtml(config)}
             ${barText}
             ${horizontal ? info : ""}
@@ -447,6 +463,9 @@ export function updateView(refs, config, view, options = {}) {
   const fillPos = dragging ? options.dragPos : view.fillPos;
 
   root.style.setProperty("--slabton-p", String(fillPos));
+  if (config.bar_segments) {
+    root.style.setProperty("--slabton-seg-k", String(segmentsActive(config.bar_segments.count, fillPos)));
+  }
   const edge = axisFraction(handlePos, horizontal, reversed);
   root.style.setProperty("--slabton-e", String(edge));
   if (view.color) root.style.setProperty("--slabton-active-color", view.color);

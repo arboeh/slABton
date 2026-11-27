@@ -9,7 +9,9 @@ import {
   ACTION, ACTION_TYPES, ANIMATIONS, CLOCK_FACE_NUMBERS, CLOCK_FACE_OPTIONS, CLOCK_LABEL_STEP,
   CLOCK_SCALE_TICKS_12, CLOCK_SCALE_TICKS_24, COVER_DOMAIN, HANDLE_FLEX, COVER_POSITION_UNIT, DEFAULT_ANIMATION, DEFAULT_FACE_TICKS, DEFAULT_SCALE_LABEL_PLACEMENT,
   DEFAULT_SCALE_POSITION, DEFAULT_SCALE_TICK_PLACEMENT,
-  DEFAULT_SCALE_TICKS, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS, MODE, MODES, MAX_FONT_SIZE, MAX_SCALE_TICKS,
+  DEFAULT_SCALE_TICKS, DEFAULT_SEGMENT_COUNT, DEFAULT_SEGMENT_GAP_PX, DEFAULT_SWITCH_ICON, DOT_ID_RE, IGNORED_HA_ACTIONS,
+  MAX_SEGMENT_COUNT, MAX_SEGMENT_GAP_PX, MIN_SEGMENT_COUNT, MIN_SEGMENT_GAP_PX, SEGMENT_OPTIONS,
+  MODE, MODES, MAX_FONT_SIZE, MAX_SCALE_TICKS,
   MAX_THICKNESS, MIN_ANALOG_HANDLE_SIZE, MIN_DIAL_NUMBERS_SIZE, MIN_DIAL_QUARTERS_SIZE, MIN_FONT_SIZE, MIN_LABEL_THICKNESS,
   MIN_SCALE_SIZE, MIN_SCALE_TICKS, MIN_STEP, MIN_THICKNESS, OFF_VALUES, OVAL_RATIO, READ_ONLY_MODES, SCALE_ALIASES,
   SCALE_AXIS_POSITIONS, SCALE_LABEL_PLACEMENTS, SCALE_OPTIONS, SCALE_TICK_PLACEMENTS, STICKSHIFT_DEFAULT_GATE_SIZE,
@@ -435,6 +437,81 @@ function normalizeBarAttribute(value, entity) {
     return null;
   }
   return value;
+}
+
+/** Segment count within the limits, or null when `value` is not a whole number in range. */
+function segmentCountOrNull(value) {
+  const n = parsePlainNumber(value);
+  return Number.isInteger(n) && n >= MIN_SEGMENT_COUNT && n <= MAX_SEGMENT_COUNT ? n : null;
+}
+
+/** `bar.segments.count`: the default when missing; an unusable value warns and takes the default. */
+function segmentCount(value) {
+  if (isBlank(value)) return DEFAULT_SEGMENT_COUNT;
+  const n = segmentCountOrNull(value);
+  if (n != null) return n;
+  warn(`bar.segments.count must be a whole number from ${MIN_SEGMENT_COUNT} to ${MAX_SEGMENT_COUNT} and was ignored`);
+  return DEFAULT_SEGMENT_COUNT;
+}
+
+/** `bar.segments.gap` in px: the default when missing; an unusable value warns and takes the default. */
+function segmentGap(value) {
+  if (isBlank(value)) return DEFAULT_SEGMENT_GAP_PX;
+  const n = parsePlainNumber(value);
+  if (n >= MIN_SEGMENT_GAP_PX && n <= MAX_SEGMENT_GAP_PX) return n;
+  warn(`bar.segments.gap must be a number from ${MIN_SEGMENT_GAP_PX} to ${MAX_SEGMENT_GAP_PX} and was ignored`);
+  return DEFAULT_SEGMENT_GAP_PX;
+}
+
+/**
+ * `bar.segments`: the bar is cut into equal segments across the bar. `true` = defaults, a number = the count (short
+ * form), a map sets `count`, `gap`, `on_color` and `off_color`. Missing/`false` = off (null). A colour of null means
+ * "the fill colour" (on) and "the track colour" (off), which the CSS resolves.
+ */
+function normalizeSegments(raw) {
+  if (raw == null || raw === "" || raw === false) return null;
+  let source;
+  if (raw === true) {
+    source = {};
+  } else if (isPlainObject(raw)) {
+    source = raw;
+  } else {
+    const count = segmentCountOrNull(raw);
+    if (count == null) {
+      warn(`bar.segments must be true, false, a whole number from ${MIN_SEGMENT_COUNT} to ${MAX_SEGMENT_COUNT} or a map and was ignored`);
+      return null;
+    }
+    source = { count };
+  }
+  for (const key of Object.keys(source)) {
+    if (!SEGMENT_OPTIONS.includes(key)) warn(`bar.segments.${key} is not a known option and was ignored`);
+  }
+  return {
+    count: segmentCount(source.count),
+    gap: segmentGap(source.gap),
+    on_color: textColor(source.on_color, "bar.segments.on_color"),
+    off_color: textColor(source.off_color, "bar.segments.off_color"),
+  };
+}
+
+/** Segments of the bar; a stickshift has no bar, so they warn and are dropped there. */
+function normalizeBarSegments(raw, stickshift) {
+  const segments = normalizeSegments(raw);
+  if (segments && stickshift) {
+    warn("bar.segments cannot be combined with stickshift and was ignored");
+    return null;
+  }
+  return segments;
+}
+
+/**
+ * A horizontal cover with segments runs reversed unless `direction` is set: the closed (grey) segments start at the left
+ * and grow to the right like the vertical shutter's grey grows down from the top, and the handle stays on the edge.
+ */
+function coverSegmentLayout(layout, { barSegments, domain, raw }) {
+  const unset = raw.direction == null || raw.direction === "";
+  if (!barSegments || domain !== "cover" || layout.orientation !== "horizontal" || !unset) return layout;
+  return { ...layout, direction: "rtl" };
 }
 
 /** A config block (`counter:`, `timer:`, `clock:`): missing -> {}, anything but a map -> error. */
@@ -922,7 +999,8 @@ export function normalizeConfig(raw) {
   const barOwnAttribute = Boolean(barAttribute && barEntity === entity);
   const plainLayout = normalizeLayout(raw, mode);
   const stickshift = normalizeStickshift(raw.stickshift, mode, { states, barOwnAttribute, layout: plainLayout });
-  const layout = stickshift ? stickshiftLayout(plainLayout) : plainLayout;
+  const barSegments = normalizeBarSegments(raw.bar?.segments, stickshift != null);
+  const layout = coverSegmentLayout(stickshift ? stickshiftLayout(plainLayout) : plainLayout, { barSegments, domain, raw });
   const clock = mode === MODE.CLOCK ? normalizeClock(raw, layout) : { ...CLOCK_DEFAULTS, face: { ...CLOCK_FACE_DEFAULTS } };
   const counter = mode === MODE.COUNTER ? normalizeCounter(raw) : { ...COUNTER_DEFAULTS };
   const range = normalizeRange(source, presetDefaults);
@@ -936,6 +1014,7 @@ export function normalizeConfig(raw) {
     icon: str(raw.icon) ?? presetDefaults.icon ?? null,
     bar_entity: barEntity,
     bar_attribute: barAttribute,
+    bar_segments: barSegments,
     // The bar measures an attribute of the main entity itself (no separate `bar.entity`).
     bar_own_attribute: barOwnAttribute,
     bar_text: normalizeText(raw.bar_text, "bar_text", mode),

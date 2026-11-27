@@ -1229,3 +1229,136 @@ describe("state colors", () => {
     expect(c.handle_zones.end.states[0].color).toBeNull();
   });
 });
+
+describe("bar.segments", () => {
+  const sensor = { ...base, entity: "sensor.x", mode: "value" };
+  const segmentsOf = (segments, extra = {}) => normalizeConfig({ ...sensor, ...extra, bar: { segments } }).bar_segments;
+
+  it("is off without the option, so existing cards stay as they are", () => {
+    expect(normalizeConfig(sensor).bar_segments).toBeNull();
+    expect(normalizeConfig({ ...sensor, bar: { max: 50 } }).bar_segments).toBeNull();
+    expect(segmentsOf(false)).toBeNull();
+    expect(segmentsOf(null)).toBeNull();
+  });
+
+  it("takes defaults for true and for an empty map (a block with only segments is allowed)", () => {
+    const defaults = { count: 10, gap: 3, on_color: null, off_color: null };
+    expect(segmentsOf(true)).toEqual(defaults);
+    expect(segmentsOf({})).toEqual(defaults);
+    const c = normalizeConfig({ ...sensor, bar: { segments: true } });
+    expect(c.bar_entity).toBeNull();
+    expect(c.bar_attribute).toBeNull();
+  });
+
+  it("reads the short form as the segment count", () => {
+    expect(segmentsOf(8)).toMatchObject({ count: 8, gap: 3 });
+    expect(segmentsOf("12")).toMatchObject({ count: 12 });
+  });
+
+  it("reads count, gap and both colors from a map", () => {
+    expect(segmentsOf({ count: 20, gap: 1.5, on_color: "#2196f3", off_color: "var(--disabled-color, grey)" })).toEqual({
+      count: 20, gap: 1.5, on_color: "#2196f3", off_color: "var(--disabled-color, grey)",
+    });
+    expect(segmentsOf({ gap: 0 }).gap).toBe(0);
+  });
+
+  it("accepts the limits 2 and 50 and warns about everything outside them", () => {
+    const warn = warnSpy();
+    expect(segmentsOf({ count: 2 }).count).toBe(2);
+    expect(segmentsOf({ count: 50 }).count).toBe(50);
+    expect(warn).not.toHaveBeenCalled();
+    for (const count of [1, 0, 51, 2.5, -3, "x", "1e1"]) {
+      warn.mockClear();
+      expect(segmentsOf({ count }).count, String(count)).toBe(10);
+      expect(warn, String(count)).toHaveBeenCalledWith(expect.stringContaining("bar.segments.count"));
+    }
+  });
+
+  it("warns about a gap outside 0 to 20 and takes the default", () => {
+    const warn = warnSpy();
+    expect(segmentsOf({ gap: 20 }).gap).toBe(20);
+    expect(warn).not.toHaveBeenCalled();
+    for (const gap of [-1, 21, "wide"]) {
+      warn.mockClear();
+      expect(segmentsOf({ gap }).gap, String(gap)).toBe(3);
+      expect(warn, String(gap)).toHaveBeenCalledWith(expect.stringContaining("bar.segments.gap"));
+    }
+  });
+
+  it("drops an unsafe color with a warning", () => {
+    const warn = warnSpy();
+    const segments = segmentsOf({ on_color: "red;", off_color: "url(x)" });
+    expect(segments).toMatchObject({ on_color: null, off_color: null });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("bar.segments.on_color"));
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("bar.segments.off_color"));
+  });
+
+  it("warns about an unknown option and keeps the rest", () => {
+    const warn = warnSpy();
+    expect(segmentsOf({ count: 5, rounded: true })).toMatchObject({ count: 5 });
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("bar.segments.rounded"));
+  });
+
+  it("ignores a value that is neither true, a number nor a map", () => {
+    const warn = warnSpy();
+    for (const value of ["many", [3], 1, 99]) {
+      warn.mockClear();
+      expect(segmentsOf(value), JSON.stringify(value)).toBeNull();
+      expect(warn).toHaveBeenCalledWith(expect.stringContaining("bar.segments must be"));
+    }
+  });
+
+  it("works next to a bar attribute and a range", () => {
+    const c = normalizeConfig({
+      ...base, entity: "climate.x", bar: { attribute: "current_temperature", unit: "°C", segments: 5 },
+    });
+    expect(c).toMatchObject({ bar_attribute: "current_temperature", unit: "°C" });
+    expect(c.bar_segments).toMatchObject({ count: 5 });
+  });
+
+  it("does not combine with a stickshift and warns", () => {
+    const warn = warnSpy();
+    const c = normalizeConfig({
+      ...base, stickshift: true, states: ["a", "b", "c"], bar: { segments: 6 },
+    });
+    expect(c.stickshift).not.toBeNull();
+    expect(c.bar_segments).toBeNull();
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("cannot be combined with stickshift"));
+  });
+
+  describe("shutter direction", () => {
+    const cover = { ...base, entity: "cover.x", bar: { segments: true } };
+
+    it("runs a horizontal cover reversed (closed grey from the left, open at 100 % on the left)", () => {
+      expect(normalizeConfig({ ...cover, orientation: "horizontal" }).direction).toBe("rtl");
+    });
+
+    it("keeps a vertical cover as it is", () => {
+      expect(normalizeConfig({ ...cover, orientation: "vertical" }).direction).toBe("ltr");
+    });
+
+    it("keeps an explicit direction, also ltr", () => {
+      expect(normalizeConfig({ ...cover, orientation: "horizontal", direction: "ltr" }).direction).toBe("ltr");
+      expect(normalizeConfig({ ...cover, orientation: "horizontal", direction: "rtl" }).direction).toBe("rtl");
+    });
+
+    it("leaves other domains and covers without segments alone", () => {
+      expect(normalizeConfig({ ...sensor, bar: { segments: true } }).direction).toBe("ltr");
+      expect(normalizeConfig({ ...base, entity: "cover.x" }).direction).toBe("ltr");
+    });
+
+    it("does not reverse when the segments were dropped (stickshift)", () => {
+      warnSpy();
+      const c = normalizeConfig({ ...cover, stickshift: true, states: ["a", "b", "c"], orientation: "horizontal" });
+      expect(c.bar_segments).toBeNull();
+      expect(c.direction).toBe("ltr");
+    });
+  });
+
+  it("does not change the input", () => {
+    const raw = { ...sensor, bar: { segments: { count: 4 } } };
+    const copy = JSON.stringify(raw);
+    normalizeConfig(raw);
+    expect(JSON.stringify(raw)).toBe(copy);
+  });
+});

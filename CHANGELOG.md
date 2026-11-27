@@ -8,7 +8,13 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), versioning: [S
 ### Added
 
 - Quick start in the visual editor: a card that is not set up yet (only `type`, `entity`, `name`) offers tiles with a live preview for Clock, Timer, Lock and Thermometer, plus "None". A tile asks at most one question (the entity, filtered by domain) and expands into a normal config; `grid_options`, `layout_options`, `view_layout` and `visibility` are kept. The existing `preset:` option is unchanged. Docs: *Quick start in the visual editor*.
+- Quick start, more tiles: Thermostat (`climate.*`, `bar.attribute: current_temperature`), Shutter (`cover.*`, vertical segmented bar) and Battery (`sensor.*` with `device_class: battery`, `preset: soc`). The picker buttons "Back" and "Apply" got the Material 3 state layer (8 % hover, 10 % focus and press).
+- `bar.segments` cuts the bar into equal segments across the bar (`count` 2 to 50, `gap` in px, `on_color`, `off_color`; short form `segments: 10`). Whole segments are active (rounded to the nearest segment), the rest inactive; value, handle, gestures, scale and texts stay as they are. A base for later level-meter looks. Without `bar.segments` nothing changes; not combinable with `stickshift`. A horizontal cover with segments runs reversed unless `direction` is set (grey from the left). Docs: *Segmented bar*.
 - `header_icon_position: none` hides the header icon (the name stays); the new `header_align` (`start`, `center`, `end`, default `start`) aligns icon and name in the header line. Without the options nothing changes. Visual editor field, docs.
+
+### Changed
+
+- The visual editor labels the `preset` field "Value profile" (German "Wertprofil") instead of "Preset" / "Vorlage", so it is not confused with the quick start templates. The YAML key `preset` is unchanged.
 
 ## [1.3.0] - 2026-11-24
 
